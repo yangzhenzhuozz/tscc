@@ -22,9 +22,9 @@ let grammar: Grammar = {
         { "function:func id ( args ) type_declare block": {} },//带返回值声明的函数定义
         { "args:arg_list": {} },//带参数
         { "args:": {} },//不带参数
-        { "arg_list:arg_list , arguemnet": {} },
-        { "arg_list:arguemnet": {} },
-        { "arguemnet: object": {} },
+        { "arg_list:arg_list , argument": {} },
+        { "arg_list:argument": {} },
+        { "argument: object": {} },
         { "block:{ code_units }": {} },
         { "code_units:code_units code_unit": {} },
         { "code_units:": {} },//代码单元
