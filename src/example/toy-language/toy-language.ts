@@ -2,7 +2,7 @@ import fs from "fs";
 import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
 let grammar: Grammar = {
-    tokens: ['import', 'as', 'integrate_type', 'val', 'var', 'id', ':', ';', '.', ',', 'class', 'function', '!', '{', '}', '(', ')', 'if', 'else', 'while', 'do', 'for', '=', '[', ']', 'new', 'const_val', 'break', 'continue', 'get', 'set', 'return', 'extend', 'switch', 'case', 'default', 'operator'],
+    tokens: ['import', 'as', 'integrate_type', 'val', 'var', 'id', ':', ';', '.', ',', 'class', 'function', '!', '{', '}', '(', ')', 'if', 'else', 'while', 'do', 'for', '=', '[', ']', 'new', 'const_val', 'break', 'continue', 'get', 'set', 'return', 'extend', 'switch', 'case', 'default', 'operator','?'],
     association: [
         { "nonassoc": ['low_priority'] },//低优先级的一个临时符号
         { "right": ['else'] },
@@ -19,7 +19,7 @@ let grammar: Grammar = {
         { "right": ['.'] },//.运算符有很高的优先级,a+c.d可以解释成 a + (c.d)或者(a+c).d 出现二义性，所以需要定义优先级
     ],
     BNF: [
-        { "program:import_or_emptys units": {} },
+        { "program:import_or_emptys units": {} },//units.space=root
         { "import_or_emptys:": {} },
         { "import_or_emptys:imports": {} },
         { "imports:imports import_line": {} },
@@ -27,9 +27,9 @@ let grammar: Grammar = {
         { "import_line:import path as id ;": {} },
         { "path:id": {} },
         { "path:path . id": {} },
-        { "units:units unit": {} },
+        { "units:units unit": {} },//$1.space=$.space,$2.space=$.space
         { "units:": {} },//最外层的代码单元分别为声明和代码
-        { "unit:declare ;": {} },//变量声明
+        { "unit:declare ;": {} },//变量声明,unit.delcare.add(declare),declare.spacce=unit.space
         { "unit:class_def": {} },//class
         { "unit:function_def": {} },//function
         { "unit:operator_overload": {} },//操作符重载
@@ -46,9 +46,9 @@ let grammar: Grammar = {
         { "class_def: class id extend_or_empty { units }": {} },
         { "class_def: class val id extend_or_empty { units }": {} },//值类型的class
         { "extend_or_empty:": {} },
-        { "extend_or_empty:extend : types": {} },
-        { "types:type , types": {} },
-        { "types:type": {} },
+        { "extend_or_empty:extend : integrateTypes": {} },
+        { "integrateTypes:integrate_type , integrateTypes": {} },
+        { "integrateTypes:integrate_type": {} },
         { "function_def:function id ( parameters_or_empty ) : type block": {} },//语法糖,与函数对象定义功能一致
         { "parameters_or_empty:": {} },
         { "parameters_or_empty:parameters": {} },
@@ -113,10 +113,11 @@ let grammar: Grammar = {
         { "arguments_or_empty:arguments": {} },
         { "arguments:arguments , object": {} },
         { "arguments:object": {} },
-        { "type:integrate_type": {priority:'low_priority'} },//基础类型(由词法分析器提供)
+        { "type:integrate_type": {priority:'low_priority'} },//由词法分析器提供的类型
+        { "type:integrate_type ?": {} },//由词法分析器提供的类型，变为引用
         { "type:function_type": {priority:'low_priority'} },//函数类型
         { "type:array_type": {} },//数组类型
-        { "type:( type )": {} },//数组类型
+        { "type:( type )": {} },
         { "function_type:function ( parameters_or_empty ) : type": {} },//函数类型
         { "array_type:integrate_type array_define_list": {priority:'low_priority'} },//基础类型数组
         { "array_type:function_type array_define_list": {priority:'low_priority'} },//函数数组,因为函数数组会出现二义性:function():int[]  [][],后面的两个括号到底是和int关联还是和函数类型关联，所以函数数组定义时需要加括号
