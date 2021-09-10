@@ -82,14 +82,14 @@ B:b a s
 >>     association?: { [key: string]: string[] }[],
 >>     symbols: {
 >>         symbol: string;
->>         value?: (argc: string) => any;
+>>         value?: (args: string) => any;
 >>         reg: RegExp;
 >>     }[];
 >>     tokens?:string[];
->>     accept?: (argc: any[]) => any;
+>>     accept?: (args: any[]) => any;
 >>     BNF: {
 >>         [key: string]: {
->>             action?: ((argc: any[]) => any);
+>>             action?: ((args: any[]) => any);
 >>             priority?: string;
 >>         };
 >>     }[];
@@ -118,7 +118,7 @@ B:b a s
 >>> ```
 >>>  symbols: {
 >>>          symbol: string;
->>>          value?: (argc: string) => any;
+>>>          value?: (args: string) => any;
 >>>          reg: RegExp;
 >>>      }[];
 >>>  ```
@@ -164,7 +164,7 @@ B:b a s
 >>> ```
 >>>    BNF: {
 >>>        [key: string]: {
->>>            action?: ((argc: any[]) => any);
+>>>            action?: ((args: any[]) => any);
 >>>            priority?: string;
 >>>        };
 >>>    }[];
@@ -226,7 +226,7 @@ B:b a s
 >>>> 参考*产生式优先级和结合性*一节
 >>> #### action
 >>>> action为一个函数,当输入的单词能够规约成这条产生式时,就会调用本函数,所以可以叫做规约动作。传入的参数为一个数组,数组的元素分别为产生式体中的符号,产生式头的值被设置为规约动作的返回值。  
->>>> 需要注意的是:*ε会被忽略,即对于产生式 A:ε B ε C 来说,规约动作的参数数组长度为2,并且argc[0]对应符号B的值,argc[1]对应符号C的值,产生式体中的ε被跳过*  
+>>>> 需要注意的是:*ε会被忽略,即对于产生式 A:ε B ε C 来说,规约动作的参数数组长度为2,并且args[0]对应符号B的值,args[1]对应符号C的值,产生式体中的ε被跳过*  
 >>>> ##### 中间动作:
 >>>>> action的第二个参数被设置为语法分析栈中的符号，这是因为yacc或者bison可以在一条产生式的中间插入产生式动作，而tscc可以做到一样的功能，但是写法有些区别  
 >>>>> 在yacc中,如果对一条产生式规则 E:E + E ,在产生式中间定义了一个动作,在末尾定义了一个规约动作,如下:
@@ -241,8 +241,8 @@ B:b a s
 >>>>> 因为yacc在解析.y文件的时候知道中间动作的位置,所以能自动从栈中取出确定数量的符号给中间动作使用,而tscc对动作没有任何解析,直接使用了js函数原型作为动作(因为编写BNF的解析也需要时间,像bison就用自己编写了自己的.y文件解析器,而因为时间成本问题,tscc暂时没这么做，因为js本身的灵活性,tscc的BNF定义规则可读性也还不错),所以需要自己定义插入符号,然后自行从分析栈中取得符号  
 >>>>>```
 >>>>>BNF:[
->>>>>    {"E:E + tmp E":{action:(argc)=>{return argc[0]+argc[3];}}},
->>>>>    {"tmp:":{action:(argc,stack)=>{
+>>>>>    {"E:E + tmp E":{action:(args)=>{return args[0]+args[3];}}},
+>>>>>    {"tmp:":{action:(args,stack)=>{
 >>>>>     let sym=stack.slice(-2);//取栈中最后两个符号,得到的就是E和+
 >>>>>     console.log(`${sym[0]}:${sym[1]}`);
 >>>>>    }}}
@@ -251,19 +251,19 @@ B:b a s
 >>>>>```
 >>> BNF例子:
 >>> ```
->>> BNF:[{ "exp:exp + exp": { action: function (argc) { return argc[0] + argc[2]; } } },//将产生式体第一个exp和第二个exp相加,结果赋予产生式头
->>> { "exp:number": { action: function (argc) { return argc[0]; } } },//将产生式体第一个符号的值赋予产生式头
->>> { "exp:- number": { action: function (argc) { return -argc[0]; }, priority: "uminus" } }]//定义产生式的优先级和结合性与符号uminus相同,将exp的值取反
+>>> BNF:[{ "exp:exp + exp": { action: function (args) { return args[0] + args[2]; } } },//将产生式体第一个exp和第二个exp相加,结果赋予产生式头
+>>> { "exp:number": { action: function (args) { return args[0]; } } },//将产生式体第一个符号的值赋予产生式头
+>>> { "exp:- number": { action: function (args) { return -args[0]; }, priority: "uminus" } }]//定义产生式的优先级和结合性与符号uminus相同,将exp的值取反
 >>> ```
 >> ### accept
 >>> 可选  
 >>> ```
->>> accept?: (argc: any[]) => any;
+>>> accept?: (args: any[]) => any;
 >>> ```
 >>> accept为增广文法成功规约时的规约动作,设BNF中定义的第一个产生式为A:B C,jscc会自动添加一个产生式A':A,并将规约动作设置为accept。  
 >>> 例:
 >>> ```
->>> accept:function(argc){console.log('编译完成');}
+>>> accept:function(args){console.log('编译完成');}
 >>> ```
 > ## argument
 >> agrument定义如下:

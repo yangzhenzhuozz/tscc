@@ -1,8 +1,8 @@
 class Tools {//提供类似sprintf的功能
-    static sprintf(format: string, ...argc: any): string {
+    static sprintf(format: string, ...args: any): string {
         let index = 0;
         return format.replace(/(%d)|(%s)/g, (): string => {
-            return argc[index++];
+            return args[index++];
         });
     }
 }
@@ -105,11 +105,11 @@ let MultipleLanguage: MultiLanguage = {
 interface Grammar {
     association?: { [key: string]: string[] }[],//终结符优先级和结合性,优先级取的是在数组association中的下标,所以最低是0
     tokens?: string[];//终结符号表
-    accept?: (argc: any[], symbolStack: any[]) => any;//最终规约成增广文法第一条产生式时调用的函数
+    accept?: (args: any[], symbolStack: any[]) => any;//最终规约成增广文法第一条产生式时调用的函数
     BNF: {
         //key为一个产生式 A:B C D
         [key: string]: {
-            action?: ((argc: any[], symbolStack: any[]) => any);//产生式规约动作,产生式体下标从0记起,返回值被赋予产生式头,可以为undefine
+            action?: ((args: any[], symbolStack: any[]) => any);//产生式规约动作,产生式体下标从0记起,返回值被赋予产生式头,可以为undefine
             priority?: string;//产生式指定结合性和优先级,覆盖默认的产生式优先级和结合性规则(使用产生式最右侧终结符的结合性)
         };
     }[];
@@ -143,10 +143,10 @@ interface Item {
     expectation: string;//后续符号
 }
 class Syntax extends Array<string>{
-    resolver?: (...argc: any) => any;
+    resolver?: (...args: any) => any;
     pad: PriorityAndAssociationDescription | undefined;//从最右侧的终结符获得的优先级和结合性
     syntaxLength: number = 0;//产生式体长度,不统计ε
-    constructor(array: string[], resolve?: (...argc: any) => any) {
+    constructor(array: string[], resolve?: (...args: any) => any) {
         super(...array);
         this.resolver = resolve;
         // Set the prototype explicitly.
@@ -580,7 +580,7 @@ class Parser {
             str += `${this.syntaxs[i].syntaxLength}`;
         }
         str += `];
-        let functionArray:(((argc:any[],stack:any[])=>any)|undefined)[]=[
+        let functionArray:(((args:any[],stack:any[])=>any)|undefined)[]=[
             `;
         for (let i = 0; i < this.syntaxs.length; i++) {
             if (i != 0) {
@@ -630,9 +630,9 @@ class Parser {
                     symbolValStack.push(sym.value);//保持和stateStack一致
                     stateStack.push(target);
                 } else {//规约
-                    let argc: any[] = [];
+                    let args: any[] = [];
                     for (let i = 0; i < syntaxLength[target]; i++) {
-                        argc.unshift(symbolStack.pop()!.value);
+                        args.unshift(symbolStack.pop()!.value);
                         symbolValStack.pop();//保持和stateStack一致
                         stateStack.pop();
                     }
@@ -641,7 +641,7 @@ class Parser {
                         value: undefined//调用bnf动作
                     };
                     if(functionArray[target]!=undefined){
-                        reduceToken.value=functionArray[target]!(argc,symbolValStack);//调用bnf动作
+                        reduceToken.value=functionArray[target]!(args,symbolValStack);//调用bnf动作
                     }
                     if (target == 0) {
                         break;//文法分析结束
