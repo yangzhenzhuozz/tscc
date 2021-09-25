@@ -103,6 +103,7 @@ let MultipleLanguage: MultiLanguage = {
     }
 };
 interface Grammar {
+    userCode?: string,
     association?: { [key: string]: string[] }[],//终结符优先级和结合性,优先级取的是在数组association中的下标,所以最低是0
     tokens?: string[];//终结符号表
     accept?: (args: any[], symbolStack: any[]) => any;//最终规约成增广文法第一条产生式时调用的函数
@@ -172,6 +173,7 @@ class JSCC {
     private argument: JSCCParameter;//调用的一些参数
     private localTips: Tips;
     private actionTable: {}[] | undefined;//动作表
+    private userCode?: string;//用户自定义代码
     constructor(grammar: Grammar, argument: JSCCParameter) {
         this.localTips = MultipleLanguage[argument.language];
         this.argument = argument;
@@ -180,6 +182,7 @@ class JSCC {
         this.syntaxSource = new Array();
         this.NTSSyntax = new Map();
         this.TerminalSymbols.set(`$`, undefined);//定义ε和$,允许被Grammar中的symbols覆盖
+        this.userCode = grammar.userCode;
 
         //先把所有终结符读取
         grammar.tokens?.forEach((v) => {
@@ -549,8 +552,12 @@ class JSCC {
      * @param gotoTable 移入规约表
      */
     private generateStateMachine(gotoTable: {}[]): string {
-        let str =
-            `interface Token {
+        let str = '';
+        if (this.userCode != undefined || this.userCode != null) {
+            str+=this.userCode;
+        }
+        str +=`
+interface Token {
     type: string;
     value: any;
 }

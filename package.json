@@ -1,0 +1,22 @@
+{
+  "name": "tscc",
+  "version": "1.0.0",
+  "description": "从0开始自制编程语言",
+  "main": "index.js",
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yangzhenzhuozz/tscc.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/yangzhenzhuozz/tscc/issues"
+  },
+  "homepage": "https://github.com/yangzhenzhuozz/tscc#readme",
+  "type": "module"
+}

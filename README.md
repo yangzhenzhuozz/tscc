@@ -79,6 +79,7 @@ B:b a s
 >> grammar原型如下:
 >> ```
 >> interface Grammar {
+>>     userCode?:string,    
 >>     association?: { [key: string]: string[] }[],
 >>     symbols: {
 >>         symbol: string;
@@ -95,7 +96,12 @@ B:b a s
 >>     }[];
 >> }
 >> ```
->> grammar包含四个属性:association、symbols、BNF、accept
+>> ### userCode
+>>> 可选
+>>> ```
+>>> userCode?:string
+>>> ```
+>>> 用户的自定义代码，会被放在parser的最前面，可以用于自定义一些class或者interface
 >> ### association
 >>> 可选
 >>> ```

@@ -2,7 +2,6 @@
 output/
 node_modules/
 package-lock.json
-package.json
 compiler.ts
 src/example/toy-language/parser.ts
 src/example/calculate/parser.ts
