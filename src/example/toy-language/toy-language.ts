@@ -5,50 +5,43 @@ import { scope } from './scope.js'
 
 let grammar: Grammar = {
     userCode: `import {scope} from './scope.js'`,//让自动生成的代码包含import语句
-    tokens: ['var', ';', 'id'],
-    association: [],
+    tokens: ['var', ';', 'id', 'number', '+'],
+    association: [
+        { 'left': ['+'] },
+        { 'right': ['='] }
+    ],
     BNF: [
         //当一个继承属性需要往下传递的时候，创建一个临时非终结符保存这个属性
-        { "program:W1 units": {} },//program.scope=new scope();units.scope=program.scope
         {
-            "W1:": {
+            "program:W0 units": {//program.scope=new scope();units.scope=program.scope
+                action:function(args,stack){
+                    console.table(args[0].scope.symTable);
+                }
+            }
+        },
+        {
+            "W0:": {
                 action: function () {
                     return { scope: new scope() };
                 }
             }
         },
-        { "units:W2 unit W3 units": {} },//unit.scope=units.scope;units1.scope=units.scope
+        { "units:unit W2 units": {} },//unit.scope=units.scope;units1.scope=units.scope
         {
             "W2:": {
                 action: function (args, stack) {
-                    let stacks = stack.slice(-1);//取栈中最后1个符号
-                    return stacks[0];//把属性复制一份
-                }
-            }
-        },
-        {
-            "W3:": {
-                action: function (args, stack) {
-                    let stacks = stack.slice(-3);//取栈中最后3个符号
-                    return stacks[0];//把属性复制一份
+                    let sym = stack.slice(-2);
+                    return { scope: sym[0].scope };
                 }
             }
         },
         { "units:": {} },
-        { "unit:W4 declare": {} },//declare.scope=unit.scope
+        { "unit:declare": {} },//declare.scope=unit.scope
         {
-            "W4:": {
+            "declare:var id ;": {//declare.scope.addSym(id.name)
                 action: function (args, stack) {
-                    let stacks = stack.slice(-1);//取栈中最后1个符号
-                    return stacks[0];//把属性复制一份
-                }
-            }
-        },
-        {
-            "declare:var id ;": {//declare.scope.addSym(id)
-                action: function (args, stack) {
-                    let stacks = stack.slice(-1);//取栈中最后1个符号
-                    stacks[0].scope.addSym(args[1].name);
+                    let sym = stack.slice(-1);
+                    sym[0].scope.addSym(args[1].name);
                 }
             }
         },

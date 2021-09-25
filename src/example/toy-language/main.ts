@@ -9,10 +9,17 @@ let lex = new Lexical([
     [";", /;/y],
     ["number", /\d+/y, (str) => { return Number(str); }],
     ["id", /[a-zA-Z][a-zA-Z0-9_]*/y, (str) => { return { name: str }; }],
+    ["+", /\+/y],
+    ["=", /=/y],
 ]);
 //测试用源码
 let source =
-    `var a;var a;`;
+`
+var a;
+var b;
+var c;
+var d;
+`;
 lex.setSource(source);
 if (parser.parse(lex)) {
     console.log(`成功`);
