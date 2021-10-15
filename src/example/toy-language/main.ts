@@ -10,15 +10,30 @@ let lex = new Lexical([
     ["number", /\d+/y, (str) => { return Number(str); }],
     ["id", /[a-zA-Z][a-zA-Z0-9_]*/y, (str) => { return { name: str }; }],
     ["+", /\+/y],
+    ["-", /-/y],
+    ["*", /\*/y],
+    ["/", /\//y],
     ["=", /=/y],
+    ["(", /\(/y],
+    [")", /\)/y],
+    [">", />/y],
+    ["==", /==/y],
+    ["!=", /!=/y],
+    [">=", />=/y],
+    ["< ", /< /y],
+    ["<=", /<=/y],
+    ["&&", /&&/y],
+    ["||", /\|\|/y],
+    ["!", /!/y],
 ]);
 //测试用源码
 let source =
-`
+    `
 var a;
 var b;
 var c;
 var d;
+(a)=(a+2)+((b+3)+(b+c));
 `;
 lex.setSource(source);
 if (parser.parse(lex)) {
