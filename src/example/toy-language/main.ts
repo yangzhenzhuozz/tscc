@@ -29,11 +29,13 @@ let lex = new Lexical([
 //测试用源码
 let source =
     `
-var a;
-var b;
-var c;
-var d;
-(a)=(a+2)+((b+3)+(b+c));
+    var a;
+    var b;
+    var c;
+    var d;
+    (a)=(a+2)+((b+3)+(b+c));
+    a=a||b||c||(a+b);
+    a+d||b;
 `;
 lex.setSource(source);
 if (parser.parse(lex)) {
