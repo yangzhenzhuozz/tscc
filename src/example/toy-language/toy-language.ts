@@ -3,7 +3,7 @@ import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
 let grammar: Grammar = {
     userCode: ``,//让自动生成的代码包含import语句
-    tokens: ['var', ';', 'id', 'number', '+', '-', '++', '--', '(', ')', '{', '}', '[', ']', ',', ':', 'base_type', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'lambda', 'if', 'else', 'do', 'while', 'for'],
+    tokens: ['var', '...', ';', 'id', 'constant_val', '+', '-', '++', '--', '(', ')', '{', '}', '[', ']', ',', ':', 'base_type', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'lambda', 'if', 'else', 'do', 'while', 'for','switch','case','default'],
     association: [
         { 'right': ['='] },
         { 'left': ['==', '!='] },
@@ -48,10 +48,13 @@ let grammar: Grammar = {
 
         { "function_definition:function id ( parameters ) : type { function_units }": {} },
         { "parameters:parameter_list": {} },
+        { "parameters:varible_argument": {} },
+        { "parameters:parameter_list , varible_argument": {} },
         { "parameters:": {} },
         { "parameter_list:parameter_list , parameter": {} },
         { "parameter_list:parameter": {} },
         { "parameter:id : type": {} },
+        { "varible_argument:id : type ...": {} },
         { "function_units:function_units function_unit": {} },
         { "function_units:": {} },
         { "function_unit:declare": {} },
@@ -64,6 +67,11 @@ let grammar: Grammar = {
         { "statement:while ( object ) statement": {} },
         { "statement:for ( for_init ; for_condition ; for_step ) statement": {} },
         { "statement:block": {} },
+        { "statement:switch ( object ) { switch_bodys }": {} },
+        { "switch_bodys:": {} },
+        { "switch_bodys:switch_bodys switch_body": {} },
+        { "switch_body:case constant_val : statement": {} },
+        { "switch_body:default : statement": {} },
         { "block:{ statement }": {} },
 
         { "for_init:": {} },
@@ -75,6 +83,7 @@ let grammar: Grammar = {
         { "for_step:object": {} },
 
         { "object:id": {} },
+        { "object:constant_val": {} },
         { "object:object ( arguments )": {} },
         { "object:lambda ( arguments ) => { function_units }": {} },//lambda
         { "object:new { anonymous_stmts }": {} },//匿名类，类似C#而不是java

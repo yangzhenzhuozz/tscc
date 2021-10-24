@@ -7,10 +7,11 @@ let lex = new Lexical([
     [/\s+/y],
     ["var", /var/y],
     ["=>", /=>/y],
+    ["...", /\.\.\./y],
     [",", /,/y],
     [";", /;/y],
     [":", /:/y],
-    ["number", /\d+/y, (str) => { return Number(str); }],
+    ["constant_val", /\d+/y, (str) => { return Number(str); }],
     ["++", /\+\+/y],
     ["--", /--/y],
     ["+", /\+/y],
@@ -46,11 +47,30 @@ let lex = new Lexical([
     ["if", /if/y],
     ["else", /else/y],
     ["for", /for/y],
+    ["switch",/switch/y],
+    ["case",/case/y],
+    ["default",/default/y],
     ["id", /[a-zA-Z][a-zA-Z0-9_]*/y, (str) => { return { name: str }; }],
 ]);
 //测试用源码
 let source =
     `
+    function a(a:int...):int{
+        switch(a){
+
+        }
+        switch(a){
+            case 1:a++;
+        }
+        switch(a){
+            case 1:{a++;}
+            default:{a++;}
+        }
+        switch(a){
+            default:{a++;}
+        }
+    }
+    function a(a:int,a:int...):int{}
     function a():double{
         function a():double{
             do a=a+b; while (a)
