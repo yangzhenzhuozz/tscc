@@ -30,6 +30,7 @@ let grammar: Grammar = {
         { "extend_list:base_type": {} },
         { "class_units:class_units class_unit": {} },
         { "class_units:": {} },
+        { "class_unit:cass_definition": {} },
         { "class_unit:declare": {} },
         { "class_unit:operator_overload": {} },   
 

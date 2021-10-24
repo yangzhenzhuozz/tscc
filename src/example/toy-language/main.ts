@@ -52,7 +52,7 @@ let source =
 
     }
     class a extends int,double{
-
+        class a{}
     }
     class a{
         function a():double{
