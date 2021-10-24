@@ -73,6 +73,8 @@ let source =
         function a():double{
             for(a;b;c)a++;
             for(;;)a++;
+            a.b;
+            a.b();
         }
         function a(a:int):int{
 
