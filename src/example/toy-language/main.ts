@@ -6,9 +6,11 @@ let parser = new Parser();
 let lex = new Lexical([
     [/\s+/y],
     ["var", /var/y],
+    ["=>", /=>/y],
+    [",", /,/y],
     [";", /;/y],
+    [":", /:/y],
     ["number", /\d+/y, (str) => { return Number(str); }],
-    ["id", /[a-zA-Z][a-zA-Z0-9_]*/y, (str) => { return { name: str }; }],
     ["+", /\+/y],
     ["-", /-/y],
     ["*", /\*/y],
@@ -16,6 +18,10 @@ let lex = new Lexical([
     ["=", /=/y],
     ["(", /\(/y],
     [")", /\)/y],
+    ["[", /\[/y],
+    ["]", /\]/y],
+    ["{", /{/y],
+    ["}", /}/y],
     [">", />/y],
     ["==", /==/y],
     ["!=", /!=/y],
@@ -25,17 +31,46 @@ let lex = new Lexical([
     ["&&", /&&/y],
     ["||", /\|\|/y],
     ["!", /!/y],
+    [".", /\./y],
+    ["function", /function/y],
+    ["operator", /operator/y],
+    ["base_type", /(int)|(double)/y],
+    ["class", /class/y],
+    ["new", /new/y],
+    ["extends", /extends/y],
+    ["id", /[a-zA-Z][a-zA-Z0-9_]*/y, (str) => { return { name: str }; }],
 ]);
 //测试用源码
 let source =
     `
-    var a;
-    var b;
-    var c;
-    var d;
-    (a)=(a+2)+((b+3)+(b+c));
-    a=a||b||c||(a+b);
-    a+d||b;
+    function a():double{
+        function a():double{
+            
+        }
+    }
+    class a extends int{
+
+    }
+    class a extends int,double{
+
+    }
+    class a{
+        function a():double{
+
+        }
+        function a(a:int):int{
+
+        }
+        function a(a:int,b:int):double{
+
+        }
+        function a(a:int,b:int,c:int):int{
+            a(a,()=>{});
+        }
+        operator+(a:int):int{
+
+        }
+    }
 `;
 lex.setSource(source);
 if (parser.parse(lex)) {
