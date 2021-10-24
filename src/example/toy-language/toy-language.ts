@@ -3,7 +3,7 @@ import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
 let grammar: Grammar = {
     userCode: ``,//让自动生成的代码包含import语句
-    tokens: ['var', ';', 'id', 'number', '+', '(', ')', '{', '}', '[', ']', ',', ':', 'base_type', 'function', 'class', '=>', 'operator', 'new', '.', 'extends'],
+    tokens: ['var', ';', 'id', 'number', '+', '-', '++', '--', '(', ')', '{', '}', '[', ']', ',', ':', 'base_type', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'lambda', 'if', 'else', 'do', 'while', 'for'],
     association: [
         { 'right': ['='] },
         { 'left': ['==', '!='] },
@@ -13,8 +13,11 @@ let grammar: Grammar = {
         { 'nonassoc': ['>', '<', '<=', '>='] },
         { 'left': ['+', '-'] },
         { 'left': ['*', '/'] },
+        { 'left': ['++', '--'] },
         { 'nonassoc': ['('] },
-        { 'left': ['.'] }
+        { 'left': ['.'] },
+        { 'nonassoc': ['low_priority_for_if_stmt'] },//这个符号的优先级小于else
+        { 'nonassoc': ['else'] },
     ],
     BNF: [
         { "program:program_units": {} },
@@ -32,7 +35,8 @@ let grammar: Grammar = {
         { "class_units:": {} },
         { "class_unit:cass_definition": {} },
         { "class_unit:declare": {} },
-        { "class_unit:operator_overload": {} },   
+        { "class_unit:operator_overload": {} },
+        { "operator_overload:operator + ( parameter ) : type { function_units }": {} },
 
         { "declare:var id : type ;": {} },
         { "declare:function_definition": {} },
@@ -48,24 +52,50 @@ let grammar: Grammar = {
         { "parameter_list:parameter_list , parameter": {} },
         { "parameter_list:parameter": {} },
         { "parameter:id : type": {} },
-        { "operator_overload:operator + ( parameter ) : type { function_units }": {} },
         { "function_units:function_units function_unit": {} },
         { "function_units:": {} },
         { "function_unit:declare": {} },
         { "function_unit:statement": {} },
-        { "statement:object ;": {} },     
+
+        { "statement:object ;": {} },
+        { "statement:if ( object ) statement": { priority: "low_priority_for_if_stmt" } },
+        { "statement:if ( object ) statement else statement": {} },
+        { "statement:do statement while ( object )": {} },
+        { "statement:while ( object ) statement": {} },
+        { "statement:for ( for_init ; for_condition ; for_step ) statement": {} },
+        { "statement:block": {} },
+        { "block:{ statement }": {} },
+
+        { "for_init:": {} },
+        { "for_init:declare": {} },
+        { "for_init:object": {} },
+        { "for_condition:": {} },
+        { "for_condition:object": {} },
+        { "for_step:": {} },
+        { "for_step:object": {} },
 
         { "object:id": {} },
-        { "object:object . id": {} },
         { "object:object ( arguments )": {} },
-        { "object:assignment": {} },
-        { "object:( arguments ) => { function_units }": {} },//lambda
-        { "assignment:object = object": {} },
+        { "object:lambda ( arguments ) => { function_units }": {} },//lambda
         { "object:new { anonymous_stmts }": {} },//匿名类，类似C#而不是java
+        { "object:( object )": {} },
+        { "object:object . id": {} },
+        { "object:object = object": {} },
+        { "object:object + object": {} },
+        { "object:object - object": {} },
+        { "object:object * object": {} },
+        { "object:object / object": {} },
+        { "object:object < object": {} },
+        { "object:object <= object": {} },
+        { "object:object > object": {} },
+        { "object:object >= object": {} },
+        { "object:object == object": {} },
+        { "object:object ++": {} },
+        { "object:object --": {} },
 
         { "anonymous_stmts:anonymous_stmts anonymous_stmt": {} },
         { "anonymous_stmts:": {} },
-        { "anonymous_stmt:assignment ;": {} },
+        { "anonymous_stmt:id = object ;": {} },
 
         { "arguments:argument_list": {} },
         { "arguments:": {} },

@@ -11,6 +11,8 @@ let lex = new Lexical([
     [";", /;/y],
     [":", /:/y],
     ["number", /\d+/y, (str) => { return Number(str); }],
+    ["++", /\+\+/y],
+    ["--", /--/y],
     ["+", /\+/y],
     ["-", /-/y],
     ["*", /\*/y],
@@ -38,6 +40,12 @@ let lex = new Lexical([
     ["class", /class/y],
     ["new", /new/y],
     ["extends", /extends/y],
+    ["lambda", /lambda/y],
+    ["do", /do/y],
+    ["while", /while/y],
+    ["if", /if/y],
+    ["else", /else/y],
+    ["for", /for/y],
     ["id", /[a-zA-Z][a-zA-Z0-9_]*/y, (str) => { return { name: str }; }],
 ]);
 //测试用源码
@@ -45,7 +53,14 @@ let source =
     `
     function a():double{
         function a():double{
-            
+            do a=a+b; while (a)
+            while(a) a;
+            do {a=a+b;} while (a)
+            while(a) {a;}
+            if(a+b){a;}
+            if(a+b)a;
+            if(a+b){a;}else a;
+            if(a+b)a; else{a;}
         }
     }
     class a extends int{
@@ -56,7 +71,8 @@ let source =
     }
     class a{
         function a():double{
-
+            for(a;b;c)a++;
+            for(;;)a++;
         }
         function a(a:int):int{
 
@@ -65,7 +81,7 @@ let source =
 
         }
         function a(a:int,b:int,c:int):int{
-            a(a,()=>{});
+            a(a,lambda()=>{});
         }
         operator+(a:int):int{
 
