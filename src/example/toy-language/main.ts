@@ -49,15 +49,22 @@ let lex = new Lexical([
     ["for", /for/y],
     ["switch",/switch/y],
     ["case",/case/y],
+    ["as",/as/y],
+    ["import",/import/y],
     ["default",/default/y],
+    ["valuetype",/valuetype/y],
     ["id", /[a-zA-Z][a-zA-Z0-9_]*/y, (str) => { return { name: str }; }],
 ]);
 //测试用源码
 let source =
     `
+    import aa as aa;
     function a(a:int...):int{
+        a=new int[0];
+        a=new int[0][][];
+        a=a[0][1][2];
         switch(a){
-
+            case 2:a=new int();
         }
         switch(a){
             case 1:a++;
@@ -83,7 +90,7 @@ let source =
             if(a+b)a; else{a;}
         }
     }
-    class a extends int{
+    valuetype class a extends int{
 
     }
     class a extends int,double{

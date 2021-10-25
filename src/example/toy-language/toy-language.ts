@@ -3,7 +3,7 @@ import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
 let grammar: Grammar = {
     userCode: ``,//让自动生成的代码包含import语句
-    tokens: ['var', '...', ';', 'id', 'constant_val', '+', '-', '++', '--', '(', ')', '{', '}', '[', ']', ',', ':', 'base_type', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'lambda', 'if', 'else', 'do', 'while', 'for','switch','case','default'],
+    tokens: ['var', '...', ';', 'id', 'constant_val', '+', '-', '++', '--', '(', ')', '{', '}', '[', ']', ',', ':', 'base_type', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'lambda', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as'],
     association: [
         { 'right': ['='] },
         { 'left': ['==', '!='] },
@@ -14,6 +14,8 @@ let grammar: Grammar = {
         { 'left': ['+', '-'] },
         { 'left': ['*', '/'] },
         { 'left': ['++', '--'] },
+        { 'nonassoc': ['low_priority_for_array_placeholder'] },
+        { 'right': ['['] },
         { 'nonassoc': ['('] },
         { 'left': ['.'] },
         { 'nonassoc': ['low_priority_for_if_stmt'] },//这个符号的优先级小于else
@@ -23,10 +25,13 @@ let grammar: Grammar = {
         { "program:program_units": {} },
         { "program_units:program_units program_unit": {} },
         { "program_units:": {} },
+        { "program_unit:import id as id ;": {} },
         { "program_unit:declare": {} },
         { "program_unit:cass_definition": {} },
 
-        { "cass_definition:class id extends_declare { class_units }": {} },
+        { "cass_definition:modifier class id extends_declare { class_units }": {} },
+        { "modifier:": {} },
+        { "modifier:valuetype": {} },
         { "extends_declare:extends extend_list": {} },
         { "extends_declare:": {} },
         { "extend_list:extend_list , base_type": {} },
@@ -86,7 +91,6 @@ let grammar: Grammar = {
         { "object:constant_val": {} },
         { "object:object ( arguments )": {} },
         { "object:lambda ( arguments ) => { function_units }": {} },//lambda
-        { "object:new { anonymous_stmts }": {} },//匿名类，类似C#而不是java
         { "object:( object )": {} },
         { "object:object . id": {} },
         { "object:object = object": {} },
@@ -101,6 +105,17 @@ let grammar: Grammar = {
         { "object:object == object": {} },
         { "object:object ++": {} },
         { "object:object --": {} },
+        { "object:new { anonymous_stmts }": {} },//匿名类，类似C#而不是java
+        { "object:new base_type ( arguments )": {} },
+        { "object:new base_type array_init_list": {} },
+        { "object:object [ object ]": {} },
+        { "array_init_list:array_inits array_placeholder": {} },
+        { "array_inits:array_inits [ object ]": {} },
+        { "array_inits:[ object ]": {} },
+        { "array_placeholder:array_placeholder_list": { priority: "low_priority_for_array_placeholder" } },//遇到方括号一律选择移入
+        { "array_placeholder:": { priority: "low_priority_for_array_placeholder" } },
+        { "array_placeholder_list:array_placeholder_list [ ]": {} },
+        { "array_placeholder_list:[ ]": { priority: "low_priority_for_array_placeholder" } },
 
         { "anonymous_stmts:anonymous_stmts anonymous_stmt": {} },
         { "anonymous_stmts:": {} },
