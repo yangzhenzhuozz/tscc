@@ -3,9 +3,10 @@ import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
 let grammar: Grammar = {
     userCode: ``,//让自动生成的代码包含import语句
-    tokens: ['var', '...', ';', 'id', 'constant_val', '+', '-', '++', '--', '(', ')', '{', '}', '[', ']', ',', ':', 'base_type', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'lambda', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as'],
+    tokens: ['var', '...', ';', 'id', 'constant_val', '+', '-', '++', '--', '(', ')','?', '{', '}', '[', ']', ',', ':', 'base_type', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'lambda', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as'],
     association: [
         { 'right': ['='] },
+        { 'right': ['?'] },
         { 'left': ['==', '!='] },
         { 'left': ['||'] },
         { 'left': ['&&'] },
@@ -103,6 +104,7 @@ let grammar: Grammar = {
         { "object:object > object": {} },
         { "object:object >= object": {} },
         { "object:object == object": {} },
+        { "object:object ? object : object": {priority:"?"} },
         { "object:object ++": {} },
         { "object:object --": {} },
         { "object:new { anonymous_stmts }": {} },//匿名类，类似C#而不是java

@@ -21,6 +21,7 @@ let lex = new Lexical([
     ["=", /=/y],
     ["(", /\(/y],
     [")", /\)/y],
+    ["?", /\?/y],
     ["[", /\[/y],
     ["]", /\]/y],
     ["{", /{/y],
@@ -60,6 +61,21 @@ let source =
     `
     import aa as aa;
     function a(a:int...):int{
+        if(a)
+        {
+            if(a)
+                a;
+        }
+        else
+            b;
+        if(a)
+        if(a)
+            a;
+        else
+            b;
+        a=a?b:c;
+        a=a+b?c+d:e+f;
+        a ? b : c ? d : e;
         a=new int[0];
         a=new int[0][][];
         a=a[0][1][2];
