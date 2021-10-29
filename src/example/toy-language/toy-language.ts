@@ -3,7 +3,7 @@ import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
 let grammar: Grammar = {
     userCode: ``,//让自动生成的代码包含import语句
-    tokens: ['var', '...', ';', 'id', 'constant_val', '+', '-', '++', '--', '(', ')','?', '{', '}', '[', ']', ',', ':', 'base_type', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'lambda', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as'],
+    tokens: ['var', '...', ';', 'id', 'constant_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'base_type', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as'],
     association: [
         { 'right': ['='] },
         { 'right': ['?'] },
@@ -33,10 +33,8 @@ let grammar: Grammar = {
         { "cass_definition:modifier class id extends_declare { class_units }": {} },
         { "modifier:": {} },
         { "modifier:valuetype": {} },
-        { "extends_declare:extends extend_list": {} },
+        { "extends_declare:extends base_type": {} },
         { "extends_declare:": {} },
-        { "extend_list:extend_list , base_type": {} },
-        { "extend_list:base_type": {} },
         { "class_units:class_units class_unit": {} },
         { "class_units:": {} },
         { "class_unit:cass_definition": {} },
@@ -91,7 +89,7 @@ let grammar: Grammar = {
         { "object:id": {} },
         { "object:constant_val": {} },
         { "object:object ( arguments )": {} },
-        { "object:lambda ( arguments ) => { function_units }": {} },//lambda
+        { "object:( parameters ) => { function_units }": {} },//lambda
         { "object:( object )": {} },
         { "object:object . id": {} },
         { "object:object = object": {} },
@@ -104,7 +102,7 @@ let grammar: Grammar = {
         { "object:object > object": {} },
         { "object:object >= object": {} },
         { "object:object == object": {} },
-        { "object:object ? object : object": {priority:"?"} },
+        { "object:object ? object : object": { priority: "?" } },
         { "object:object ++": {} },
         { "object:object --": {} },
         { "object:new { anonymous_stmts }": {} },//匿名类，类似C#而不是java

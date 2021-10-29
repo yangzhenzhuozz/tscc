@@ -42,7 +42,6 @@ let lex = new Lexical([
     ["class", /class/y],
     ["new", /new/y],
     ["extends", /extends/y],
-    ["lambda", /lambda/y],
     ["do", /do/y],
     ["while", /while/y],
     ["if", /if/y],
@@ -61,6 +60,7 @@ let source =
     `
     import aa as aa;
     function a(a:int...):int{
+        a=()=>{};
         if(a)
         {
             if(a)
@@ -109,7 +109,7 @@ let source =
     valuetype class a extends int{
 
     }
-    class a extends int,double{
+    class a extends int{
         class a{}
     }
     class a{
@@ -126,7 +126,7 @@ let source =
 
         }
         function a(a:int,b:int,c:int):int{
-            a(a,lambda()=>{});
+            a(a,()=>{});
         }
         operator+(a:int):int{
 

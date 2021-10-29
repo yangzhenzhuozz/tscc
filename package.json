@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "从0开始自制编程语言",
   "main": "index.js",
-  "devDependencies": {},
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
