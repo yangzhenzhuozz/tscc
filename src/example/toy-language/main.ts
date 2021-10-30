@@ -26,12 +26,12 @@ let lex = new Lexical([
     ["]", /\]/y],
     ["{", /{/y],
     ["}", /}/y],
-    [">", />/y],
     ["==", /==/y],
     ["!=", /!=/y],
     [">=", />=/y],
-    ["< ", /< /y],
     ["<=", /<=/y],
+    [">", />/y],
+    ["<", /</y],
     ["&&", /&&/y],
     ["||", /\|\|/y],
     ["!", /!/y],
@@ -47,19 +47,43 @@ let lex = new Lexical([
     ["if", /if/y],
     ["else", /else/y],
     ["for", /for/y],
-    ["switch",/switch/y],
-    ["case",/case/y],
-    ["as",/as/y],
-    ["import",/import/y],
-    ["default",/default/y],
-    ["valuetype",/valuetype/y],
+    ["switch", /switch/y],
+    ["case", /case/y],
+    ["break", /break/y],
+    ["continue", /continue/y],
+    ["as", /as/y],
+    ["import", /import/y],
+    ["default", /default/y],
+    ["valuetype", /valuetype/y],
     ["id", /[a-zA-Z][a-zA-Z0-9_]*/y, (str) => { return { name: str }; }],
 ]);
 //测试用源码
 let source =
-    `
-    import aa as aa;
-    function a(a:int...):int{
+    // `
+    // import aa as aa;
+    `function a(a:int...):int{
+        a<b;
+        L0:
+        for (i = 0; i++ < 100; i++) {
+            break LA;
+            break;
+            continue A;
+            continue ;
+        }
+
+        L1:
+        while (i * 100) {
+            break LB;
+        }
+
+        L2:
+        do {
+            break LC;
+        } while (i >= 100);
+
+        var a:()=>int;
+        var a:(int)=>int;
+        var a:(int,double)=>int;
         a=()=>{};
         if(a)
         {
@@ -96,9 +120,9 @@ let source =
     function a(a:int,a:int...):int{}
     function a():double{
         function a():double{
-            do a=a+b; while (a)
+            do a=a+b; while (a);
             while(a) a;
-            do {a=a+b;} while (a)
+            do {a=a+b;} while (a);
             while(a) {a;}
             if(a+b){a;}
             if(a+b)a;
