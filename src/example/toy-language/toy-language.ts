@@ -3,7 +3,7 @@ import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
 let grammar: Grammar = {
     userCode: ``,//让自动生成的代码包含import语句
-    tokens: ['var', '...', ';', 'id', 'constant_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'base_type', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as'],
+    tokens: ['var', '...', ';', 'id', 'constant_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'base_type', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue'],
     association: [
         { 'right': ['='] },
         { 'right': ['?'] },
@@ -46,7 +46,11 @@ let grammar: Grammar = {
         { "declare:function_definition": {} },
 
         { "type:base_type arr_definition": {} },
-        { "type:( ) => type": {} },
+        { "type:( lambda_parameter_types ) => type": {} },
+        { "lambda_parameter_types:": {} },
+        { "lambda_parameter_types:lambda_parameter_type_list": {} },
+        { "lambda_parameter_type_list:lambda_parameter_type_list , type": {} },
+        { "lambda_parameter_type_list:type": {} },
         { "arr_definition:arr_definition [ ]": {} },
         { "arr_definition:": {} },
 
@@ -67,16 +71,24 @@ let grammar: Grammar = {
         { "statement:object ;": {} },
         { "statement:if ( object ) statement": { priority: "low_priority_for_if_stmt" } },
         { "statement:if ( object ) statement else statement": {} },
-        { "statement:do statement while ( object )": {} },
-        { "statement:while ( object ) statement": {} },
-        { "statement:for ( for_init ; for_condition ; for_step ) statement": {} },
+        { "statement:lable_def do statement while ( object ) ;": {} },
+        { "statement:lable_def while ( object ) statement": {} },
+        { "statement:lable_def for ( for_init ; for_condition ; for_step ) statement": {} },
         { "statement:block": {} },
+        { "statement:break lable_use ;": {} },
+        { "statement:continue lable_use ;": {} },
         { "statement:switch ( object ) { switch_bodys }": {} },
+        { "lable_use:": {} },
+        { "lable_use:id": {} },
+        { "lable_def:": {} },
+        { "lable_def:id :": {} },
         { "switch_bodys:": {} },
         { "switch_bodys:switch_bodys switch_body": {} },
         { "switch_body:case constant_val : statement": {} },
         { "switch_body:default : statement": {} },
-        { "block:{ statement }": {} },
+        { "block:{ statements }": {} },
+        { "statements:": {} },
+        { "statements:statements statement": {} },
 
         { "for_init:": {} },
         { "for_init:declare": {} },
