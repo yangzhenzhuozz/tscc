@@ -23,12 +23,14 @@ let grammar: Grammar = {
         { 'nonassoc': ['else'] },
     ],
     BNF: [
-        { "program:program_units": {} },
+        { "program:import_stmts program_units": {} },
         { "program_units:program_units program_unit": {} },
         { "program_units:": {} },
-        { "program_unit:import id as id ;": {} },
         { "program_unit:declare": {} },
         { "program_unit:cass_definition": {} },
+        { "import_stmts:": {} },
+        { "import_stmts:import_stmts import_stmt": {} },
+        { "import_stmt:import id as id ;": {} },
 
         { "cass_definition:modifier class id extends_declare { class_units }": {} },
         { "modifier:": {} },

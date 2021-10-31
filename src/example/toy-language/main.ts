@@ -61,6 +61,8 @@ let lex = new Lexical([
 let source =
     `
     import aa as aa;
+    import aa as aa;
+    import aa as aa;
     function a(a:int...):int{
         a<b;
         L0:
