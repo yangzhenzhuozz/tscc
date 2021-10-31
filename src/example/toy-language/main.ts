@@ -59,9 +59,9 @@ let lex = new Lexical([
 ]);
 //测试用源码
 let source =
-    // `
-    // import aa as aa;
-    `function a(a:int...):int{
+    `
+    import aa as aa;
+    function a(a:int...):int{
         a<b;
         L0:
         for (i = 0; i++ < 100; i++) {
