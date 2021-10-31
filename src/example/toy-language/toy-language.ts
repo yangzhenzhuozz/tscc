@@ -3,7 +3,7 @@ import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
 let grammar: Grammar = {
     userCode: ``,//让自动生成的代码包含import语句
-    tokens: ['var', '...', ';', 'id', 'constant_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'base_type', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue'],
+    tokens: ['var', '...', ';', 'id', 'constant_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'base_type', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue','sealed'],
     association: [
         { 'right': ['='] },
         { 'right': ['?'] },
@@ -33,6 +33,7 @@ let grammar: Grammar = {
         { "cass_definition:modifier class id extends_declare { class_units }": {} },
         { "modifier:": {} },
         { "modifier:valuetype": {} },
+        { "modifier:sealed": {} },
         { "extends_declare:extends base_type": {} },
         { "extends_declare:": {} },
         { "class_units:class_units class_unit": {} },
