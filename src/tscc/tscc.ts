@@ -563,13 +563,12 @@ interface Token {
 }
 interface YYTOKEN extends Token{
     yytext:string;
-    yyindex:number
 }
 interface Lex {
     lex(): YYTOKEN
 }
 class Parser {
-    public parse(lexer: Lex):boolean {
+    public parse(lexer: Lex):any {
         let state: { [key: string]: string | undefined }[] = JSON.parse(\`${JSON.stringify(gotoTable)}\`);
         let syntaxHead: string[] = [`;
         for (let i = 0; i < this.syntaxs.length; i++) {
@@ -598,6 +597,7 @@ class Parser {
             }
         }
         str += `];
+        let result;//最终规约之后的返回值,由accept动作提供
         let yytoken:YYTOKEN | undefined;
         let errorRollback = false;//是否处于错误恢复模式
         let hasError=false;//是否曾经出现过错误
@@ -651,6 +651,7 @@ class Parser {
                         reduceToken.value=functionArray[target]!(args,symbolValStack);//调用bnf动作
                     }
                     if (target == 0) {
+                        result=reduceToken.value;//增广文法的返回值
                         break;//文法分析结束
                     }
                     lexBuffer = sym;//把读取到的符号暂时退回去
@@ -688,7 +689,11 @@ class Parser {
                 }
             }
         }
-        return true&&!hasError;
+        if(hasError){
+            throw \`解析错误\`;
+        }else{
+            return result;
+        }
     }
     public yyerror(token: Token,yytoken:YYTOKEN) {
         console.error(\``;

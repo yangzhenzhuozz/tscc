@@ -1,4 +1,3 @@
-import Lexical from "../../lexical_analyzer/lexical_analyzer";//暂时使用toy-lan的词法构造器
 import Parser from "./parser";
 let parser = new Parser();
 //定义词法的正则规则，所有正则都是sticky的,flag为y

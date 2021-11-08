@@ -74,7 +74,7 @@ B:b a s
 如果试图通过定义a,s为同一优先级的非结合终结符来避免a和s结合,会发现没有任何作用,因为文法不是一个二义性文法。
 
 # 使用说明
-> 使用import JSCC from "jscc.js"导入jscc模块,然后new JSCC(grammar,argument)即可,grammar包含和文法的BNF和词法的正则规则。
+> 使用import tscc from "tscc.js"导入tscc模块,然后new tscc(grammar,argument)即可,grammar包含和文法的BNF和词法的正则规则。
 > ## grammar
 >> grammar原型如下:
 >> ```
@@ -266,7 +266,7 @@ B:b a s
 >>> ```
 >>> accept?: (args: any[]) => any;
 >>> ```
->>> accept为增广文法成功规约时的规约动作,设BNF中定义的第一个产生式为A:B C,jscc会自动添加一个产生式A':A,并将规约动作设置为accept。  
+>>> accept为增广文法成功规约时的规约动作,设BNF中定义的第一个产生式为A:B C,tscc会自动添加一个产生式A':A,并将规约动作设置为accept,并且将accept的返回值作为parse方法的返回值。  
 >>> 例:
 >>> ```
 >>> accept:function(args){console.log('编译完成');}
@@ -279,15 +279,17 @@ B:b a s
 >>    language: "zh-cn" | "en-us"
 >> }
 >> ```
->> debug:jscc是否输出LR(1)项集族和跳转表,方便用户调试
->> language:目前只能为"zh-cn"或者"en-us",控制jscc的调试语言和生成代码中提示的语言
+>> debug:tscc是否输出LR(1)项集族和跳转表,方便用户调试
+>> language:目前只能为"zh-cn"或者"en-us",控制tscc的调试语言和生成代码中提示的语言
 # 错误恢复
-> jscc的错误恢复采用和yacc类似的策略,如果用户定义了一个形如 A: α error β 的错误处理产生式,则当语法分析器遇到一个错误时,会不断的从分析栈中弹出符号,直到栈中的一个状态包含形如 A-> α .error β 的项(简单来说就是直到遇到一个能移入error的状态),然后语法分析器就假装在输入中遇到了error,执行移入操作,在移入之后从词法分析器中抛弃一系列符号,直到新的输入能正常进行语法分析为止。
-# jscc的输出
-> jscc会输出一个字符串,这个字符串是一段合法的typescript代码,里面包含两个类Lex和Parser,用户可以在后面增加一行代码调用这两个类:
+> tscc的错误恢复采用和yacc类似的策略,如果用户定义了一个形如 A: α error β 的错误处理产生式,则当语法分析器遇到一个错误时,会不断的从分析栈中弹出符号,直到栈中的一个状态包含形如 A-> α .error β 的项(简单来说就是直到遇到一个能移入error的状态),然后语法分析器就假装在输入中遇到了error,执行移入操作,在移入之后从词法分析器中抛弃一系列符号,直到新的输入能正常进行语法分析为止。
+# tscc的输出
+> tscc会输出一个字符串,这个字符串是一段合法的typescript代码,里面包Parser这个类,用户可以在后面增加一行代码调用这个类:
 > ```
-> new Parser().parse(new Lex(str));//str为源码输入
+> new Parser().parse(new Lex());//Lex为词法分析器
 > ```
+# parser的使用
+> 如上面所说,使用tscc生成parser之后,调用这个类的parse方法即可,该方法的返回值为accept定义的返回值,如果在分析过程中遇到错误，将会抛出异常
 # demo
 > 参考四则运算demo  
 > /src/example/calculate/calculate.ts  

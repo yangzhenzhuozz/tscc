@@ -1,4 +1,3 @@
-import Lexical from "../../lexical_analyzer/lexical_analyzer.js";
 import Parser from "./parser.js";
 
 let parser = new Parser();
