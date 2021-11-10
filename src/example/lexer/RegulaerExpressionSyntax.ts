@@ -3,18 +3,26 @@ import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
 import { State, Automaton } from './lib.js'
 let grammar: Grammar = {
-    userCode:`import { State, Automaton } from './lib.js'`,
+    userCode: `import { State, Automaton } from './lib.js'`,
     accept: ($: any[]) => {
         return $[0];
     },
     tokens: ['(', ')', '*', '|', 'normal_ch'],
     association: [
-        { "nonassoc": ['normal_ch'] },
+        { "nonassoc": ['('] },
         { "left": ['|'] },
+        { "left": ['link'] },
         { "left": ['*'] },
-        { "left": ['link'] }
+        { "nonassoc": ['normal_ch'] }
     ],
     BNF: [
+        {
+            "exp:( exp )": {
+                action: function ($, stack) {
+                    return $[1];
+                }
+            }
+        },
         {
             "exp:exp | exp": {
                 action: function ($, stack) {

@@ -50,11 +50,14 @@ class LexForREG {
         }
     }
 }
+//当成功将字符串解析到一个规则之后调用的处理器，处理器返回值将会被设置到yytype,如果没有定义resolver，则表示本规则被忽略
+type ruleResolver = ((arg: YYTOKEN) => string) | undefined;
 class State {
     private static GLOBAL_INDEX = 0;//用于给State编号，在计算闭包的时候用到
     public isFinal;//是否为结束状态
     public gotoTable: Map<string, State[]> = new Map();//跳转表
     public index: number;
+    public resolver: ruleResolver;
     constructor(final: boolean = false) {
         this.index = State.GLOBAL_INDEX++;
         this.isFinal = final;
@@ -81,19 +84,65 @@ class Lexer {
     private parser = new Parser();
     private lexer = new LexForREG();
     private rules: Map<string, Automaton> = new Map();
-    private StartState: State | undefined;
-    public addRule(reg: string) {//添加规则
-        this.lexer.setSource("a|b");
+    private NFAStartState: State | undefined;
+    private DFAStartState: State | undefined;
+    private source: string = '';
+    private charIndex = 0;
+    public lex(): YYTOKEN {
+        if (this.DFAStartState == undefined) {
+            throw `请在编译后再进行正则解析`;
+        }
+        let result = {
+            type: "",
+            value: "",
+            yytext: ""
+        };
+        if (this.charIndex >= this.source.length) {
+            result.type = "$";
+            return result;
+        }
+        let nowState = this.DFAStartState;
+        let ch = '';
+        let buffer = '';
+        for (; this.charIndex < this.source.length; this.charIndex++) {
+            ch = this.source.charAt(this.charIndex);
+            let targets = nowState.gotoTable.get(ch);
+            if (targets == undefined) {
+                break;
+            } else {
+                buffer += ch;
+                nowState = targets[0];
+            }
+        }
+        if (nowState.isFinal) {
+            if (nowState.resolver != undefined) {
+                result.yytext = buffer;
+                result.type = nowState.resolver(result);
+                return result;
+            } else {
+                return this.lex();//如果没有定义resolver，则表示本规则被忽略
+            }
+
+        } else {
+            throw `无法解析的字符:${ch}`;
+        }
+    }
+    public setSource(src: string) {
+        this.source = src;
+    }
+    public addRule(rule: [string, ruleResolver]) {//添加规则
+        this.lexer.setSource(rule[0]);
         let automaton: Automaton = this.parser.parse(this.lexer);
         automaton.end.isFinal = true;
-        this.rules.set(reg, automaton);
+        automaton.end.resolver = rule[1];
+        this.rules.set(rule[0], automaton);
     }
     public compile() {
-        this.StartState = new State();//创建一个开始状态，然后将该状态连接到所有规则生成的自动机
+        this.NFAStartState = new State();//创建一个开始状态，然后将该状态连接到所有规则生成的自动机
         for (let rule of this.rules) {
-            this.StartState.addEdge("", rule[1].start);
+            this.NFAStartState.addEdge("", rule[1].start);
         }
-        this.generateDFA(this.StartState);//构造DFA
+        this.DFAStartState = this.generateDFA(this.NFAStartState);//构造DFA
     }
     private epsilon_closure(set: State[]) {
         //因为不知道js的容器怎么实现comparable,所以这些容器都使用cache判断重复
@@ -101,6 +150,8 @@ class Lexer {
         let closure: State[] = [];//闭包集合
         let isFinal = false;//是否结束状态
         let gotoTableCache: Map<string, { cache: Set<number>, states: State[] }> = new Map();//本闭包能接受的字符以及能到达的状态
+        let resolver: ruleResolver = undefined;
+        let resoverIndex = -1;//下标大的resolver优先级更高
         for (let s of set) {
             if (!cache.has(s.index)) {
                 cache.add(s.index);
@@ -110,6 +161,10 @@ class Lexer {
         for (let i = 0; i < closure.length; i++) {
             if (closure[i].isFinal) {
                 isFinal = true;
+                if (closure[i].index > resoverIndex) {
+                    resoverIndex = closure[i].index;
+                    resolver = closure[i].resolver;
+                }
             }
             for (let edge of closure[i].gotoTable.keys()) {
                 let targets = closure[i].gotoTable.get(edge)!;
@@ -139,7 +194,7 @@ class Lexer {
         sign.sort((a, b) => {
             return a - b;
         });
-        return { states: closure, isFinal: isFinal, sign: sign.toString(), gotoTable: gotoTableCache };
+        return { states: closure, isFinal: isFinal, sign: sign.toString(), gotoTable: gotoTableCache, resolver: resolver };
     }
     private generateDFA(start: State) {
         let startItems = this.epsilon_closure([start]);
@@ -165,9 +220,11 @@ class Lexer {
                 let targetIncache = cache.get(targetClosure.sign);
                 if (targetIncache == undefined) {//如果缓存中没有该闭包
                     let NFATarget = new State(targetClosure.isFinal);//登记集合
+                    NFATarget.resolver = targetClosure.resolver;
                     NFAStates[i].addEdge(edge, NFATarget);
                     StateFamily.push(targetClosure);
                     NFAStates.push(NFATarget);
+                    cache.set(targetClosure.sign, NFAStates.length - 1);
                 } else {
                     NFAStates[i].addEdge(edge, NFAStates[targetIncache]);
                 }
