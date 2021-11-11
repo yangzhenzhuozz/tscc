@@ -88,44 +88,50 @@ class Lexer {
     private DFAStartState: State | undefined;
     private source: string = '';
     private charIndex = 0;
+    private lastSuccessIndex = 0;
     public lex(): YYTOKEN {
-        if (this.DFAStartState == undefined) {
-            throw `请在编译后再进行正则解析`;
-        }
         let result = {
             type: "",
             value: "",
             yytext: ""
         };
-        if (this.charIndex >= this.source.length) {
-            result.type = "$";
-            return result;
-        }
-        let nowState = this.DFAStartState;
-        let ch = '';
-        let buffer = '';
-        for (; this.charIndex < this.source.length; this.charIndex++) {
-            ch = this.source.charAt(this.charIndex);
-            let targets = nowState.gotoTable.get(ch);
-            if (targets == undefined) {
-                break;
-            } else {
-                buffer += ch;
-                nowState = targets[0];
-            }
-        }
-        if (nowState.isFinal) {
-            if (nowState.resolver != undefined) {
-                result.yytext = buffer;
-                result.type = nowState.resolver(result);
-                return result;
-            } else {
-                return this.lex();//如果没有定义resolver，则表示本规则被忽略
+        do {
+            if (this.DFAStartState == undefined) {
+                throw `请在编译后再进行正则解析`;
             }
 
-        } else {
-            throw `无法解析的字符:${ch}`;
-        }
+            if (this.charIndex >= this.source.length) {
+                result.type = "$";
+                break;
+            }
+            let nowState = this.DFAStartState;
+            let ch = '';
+            let buffer = '';
+            for (; this.charIndex < this.source.length; this.charIndex++) {
+                ch = this.source.charAt(this.charIndex);
+                let targets = nowState.gotoTable.get(ch);
+                if (targets == undefined) {
+                    break;
+                } else {
+                    buffer += ch;
+                    nowState = targets[0];
+                }
+            }
+            if (nowState.isFinal) {
+                this.lastSuccessIndex = this.charIndex;
+                if (nowState.resolver != undefined) {
+                    result.yytext = buffer;
+                    result.type = nowState.resolver(result);
+                    break
+                } else {
+                    continue;//如果没有定义resolver，则表示本规则被忽略,进入下一轮解析
+                }
+
+            } else {
+                throw `无法解析的字符:${ch}`;
+            }
+        } while (true)
+        return result;
     }
     public setSource(src: string) {
         this.source = src;
