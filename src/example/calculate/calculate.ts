@@ -3,7 +3,8 @@ import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
 let grammar: Grammar = {
     accept: ($: any[]) => {
-        console.log(`AST处理完成`);//归约成功动作，显示计算结果
+        console.log(`计算完成:最后一个算式的结果为 ${$[0]}`);
+        return $[0];
     },
     tokens: ['number', ';'],
     association: [
@@ -12,16 +13,16 @@ let grammar: Grammar = {
         { "right": [`uminus`] }//给取反符号"一元减法"最高优先级
     ],
     BNF: [
-        { "stmts:stmts exp ;": { action: function ($) { console.log(`语句运算结果:${$[1]}`) } } },//每一个语句以分号结尾
-        { "stmts:stmts ;": {} },//常用技巧,结合上面一个产生式使得语句可以重复出现
+        { "stmts:stmts exp ;": { action: function ($) { console.log(`算式结果为:${$[1]}`);return $[1]; } } },//每一个语句以分号结尾
         { "stmts:": {} },//一个语句可以为空
         { "stmts:error ;": { action: function () { console.log(`错误恢复:读取下一个stmt`); } } },//错误处理,遇到错误会一直读到分号,然后重新开始分析
         { "exp:exp + insert exp": { action: function ($) { return $[0] + $[3]; } } },//加法
         {
             "insert:": {
                 action: function ($, stack) {
-                    let s=stack.slice(-2);
-                    console.table(s);
+                    let s = stack.slice(-2);
+                    console.log(`产生式内插动作: ${s[0]} +`);
+                    
                 }
             }
         },//加法

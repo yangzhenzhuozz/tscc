@@ -565,7 +565,8 @@ interface YYTOKEN extends Token{
     yytext:string;
 }
 interface Lex {
-    lex(): YYTOKEN
+    yylex(): YYTOKEN;
+    yyerror(msg: string): any;
 }
 class Parser {
     public parse(lexer: Lex):any {
@@ -616,7 +617,7 @@ class Parser {
              */
             if (reduceToken == null) {
                 if (lexBuffer == null) {
-                    yytoken = lexer.lex();
+                    yytoken = lexer.yylex();
                     lexBuffer = yytoken;
                 }
                 sym = lexBuffer;
@@ -665,7 +666,7 @@ class Parser {
                     }
                 }
                 else {//如果不处于错误恢复状态,则进行一些操作
-                    this.yyerror(sym,yytoken!);
+                    lexer.yyerror(\`语法错误:此处不能接受\${sym.type}\`);
                     if (sym.type == \`$\`) {//因为EOF导致的错误,不需要回溯了
                         break;
                     }
@@ -690,7 +691,7 @@ class Parser {
             }
         }
         if(hasError){
-            throw \`解析错误\`;
+            throw \`解析存在错误\`;
         }else{
             return result;
         }

@@ -1,9 +1,9 @@
 import fs from "fs";
 import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
-import { State, Automaton } from './lib.js'
+import {State,Automaton} from './automaton.js'
 let grammar: Grammar = {
-    userCode: `import { State, Automaton } from './lib.js'`,
+    userCode: `import {State,Automaton} from './automaton.js'`,
     accept: ($: any[]) => {
         return $[0];
     },
