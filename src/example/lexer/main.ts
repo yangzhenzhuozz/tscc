@@ -1,7 +1,7 @@
 import Lexer from './lexer.js'
 function main() {
     let lexer = new Lexer();
-    lexer.addRule(["aa*",undefined]);
+    lexer.addRule(["*",undefined]);
     lexer.compile();
     lexer.setSource('123ab112312 123');
     for (; ;) {

@@ -1,9 +1,11 @@
 import fs from "fs";
 import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
+import lexer from "./lexrule.js";
+import { Scope, Address, SemanticException } from './lib.js'
 let grammar: Grammar = {
-    userCode: ``,//让自动生成的代码包含import语句
-    tokens: ['var', '...', ';', 'id', 'constant_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'base_type', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue','sealed'],
+    userCode: `import { Scope, Address, SemanticException } from './lib.js'`,//让自动生成的代码包含import语句
+    tokens: ['var', '...', ';', 'id', 'constant_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'base_type', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'sealed'],
     association: [
         { 'right': ['='] },
         { 'right': ['?'] },
@@ -23,8 +25,29 @@ let grammar: Grammar = {
         { 'nonassoc': ['else'] },
     ],
     BNF: [
-        { "program:import_stmts program_units": {} },
-        { "program_units:program_units program_unit": {} },
+        { "program:createScopeForProgram import_stmts W3_1 program_units": {} },
+        {
+            "createScopeForProgram:": {
+                action: function ($, s) {
+                    return { scope: new Scope("global", false) };
+                }
+            }
+        },
+        {
+            "W3_1:": {
+                action: function ($, s) {
+                    return s.slice(-3)[1];
+                }
+            }
+        },
+        { "program_units:program_units W2_0 program_unit": {} },
+        {
+            "W2_0:": {
+                action: function ($, s) {
+                    return s.slice(-2)[0];
+                }
+            }
+        },
         { "program_units:": {} },
         { "program_unit:declare": {} },
         { "program_unit:cass_definition": {} },
@@ -45,19 +68,61 @@ let grammar: Grammar = {
         { "class_unit:operator_overload": {} },
         { "operator_overload:operator + ( parameter ) : type { function_units }": {} },
 
-        { "declare:var id : type ;": {} },
+        {
+            "declare:var id : type ;": {
+                action: function ($, s) {
+                    let id = $[1] as string;
+                    let type = $[3] as string;
+                    let head = s.slice(-1)[0] as { scope: Scope };
+                    if (!head.scope.createVariable(id, type)) {
+                        throw new SemanticException(head.scope.errorMSG);//并且终止解析
+                    }
+                }
+            }
+        },
         { "declare:function_definition": {} },
 
-        { "type:base_type arr_definition": {} },
+        {
+            "type:base_type arr_definition": {
+                action: function ($, s) {
+                    return $[1];//base_type的属性已经被继承到arr_definition中了
+                }
+            }
+        },
         { "type:( lambda_parameter_types ) => type": {} },
         { "lambda_parameter_types:": {} },
         { "lambda_parameter_types:lambda_parameter_type_list": {} },
         { "lambda_parameter_type_list:lambda_parameter_type_list , type": {} },
         { "lambda_parameter_type_list:type": {} },
-        { "arr_definition:arr_definition [ ]": {} },
-        { "arr_definition:": {} },
+        {
+            "arr_definition:arr_definition [ ]": {
+                action: function ($, s) {
+                    let arr_definition = $[0];
+                    return `Array<${arr_definition}>`;
+                }
+            }
+        },
+        {
+            "arr_definition:": {
+                action: function ($, s) {
+                    return s.slice(-1)[0];//从base_type中得到属性
+                }
+            }
+        },
 
-        { "function_definition:function id ( parameters ) : type { function_units }": {} },
+        { "function_definition:function id ( parameters ) : type createScopeForFunction { function_units }": {} },
+        {
+            "createScopeForFunction:": {
+                action: function ($, s) {
+                    let stacks=s.slice(-8);
+                    let id = stacks[2] as string;
+                    let returnType = stacks[7] as string;
+                    let head = stacks[0] as { scope: Scope };
+                    debugger
+                    console.log('a');
+                }
+            }
+        },
         { "parameters:parameter_list": {} },
         { "parameters:varible_argument": {} },
         { "parameters:parameter_list , varible_argument": {} },

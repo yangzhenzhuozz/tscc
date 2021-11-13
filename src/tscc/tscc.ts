@@ -32,6 +32,7 @@ interface Tips {
     tips22: string;
     tips23: string;
     tips24: string;
+    tips25: string;
     conflict: string;
     symbol: string;
     ShiftRedueceError: string;
@@ -66,6 +67,7 @@ let MultipleLanguage: MultiLanguage = {
         tips22: "goto table:",
         tips23: "rules useless in grammar:",
         tips24: "start symbol %s does not derive any sentence",
+        tips25: "the source is not match grammar",
         conflict: "conflict:",
         symbol: "symbol",
         ShiftRedueceError: "────────shift-reduce conflict────────",
@@ -96,6 +98,7 @@ let MultipleLanguage: MultiLanguage = {
         tips22: "跳转表:",
         tips23: "下面这些产生式没有被使用(归约)过:",
         tips24: "起始符号%s没有推导出任何句子",
+        tips25: "源码不符合文法",
         conflict: "冲突:",
         symbol: "符号",
         ShiftRedueceError: "────────移入-规约冲突────────",
@@ -554,9 +557,9 @@ class JSCC {
     private generateStateMachine(gotoTable: {}[]): string {
         let str = '';
         if (this.userCode != undefined || this.userCode != null) {
-            str+=this.userCode;
+            str += this.userCode;
         }
-        str +=`
+        str += `
 interface Token {
     type: string;
     value: any;
@@ -567,6 +570,12 @@ interface YYTOKEN extends Token{
 interface Lex {
     yylex(): YYTOKEN;
     yyerror(msg: string): any;
+}
+class ParseException extends Error{
+    constructor(msg:string){
+        super(msg);
+        super.name='ParseException';
+    }
 }
 class Parser {
     public parse(lexer: Lex):any {
@@ -602,8 +611,10 @@ class Parser {
         let yytoken:YYTOKEN | undefined;
         let errorRollback = false;//是否处于错误恢复模式
         let hasError=false;//是否曾经出现过错误
-        let symbolStack: Token[] = [];//符号栈
-        let symbolValStack:any[]=[];//符号值栈，是symbolStack的value构成的栈，用于插入动作
+        //如龙书所说:"S0(即分析器的开始状态)不代表任何文法符号，它只是作为栈底标记，同时也在语法分析过程中担负了重要的角色。"
+        //自己标注的:用于规约成增广文法初始符号S'
+        let symbolStack: Token[] = [{ type: syntaxHead[0], value: undefined }];//符号栈
+        let symbolValStack: any[] = [undefined];//符号值栈，是symbolStack的value构成的栈，用于插入动作
         let stateStack: number[] = [0];//状态栈
         let reduceToken: Token | null = null;
         let lexBuffer: Token | null = null;//lex输入缓冲,如果遇到规约,则上次从lex读取到的数据还没有被使用
@@ -691,13 +702,14 @@ class Parser {
             }
         }
         if(hasError){
-            throw \`语法错误\`;
+            throw new ParseException(\`${this.localTips.tips25}\`);
         }else{
             return result;
         }
     }
 }
-export default Parser`;
+export {ParseException};
+export default Parser;`;
         return str;
     }
 

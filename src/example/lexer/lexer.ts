@@ -129,6 +129,9 @@ class Lexer {
     public addRule(rule: [string, ruleResolver]) {//添加规则
         this.lexer.setSource(rule[0]);
         let automaton: Automaton = this.parser.parse(this.lexer);
+        if(this.parser.errorMessage!=''){//如果
+
+        }
         automaton.end.isFinal = true;
         automaton.end.resolver = rule[1];
         this.rules.set(rule[0], automaton);
