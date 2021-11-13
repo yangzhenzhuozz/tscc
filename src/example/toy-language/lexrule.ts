@@ -1,4 +1,5 @@
 import Lexer from '../lexer/lexer.js'
+let oldT=new Date().getTime();
 //词法规则
 let lexer = new Lexer();
 lexer.addRule(['( |\t|\r|\n)( |\t|\r|\n)*', undefined]);//忽略空格、制表、回车、换行
@@ -55,4 +56,6 @@ lexer.addRule(['import', () => 'import']);
 lexer.addRule(['default', () => 'default']);
 lexer.addRule(['valuetype', () => 'valuetype']);
 lexer.compile();
+let newT=new Date().getTime();
+console.log(`编译默认词法规则耗时:${newT-oldT}ms`);
 export default lexer
