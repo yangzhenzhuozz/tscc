@@ -10,6 +10,7 @@ class LexForREG {
         this.source = src;
     }
     public yyerror(msg: string) {
+        console.error(`正则表达式编译错误:"${this.source}"`);
         console.error(msg);
     }
     public yylex(): YYTOKEN {
@@ -58,10 +59,10 @@ class Lexer {
     private charIndex = 0;
     private lastWord = '';//上次解析的单词,用于错误提示
     private lastWordIndex = 0;//上次解析的单词下标
-    private errorTipsWidth = 100;//错误提示的字符数量(最后要*2)
+    private errorTipsWidth = 50;//错误提示的字符数量(最后要*2)
     public yyerror(msg: string) {
         let left = Math.max(0, this.lastWordIndex - this.errorTipsWidth);
-        let right = Math.max(this.source.length - 1, this.lastWordIndex + this.errorTipsWidth);
+        let right = Math.min(this.source.length - 1, this.lastWordIndex + this.errorTipsWidth);
         let output = '';
         for (let i = left; i < this.lastWordIndex; i++) {
             output += this.source.charAt(i);
@@ -117,7 +118,7 @@ class Lexer {
                 }
 
             } else {
-                throw `无法解析的字符:${ch}`;
+                throw `词法分析器:无法解析的字符:${ch}`;
             }
         } while (true)
         return result;

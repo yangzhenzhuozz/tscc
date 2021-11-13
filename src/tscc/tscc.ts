@@ -691,16 +691,10 @@ class Parser {
             }
         }
         if(hasError){
-            throw \`解析存在错误\`;
+            throw \`语法错误\`;
         }else{
             return result;
         }
-    }
-    public yyerror(token: Token,yytoken:YYTOKEN) {
-        console.error(\``;
-        str += Tools.sprintf(this.localTips.tips13, "${token.type}");
-        str += `\`);
-        console.error(\`yytext is $\{yytoken.yytext\}\`);
     }
 }
 export default Parser`;
