@@ -2,10 +2,10 @@ import fs from "fs";
 import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
 import lexer from "./lexrule.js";
-import { Scope, Address, SemanticException } from './lib.js'
+import { Scope, Address, SemanticException, Type } from './lib.js'
 let grammar: Grammar = {
-    userCode: `import { Scope, Address, SemanticException } from './lib.js'`,//让自动生成的代码包含import语句
-    tokens: ['var', '...', ';', 'id', 'constant_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'base_type', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'sealed'],
+    userCode: `import { Scope, Address, SemanticException, Type } from './lib.js'`,//让自动生成的代码包含import语句
+    tokens: ['var', '...', ';', 'id', 'constant_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'basic_type', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'sealed', 'this'],
     association: [
         { 'right': ['='] },
         { 'right': ['?'] },
@@ -59,7 +59,7 @@ let grammar: Grammar = {
         { "modifier:": {} },
         { "modifier:valuetype": {} },
         { "modifier:sealed": {} },
-        { "extends_declare:extends base_type": {} },
+        { "extends_declare:extends basic_type": {} },
         { "extends_declare:": {} },
         { "class_units:class_units class_unit": {} },
         { "class_units:": {} },
@@ -72,7 +72,7 @@ let grammar: Grammar = {
             "declare:var id : type ;": {
                 action: function ($, s) {
                     let id = $[1] as string;
-                    let type = $[3] as string;
+                    let type = $[3] as Type;
                     let head = s.slice(-1)[0] as { scope: Scope };
                     if (!head.scope.createVariable(id, type)) {
                         throw new SemanticException(head.scope.errorMSG);//并且终止解析
@@ -83,54 +83,120 @@ let grammar: Grammar = {
         { "declare:function_definition": {} },
 
         {
-            "type:base_type arr_definition": {
+            "type:basic_type arr_definition": {
                 action: function ($, s) {
-                    return $[1];//base_type的属性已经被继承到arr_definition中了
+                    return $[1];//basic_type的属性已经被继承到arr_definition中了
                 }
             }
         },
-        { "type:( lambda_parameter_types ) => type": {} },
-        { "lambda_parameter_types:": {} },
-        { "lambda_parameter_types:lambda_parameter_type_list": {} },
-        { "lambda_parameter_type_list:lambda_parameter_type_list , type": {} },
-        { "lambda_parameter_type_list:type": {} },
+        { "type:( lambda_parameter_types ) => type": { action: ($, s) => `(${$[1]})=>${$[4]}` } },
+        {
+            "lambda_parameter_types:": {
+                action: () => ""
+            }
+        },
+        { "lambda_parameter_types:lambda_parameter_type_list": { action: ($, s) => $[0] } },
+        { "lambda_parameter_type_list:lambda_parameter_type_list , type": { action: ($, s) => `${$[0]},${$[2]}` } },
+        { "lambda_parameter_type_list:type": { action: ($, s) => $[0] } },
         {
             "arr_definition:arr_definition [ ]": {
                 action: function ($, s) {
-                    let arr_definition = $[0];
-                    return `Array<${arr_definition}>`;
+                    let arr_definition = $[0] as Type;
+                    return Type.ConstructArray(arr_definition);
                 }
             }
         },
         {
             "arr_definition:": {
                 action: function ($, s) {
-                    return s.slice(-1)[0];//从base_type中得到属性
+                    return s.slice(-1)[0];//从basic_type中得到属性
                 }
             }
         },
 
-        { "function_definition:function id ( parameters ) : type createScopeForFunction { function_units }": {} },
+        { "function_definition:function id ( parameters ) : type createScopeForFunction { W10_9 function_units }": {} },
         {
-            "createScopeForFunction:": {
+            "W10_9:": {
                 action: function ($, s) {
-                    let stacks=s.slice(-8);
-                    let id = stacks[2] as string;
-                    let returnType = stacks[7] as string;
-                    let head = stacks[0] as { scope: Scope };
-                    debugger
-                    console.log('a');
+                    return s.slice(-10)[9];
                 }
             }
         },
-        { "parameters:parameter_list": {} },
-        { "parameters:varible_argument": {} },
-        { "parameters:parameter_list , varible_argument": {} },
-        { "parameters:": {} },
-        { "parameter_list:parameter_list , parameter": {} },
-        { "parameter_list:parameter": {} },
-        { "parameter:id : type": {} },
-        { "varible_argument:id : type ...": {} },
+        {
+            "createScopeForFunction:": {
+                action: function ($, s): { scope: Scope } {
+                    let stacks = s.slice(-8);
+                    let parameters = stacks[4] as [string, Type][];
+                    let id = stacks[2] as string;
+                    let returnType = stacks[7] as Type;
+                    let head = stacks[0] as { scope: Scope };
+                    let parameterTypes: Type[] = [];
+                    for (let p of parameters) {
+                        parameterTypes.push(p[1]);
+                    }
+                    if (!head.scope.createVariable(id, Type.ConstructFunction(parameterTypes, returnType))) {
+                        throw new SemanticException(head.scope.errorMSG);//并且终止解析
+                    }
+                    //创建函数空间
+                    let functionScope = new Scope("stack", true);
+                    for (let p of parameters) {//在函数空间中定义变量
+                        if (!functionScope.createVariable(p[0], p[1])) {
+                            throw new SemanticException(head.scope.errorMSG);//并且终止解析
+                        }
+                    }
+                    return { scope: functionScope };
+                }
+            }
+        },
+        { "parameters:parameter_list": { action: ($) => $[0] } },
+        { "parameters:varible_argument": { action: ($) => $[0] } },
+        {
+            "parameters:parameter_list , varible_argument": {
+                action: ($, s): [string, Type][] => {
+                    let parameter_list = $[0] as [string, Type][];
+                    let varible_argument = $[2] as [string, Type];
+                    parameter_list.push(varible_argument);
+                    return parameter_list;
+                }
+            }
+        },
+        { "parameters:": { action: () => [] } },
+        {
+            "parameter_list:parameter_list , parameter": {
+                action: function ($, s): [string, Type][] {
+                    let parameter_list = $[0] as [string, Type][];
+                    let parameter = $[2] as [string, Type];
+                    parameter_list.push(parameter);
+                    return parameter_list;
+                }
+            }
+        },
+        {
+            "parameter_list:parameter": {
+                action: function ($, s): [string, Type][] {
+                    let parameter = $[0] as [string, Type];
+                    return [parameter];
+                }
+            }
+        },
+        {
+            "parameter:id : type": {
+                action: function ($, s): [string, Type] {
+                    let id = $[0] as string;
+                    let type = $[2] as Type;
+                    return [id, type];
+                }
+            }
+        },
+        {
+            "varible_argument: ... id : type": {
+                action: function ($, s): [string, Type] {
+                    let id = $[1] as string;
+                    let type = $[3] as Type;
+                    return [id, Type.ConstructArray(type)];
+                }
+            }
+        },
         { "function_units:function_units function_unit": {} },
         { "function_units:": {} },
         { "function_unit:declare": {} },
@@ -186,9 +252,10 @@ let grammar: Grammar = {
         { "object:object ++": {} },
         { "object:object --": {} },
         { "object:new { anonymous_stmts }": {} },//匿名类，类似C#而不是java
-        { "object:new base_type ( arguments )": {} },
-        { "object:new base_type array_init_list": {} },
+        { "object:new basic_type ( arguments )": {} },
+        { "object:new basic_type array_init_list": {} },
         { "object:object [ object ]": {} },
+        { "object:this": {} },
         { "array_init_list:array_inits array_placeholder": {} },
         { "array_inits:array_inits [ object ]": {} },
         { "array_inits:[ object ]": {} },

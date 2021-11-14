@@ -1,4 +1,5 @@
 import Lexer from '../lexer/lexer.js'
+import { Type } from './lib.js'
 let oldT = new Date().getTime();
 //词法规则
 let lexer = new Lexer();
@@ -38,7 +39,7 @@ lexer.addRule(['!', () => '!']);
 lexer.addRule(['.', () => '.']);
 lexer.addRule(['function', () => 'function']);
 lexer.addRule(['operator', () => 'operator']);
-lexer.addRule(['(int)|(double)', (arg) => { arg.value = arg.yytext; return 'base_type'; }]);
+lexer.addRule(['(int)|(double)', (arg) => { arg.value = Type.ConstructBase(arg.yytext); return 'basic_type'; }]);
 lexer.addRule(['class', () => 'class']);
 lexer.addRule(['new', () => 'new']);
 lexer.addRule(['extends', () => 'extends']);
@@ -55,6 +56,7 @@ lexer.addRule(['as', () => 'as']);
 lexer.addRule(['import', () => 'import']);
 lexer.addRule(['default', () => 'default']);
 lexer.addRule(['valuetype', () => 'valuetype']);
+lexer.addRule(['this', () => 'this']);
 lexer.compile();
 let newT = new Date().getTime();
 console.log(`编译默认词法规则耗时:${newT - oldT}ms`);

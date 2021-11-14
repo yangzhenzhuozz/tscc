@@ -1,2 +1,3 @@
-var a:int[][];
-function a():int[][][][][]{}
+function f(a:int,b:int):int{
+    a;
+}

@@ -14,5 +14,4 @@ try {
     if (e instanceof Error) {
         console.log(e.stack);
     }
-
 }
