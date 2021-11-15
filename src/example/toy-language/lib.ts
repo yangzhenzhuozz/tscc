@@ -1,4 +1,4 @@
-type locationType = "global" | "stack" | "class";
+type locationType = "global" | "stack" | "class";//定义寻址模式,global在data区寻址,stack在栈中寻址,class则通过this指针寻址
 class Type {
     public type: "base_type" | "function" | "array" | undefined;
     public basic_type: string | undefined;
