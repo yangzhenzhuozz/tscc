@@ -64,9 +64,18 @@ class Scope {
     private allocated: number = 0;//当前可以使用的地址
     private ConflictWithParent: boolean;//声明空间是否和父空间冲突,即判断重复定义的时候需不需要搜索父空间
     public errorMSG = '';//用于错误提示的字符串
+
+    /**
+     * 
+     * @param location 变量存放位置
+     * @param conflictWithParent 定义变量时是否会和父空间冲突
+     */
     constructor(location: locationType, conflictWithParent: boolean) {
         this.location = location;
         this.ConflictWithParent = conflictWithParent;
+    }
+    public linkParentScope(scope: Scope) {
+        this.parentScope = scope;
     }
     /**
      * 
@@ -116,4 +125,16 @@ class SemanticException extends Error {
         super.name = 'SemanticException';
     }
 }
-export { Scope, Address, SemanticException, Type }
+class FunctionDescriptor {
+    public scope: Scope;
+    public returnType: Type;
+    constructor(scope: Scope, retType: Type) {
+        this.scope = scope;
+        this.returnType = retType;
+    }
+}
+class StmtDescriptor {
+    public hasReturn:boolean=false;
+    public quadrupleCodes:string='';
+}
+export { Scope, Address, SemanticException, Type, FunctionDescriptor, StmtDescriptor }

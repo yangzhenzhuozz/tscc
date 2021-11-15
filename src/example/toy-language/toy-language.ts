@@ -2,10 +2,10 @@ import fs from "fs";
 import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
 import lexer from "./lexrule.js";
-import { Scope, Address, SemanticException, Type } from './lib.js'
+import { Scope, Address, SemanticException, Type, FunctionDescriptor, StmtDescriptor } from './lib.js'
 let grammar: Grammar = {
-    userCode: `import { Scope, Address, SemanticException, Type } from './lib.js'`,//让自动生成的代码包含import语句
-    tokens: ['var', '...', ';', 'id', 'constant_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'basic_type', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'sealed', 'this'],
+    userCode: `import { Scope, Address, SemanticException, Type, FunctionDescriptor, StmtDescriptor } from './lib.js'`,//让自动生成的代码包含import语句
+    tokens: ['var', '...', ';', 'id', 'constant_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'basic_type', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'sealed', 'this', 'return'],
     association: [
         { 'right': ['='] },
         { 'right': ['?'] },
@@ -66,7 +66,7 @@ let grammar: Grammar = {
         { "class_unit:cass_definition": {} },
         { "class_unit:declare": {} },
         { "class_unit:operator_overload": {} },
-        { "operator_overload:operator + ( parameter ) : type { function_units }": {} },
+        { "operator_overload:operator + ( parameter ) : type { statements }": {} },
 
         {
             "declare:var id : type ;": {
@@ -114,18 +114,23 @@ let grammar: Grammar = {
             }
         },
 
-        { "function_definition:function id ( parameters ) : type createScopeForFunction { W10_9 function_units }": {} },
         {
-            "W10_9:": {
+            "function_definition:function id ( parameters ) : type { createFunctionDescriptor statements }": {
                 action: function ($, s) {
-                    return s.slice(-10)[9];
+                    let createFunctionDescriptor = $[8] as FunctionDescriptor;
+                    let statements = $[9] as StmtDescriptor;
+                    if (createFunctionDescriptor.returnType.type != "base_type" || createFunctionDescriptor.returnType.basic_type != "void") {
+                        if (!statements.hasReturn) {
+                            throw new SemanticException("函数必须有返回值");
+                        }
+                    }
                 }
             }
         },
         {
-            "createScopeForFunction:": {
-                action: function ($, s): { scope: Scope } {
-                    let stacks = s.slice(-8);
+            "createFunctionDescriptor:": {
+                action: function ($, s): FunctionDescriptor {
+                    let stacks = s.slice(-9);
                     let parameters = stacks[4] as [string, Type][];
                     let id = stacks[2] as string;
                     let returnType = stacks[7] as Type;
@@ -138,13 +143,15 @@ let grammar: Grammar = {
                         throw new SemanticException(head.scope.errorMSG);//并且终止解析
                     }
                     //创建函数空间
-                    let functionScope = new Scope("stack", true);
+                    let functionScope = new Scope("stack", false);
+                    functionScope.linkParentScope(head.scope);
                     for (let p of parameters) {//在函数空间中定义变量
                         if (!functionScope.createVariable(p[0], p[1])) {
                             throw new SemanticException(head.scope.errorMSG);//并且终止解析
                         }
                     }
-                    return { scope: functionScope };
+                    let ret = new FunctionDescriptor(functionScope, returnType);
+                    return ret;
                 }
             }
         },
@@ -197,18 +204,43 @@ let grammar: Grammar = {
                 }
             }
         },
-        { "function_units:function_units function_unit": {} },
-        { "function_units:": {} },
-        { "function_unit:declare": {} },
-        { "function_unit:statement": {} },
 
+        { "statement:declare": {} },
+        {
+            "statement:return object ;": {
+                action: function ($, s): StmtDescriptor {
+                    let ret = new StmtDescriptor();
+                    ret.hasReturn = true;
+                    return ret;
+                }
+            }
+        },
+        {
+            "statement:return ;": {
+                action: function ($, s): StmtDescriptor {
+                    let ret = new StmtDescriptor();
+                    ret.hasReturn = true;
+                    return ret;
+                }
+            }
+        },
         { "statement:object ;": {} },
         { "statement:if ( object ) statement": { priority: "low_priority_for_if_stmt" } },
-        { "statement:if ( object ) statement else statement": {} },
+        {
+            "statement:if ( object ) statement else statement": {
+                action: function ($, s) {
+                    let stmt1 = $[4] as StmtDescriptor;
+                    let stmt2 = $[6] as StmtDescriptor;
+                    let ret = new StmtDescriptor();
+                    ret.hasReturn = stmt1.hasReturn && stmt2.hasReturn;
+                    return ret;
+                }
+            }
+        },
         { "statement:lable_def do statement while ( object ) ;": {} },
         { "statement:lable_def while ( object ) statement": {} },
         { "statement:lable_def for ( for_init ; for_condition ; for_step ) statement": {} },
-        { "statement:block": {} },
+        { "statement:block": { action: ($, s) => $[0] } },
         { "statement:break lable_use ;": {} },
         { "statement:continue lable_use ;": {} },
         { "statement:switch ( object ) { switch_bodys }": {} },
@@ -220,9 +252,36 @@ let grammar: Grammar = {
         { "switch_bodys:switch_bodys switch_body": {} },
         { "switch_body:case constant_val : statement": {} },
         { "switch_body:default : statement": {} },
-        { "block:{ statements }": {} },
-        { "statements:": {} },
-        { "statements:statements statement": {} },
+        {
+            "block:{ statements }": {
+                action: function ($, s) {
+                    return $[1];
+                }
+            }
+        },
+        { "statements:": { action: () => new StmtDescriptor() } },
+        {
+            "statements:statements reachableCheck statement": {
+                action: function ($, s) {
+                    let statements = $[0] as StmtDescriptor;
+                    let statement = $[2] as StmtDescriptor;
+                    //此处应该把statements和statement的代码连接起来
+                    let ret = new StmtDescriptor();
+                    ret.hasReturn = statement.hasReturn;
+                    return statement;
+                }
+            }
+        },
+        {
+            "reachableCheck:": {
+                action: function ($, s) {
+                    let statements = s.slice(-1)[0] as StmtDescriptor;
+                    if (statements.hasReturn) {
+                        throw new SemanticException("return 之后不能有语句");
+                    }
+                }
+            }
+        },
 
         { "for_init:": {} },
         { "for_init:declare": {} },
@@ -235,7 +294,7 @@ let grammar: Grammar = {
         { "object:id": {} },
         { "object:constant_val": {} },
         { "object:object ( arguments )": {} },
-        { "object:( parameters ) => { function_units }": {} },//lambda
+        { "object:( parameters ) => { statements }": {} },//lambda
         { "object:( object )": {} },
         { "object:object . id": {} },
         { "object:object = object": {} },

@@ -67,11 +67,11 @@ class Lexer {
         for (let i = left; i < this.lastWordIndex; i++) {
             output += this.source.charAt(i);
         }
-        output+="\x1b[41;37m"
-        for (let i = this.lastWordIndex; i < this.lastWordIndex+this.lastWord.length; i++) {
+        output += "\x1b[41;37m"
+        for (let i = this.lastWordIndex; i < this.lastWordIndex + this.lastWord.length; i++) {
             output += this.source.charAt(i);
         }
-        output+="\x1b[0m";
+        output += "\x1b[0m";
         for (let i = this.lastWordIndex + this.lastWord.length; i < right; i++) {
             output += this.source.charAt(i);
         }
@@ -128,10 +128,7 @@ class Lexer {
     }
     public addRule(rule: [string, ruleResolver]) {//添加规则
         this.lexer.setSource(rule[0]);
-        let automaton: Automaton = this.parser.parse(this.lexer);
-        if(this.parser.errorMessage!=''){//如果
-
-        }
+        let automaton: Automaton = this.parser.parse(this.lexer);//如果source不符合我写的正则文法,会抛出异常
         automaton.end.isFinal = true;
         automaton.end.resolver = rule[1];
         this.rules.set(rule[0], automaton);

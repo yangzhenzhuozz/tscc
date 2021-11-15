@@ -1,3 +1,8 @@
-function f(a:int,b:int):int{
-    a;
+function f():int{
+    if(a){
+        return a;
+        a;
+    }else{
+    }
+    return a;
 }

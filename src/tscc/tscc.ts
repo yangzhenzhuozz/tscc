@@ -657,10 +657,10 @@ class Parser {
                     }
                     reduceToken = {
                         type: syntaxHead[target],
-                        value: undefined//调用bnf动作
+                        value: undefined//规约动作的返回值
                     };
                     if(functionArray[target]!=undefined){
-                        reduceToken.value=functionArray[target]!(args,symbolValStack);//调用bnf动作
+                        reduceToken.value=functionArray[target]!(args,symbolValStack);//调用规约动作
                     }
                     if (target == 0) {
                         result=reduceToken.value;//增广文法的返回值

@@ -11,7 +11,4 @@ try {
     console.log(`解析源码耗时:${newT - oldT}ms`);
 } catch (e: unknown) {
     lexer.yyerror(`${e}`);
-    if (e instanceof Error) {
-        console.log(e.stack);
-    }
 }
