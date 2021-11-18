@@ -1,8 +1,7 @@
 function f():int{
     if(a){
         return a;
-        a;
     }else{
+        return a;
     }
-    return a;
 }

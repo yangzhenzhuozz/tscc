@@ -2,9 +2,9 @@ import fs from "fs";
 import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
 import lexer from "./lexrule.js";
-import { Scope, Address, SemanticException, Type, FunctionDescriptor, StmtDescriptor } from './lib.js'
+import { Scope, Address, SemanticException, Type, GlobalScope, FunctionScope, ClassScope, StmtScope, StmtDescriptor } from './lib.js'
 let grammar: Grammar = {
-    userCode: `import { Scope, Address, SemanticException, Type, FunctionDescriptor, StmtDescriptor } from './lib.js'`,//让自动生成的代码包含import语句
+    userCode: `import { Scope, Address, SemanticException, Type, GlobalScope, FunctionScope, ClassScope, StmtScope, StmtDescriptor } from './lib.js'`,//让自动生成的代码包含import语句
     tokens: ['var', '...', ';', 'id', 'constant_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'basic_type', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'sealed', 'this', 'return'],
     association: [
         { 'right': ['='] },
@@ -28,8 +28,8 @@ let grammar: Grammar = {
         { "program:createScopeForProgram import_stmts W3_1 program_units": {} },
         {
             "createScopeForProgram:": {
-                action: function ($, s) {
-                    return { scope: new Scope("global", false) };
+                action: function ($, s): Scope {
+                    return new GlobalScope();
                 }
             }
         },
@@ -41,13 +41,6 @@ let grammar: Grammar = {
             }
         },
         { "program_units:program_units W2_0 program_unit": {} },
-        {
-            "W2_0:": {
-                action: function ($, s) {
-                    return s.slice(-2)[0];
-                }
-            }
-        },
         { "program_units:": {} },
         { "program_unit:declare": {} },
         { "program_unit:cass_definition": {} },
@@ -73,9 +66,9 @@ let grammar: Grammar = {
                 action: function ($, s) {
                     let id = $[1] as string;
                     let type = $[3] as Type;
-                    let head = s.slice(-1)[0] as { scope: Scope };
-                    if (!head.scope.createVariable(id, type)) {
-                        throw new SemanticException(head.scope.errorMSG);//并且终止解析
+                    let head = s.slice(-1)[0] as Scope;
+                    if (!head.createVariable(id, type)) {
+                        throw new SemanticException(head.errorMSG);//并且终止解析
                     }
                 }
             }
@@ -115,9 +108,9 @@ let grammar: Grammar = {
         },
 
         {
-            "function_definition:function id ( parameters ) : type { createFunctionDescriptor statements }": {
+            "function_definition:function id ( parameters ) : type { createFunctionScope createStmtScope statements }": {
                 action: function ($, s) {
-                    let createFunctionDescriptor = $[8] as FunctionDescriptor;
+                    let createFunctionDescriptor = $[8] as FunctionScope;
                     let statements = $[9] as StmtDescriptor;
                     if (createFunctionDescriptor.returnType.type != "base_type" || createFunctionDescriptor.returnType.basic_type != "void") {
                         if (!statements.hasReturn) {
@@ -128,30 +121,41 @@ let grammar: Grammar = {
             }
         },
         {
-            "createFunctionDescriptor:": {
-                action: function ($, s): FunctionDescriptor {
+            "createStmtScope:": {
+                action: function ($, s) {
+                    let stack = s.slice(-10);
+                    let FunctionScope = stack[9];
+                    let ret = new StmtScope();
+                    ret.linkParentScope(FunctionScope);
+                    debugger
+                    return ret;
+                }
+            }
+        },
+        {
+            "createFunctionScope:": {
+                action: function ($, s): FunctionScope {
                     let stacks = s.slice(-9);
                     let parameters = stacks[4] as [string, Type][];
                     let id = stacks[2] as string;
                     let returnType = stacks[7] as Type;
-                    let head = stacks[0] as { scope: Scope };
+                    let head = stacks[0] as Scope;
                     let parameterTypes: Type[] = [];
                     for (let p of parameters) {
                         parameterTypes.push(p[1]);
                     }
-                    if (!head.scope.createVariable(id, Type.ConstructFunction(parameterTypes, returnType))) {
-                        throw new SemanticException(head.scope.errorMSG);//并且终止解析
+                    if (!head.createVariable(id, Type.ConstructFunction(parameterTypes, returnType))) {
+                        throw new SemanticException(head.errorMSG);//并且终止解析
                     }
                     //创建函数空间
-                    let functionScope = new Scope("stack", false);
-                    functionScope.linkParentScope(head.scope);
+                    let functionScope = new FunctionScope(returnType);
+                    functionScope.linkParentScope(head);
                     for (let p of parameters) {//在函数空间中定义变量
                         if (!functionScope.createVariable(p[0], p[1])) {
-                            throw new SemanticException(head.scope.errorMSG);//并且终止解析
+                            throw new SemanticException(head.errorMSG);//并且终止解析
                         }
                     }
-                    let ret = new FunctionDescriptor(functionScope, returnType);
-                    return ret;
+                    return functionScope;
                 }
             }
         },
@@ -261,7 +265,7 @@ let grammar: Grammar = {
         },
         { "statements:": { action: () => new StmtDescriptor() } },
         {
-            "statements:statements reachableCheck statement": {
+            "statements:statements reachableCheckAndInherit statement": {
                 action: function ($, s) {
                     let statements = $[0] as StmtDescriptor;
                     let statement = $[2] as StmtDescriptor;
@@ -273,12 +277,16 @@ let grammar: Grammar = {
             }
         },
         {
-            "reachableCheck:": {
+            "reachableCheckAndInherit:": {
                 action: function ($, s) {
-                    let statements = s.slice(-1)[0] as StmtDescriptor;
+                    let stack = s.slice(-2);
+                    let head = stack[0] as Scope;
+                    let statements = stack[1] as StmtDescriptor;
                     if (statements.hasReturn) {
                         throw new SemanticException("return 之后不能有语句");
                     }
+                    debugger
+                    return head;
                 }
             }
         },
@@ -332,6 +340,10 @@ let grammar: Grammar = {
         { "argument_list:argument": {} },
         { "argument_list:argument_list , argument": {} },
         { "argument:object": {} },
+
+        { "W2_0:": { action: ($, s) => s.slice(2)[0] } },
+        // { "W5_0:": { action: ($, s) => s.slice(5)[0] } },
+        // { "W8_0:": { action: ($, s) => s.slice(8)[0] } },
     ]
 };
 let tscc = new TSCC(grammar, { language: "zh-cn", debug: false });

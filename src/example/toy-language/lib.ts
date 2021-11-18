@@ -1,4 +1,4 @@
-type locationType = "global" | "stack" | "class";//定义寻址模式,global在data区寻址,stack在栈中寻址,class则通过this指针寻址
+type locationType = "global" | "function" | "class" | "stmt";//定义寻址模式,global在data区寻址,stack在栈中寻址,class则通过this指针寻址
 class Type {
     public type: "base_type" | "function" | "array" | undefined;
     public basic_type: string | undefined;
@@ -57,7 +57,7 @@ class Address {
         this.type = type;
     }
 }
-class Scope {
+abstract class Scope {
     public location: locationType;
     private addressMap: Map<string, Address> = new Map();//地址空间
     private parentScope: Scope | undefined;//父空间
@@ -119,22 +119,36 @@ class Scope {
         }
     }
 }
+class GlobalScope extends Scope {
+    constructor() {
+        super("global", false);
+    }
+}
+class FunctionScope extends Scope {
+    public returnType: Type;
+    constructor(retType: Type) {
+        super("function", false);
+        this.returnType = retType;
+    }
+}
+class ClassScope extends Scope {
+    constructor() {
+        super("class", false);
+    }
+}
+class StmtScope extends Scope {
+    constructor() {
+        super("stmt", false);
+    }
+}
 class SemanticException extends Error {
     constructor(msg: string) {
         super(msg);
         super.name = 'SemanticException';
     }
 }
-class FunctionDescriptor {
-    public scope: Scope;
-    public returnType: Type;
-    constructor(scope: Scope, retType: Type) {
-        this.scope = scope;
-        this.returnType = retType;
-    }
-}
 class StmtDescriptor {
-    public hasReturn:boolean=false;
-    public quadrupleCodes:string='';
+    public hasReturn: boolean = false;
+    public quadrupleCodes: string = '';
 }
-export { Scope, Address, SemanticException, Type, FunctionDescriptor, StmtDescriptor }
+export { Scope, Address, SemanticException, Type, GlobalScope, FunctionScope, ClassScope, StmtScope, StmtDescriptor }
