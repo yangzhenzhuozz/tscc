@@ -2,9 +2,9 @@ import fs from "fs";
 import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
 import lexer from "./lexrule.js";
-import { Scope, Address, SemanticException, Type, GlobalScope, FunctionScope, ClassScope, StmtScope, StmtDescriptor } from './lib.js'
+import { Scope, Address, SemanticException, Type, GlobalScope, FunctionScope, ClassScope, StmtScope, StmtDescriptor, ObjectDescriptor, BlockScope, Quadruple } from './lib.js'
 let grammar: Grammar = {
-    userCode: `import { Scope, Address, SemanticException, Type, GlobalScope, FunctionScope, ClassScope, StmtScope, StmtDescriptor } from './lib.js'`,//让自动生成的代码包含import语句
+    userCode: `import { Scope, Address, SemanticException, Type, GlobalScope, FunctionScope, ClassScope, StmtScope, StmtDescriptor, ObjectDescriptor, BlockScope, Quadruple } from './lib.js'`,//让自动生成的代码包含import语句
     tokens: ['var', '...', ';', 'id', 'constant_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'basic_type', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'sealed', 'this', 'return'],
     association: [
         { 'right': ['='] },
@@ -67,9 +67,17 @@ let grammar: Grammar = {
                     let id = $[1] as string;
                     let type = $[3] as Type;
                     let head = s.slice(-1)[0] as Scope;
-                    if (!head.createVariable(id, type)) {
-                        throw new SemanticException(head.errorMSG);//并且终止解析
+                    let headTmp = head;
+                    for (; (headTmp instanceof StmtScope) || (headTmp instanceof BlockScope);) {
+                        headTmp = headTmp.parentScope!;
                     }
+                    if (!headTmp.createVariable(id, type)) {
+                        throw new SemanticException(headTmp.errorMSG);//并且终止解析
+                    }
+                    if (head.parentScope instanceof BlockScope) {//如果是blockScope内部的声明,则记录
+                        head.parentScope.variables.add(id);
+                    }
+                    return new StmtDescriptor();
                 }
             }
         },
@@ -108,7 +116,7 @@ let grammar: Grammar = {
         },
 
         {
-            "function_definition:function id ( parameters ) : type { createFunctionScope createStmtScope statements }": {
+            "function_definition:function id ( parameters ) : type { createFunctionScope statements }": {
                 action: function ($, s) {
                     let createFunctionDescriptor = $[8] as FunctionScope;
                     let statements = $[9] as StmtDescriptor;
@@ -117,18 +125,6 @@ let grammar: Grammar = {
                             throw new SemanticException("函数必须有返回值");
                         }
                     }
-                }
-            }
-        },
-        {
-            "createStmtScope:": {
-                action: function ($, s) {
-                    let stack = s.slice(-10);
-                    let FunctionScope = stack[9];
-                    let ret = new StmtScope();
-                    ret.linkParentScope(FunctionScope);
-                    debugger
-                    return ret;
                 }
             }
         },
@@ -208,10 +204,9 @@ let grammar: Grammar = {
                 }
             }
         },
-
-        { "statement:declare": {} },
+        { "statement:declare": { action: ($, s) => $[0] } },
         {
-            "statement:return object ;": {
+            "statement:return W2_0 object ;": {
                 action: function ($, s): StmtDescriptor {
                     let ret = new StmtDescriptor();
                     ret.hasReturn = true;
@@ -228,15 +223,15 @@ let grammar: Grammar = {
                 }
             }
         },
-        { "statement:object ;": {} },
-        { "statement:if ( object ) statement": { priority: "low_priority_for_if_stmt" } },
+        { "statement:if ( W3_0 object ) W6_0 statement": { priority: "low_priority_for_if_stmt" } },
         {
-            "statement:if ( object ) statement else statement": {
+            "statement:if ( W3_0 object ) W6_0 statement else W9_0 statement": {
                 action: function ($, s) {
-                    let stmt1 = $[4] as StmtDescriptor;
-                    let stmt2 = $[6] as StmtDescriptor;
+                    let stmt1 = $[6] as StmtDescriptor;
+                    let stmt2 = $[9] as StmtDescriptor;
                     let ret = new StmtDescriptor();
                     ret.hasReturn = stmt1.hasReturn && stmt2.hasReturn;
+                    "判断object是值类型的还是需要回填的那种，比如if(a) xxx 这种则直接对a进行判断，如果是 if(xx||xx) xxx 这种，则进行回填";
                     return ret;
                 }
             }
@@ -248,6 +243,13 @@ let grammar: Grammar = {
         { "statement:break lable_use ;": {} },
         { "statement:continue lable_use ;": {} },
         { "statement:switch ( object ) { switch_bodys }": {} },
+        {
+            "statement:object ;": {
+                action: function ($, s): StmtDescriptor {
+                    return new StmtDescriptor();
+                }
+            }
+        },
         { "lable_use:": {} },
         { "lable_use:id": {} },
         { "lable_def:": {} },
@@ -257,9 +259,28 @@ let grammar: Grammar = {
         { "switch_body:case constant_val : statement": {} },
         { "switch_body:default : statement": {} },
         {
-            "block:{ statements }": {
+            "block:{ createBlockScope statements }": {
                 action: function ($, s) {
-                    return $[1];
+                    let head = s.slice(-1)[0] as Scope;
+                    let headTmp = head;//向上搜索，直到找到functionScope
+                    for (; (headTmp instanceof StmtScope);) {//因为目前BlockScope的父空间只能是StmtScope
+                        headTmp = headTmp.parentScope!;
+                    }
+                    let blockScope = $[1] as BlockScope;
+                    for (let v of blockScope.variables.values()) {
+                        (headTmp as FunctionScope).removeVariableForBlockEnd(v);//销毁作用域内的变量
+                    }
+                    return $[2];
+                }
+            }
+        },
+        {
+            "createBlockScope:": {
+                action: function ($, s): BlockScope {
+                    let head = s.slice(-2)[0] as Scope;
+                    let ret = new BlockScope();
+                    ret.linkParentScope(head);
+                    return ret;
                 }
             }
         },
@@ -278,15 +299,16 @@ let grammar: Grammar = {
         },
         {
             "reachableCheckAndInherit:": {
-                action: function ($, s) {
+                action: function ($, s): Scope {
                     let stack = s.slice(-2);
                     let head = stack[0] as Scope;
                     let statements = stack[1] as StmtDescriptor;
                     if (statements.hasReturn) {
                         throw new SemanticException("return 之后不能有语句");
                     }
-                    debugger
-                    return head;
+                    let ret = new StmtScope();
+                    ret.linkParentScope(head);
+                    return ret;
                 }
             }
         },
@@ -299,22 +321,63 @@ let grammar: Grammar = {
         { "for_step:": {} },
         { "for_step:object": {} },
 
-        { "object:id": {} },
-        { "object:constant_val": {} },
+        {
+            "object:id": {
+                action: function ($, s): ObjectDescriptor {
+                    let head = s.slice(-1)[0] as StmtScope;
+                    let id = $[0];
+                    let add = head.getVariable(id);
+                    if (add == undefined) {
+                        throw new SemanticException(`未定义的符号:${id}`);
+                    }
+                    return new ObjectDescriptor(add);
+                }
+            }
+        },
+        { "object:constant_val": { action: ($, s) => new ObjectDescriptor($[0]) } },
         { "object:object ( arguments )": {} },
         { "object:( parameters ) => { statements }": {} },//lambda
         { "object:( object )": {} },
         { "object:object . id": {} },
         { "object:object = object": {} },
-        { "object:object + object": {} },
-        { "object:object - object": {} },
-        { "object:object * object": {} },
-        { "object:object / object": {} },
-        { "object:object < object": {} },
-        { "object:object <= object": {} },
-        { "object:object > object": {} },
-        { "object:object >= object": {} },
-        { "object:object == object": {} },
+        {
+            "object:object + W3_0 object": {
+                action: function ($, s): ObjectDescriptor {
+                    let obj1 = $[0] as ObjectDescriptor;
+                    let obj2 = $[3] as ObjectDescriptor;
+                    let head = s.slice(-1)[0] as StmtScope;
+                    if ((obj1.address.type.type == "base_type" && obj1.address.type.basic_type == "int") && (obj2.address.type.type == "base_type" && obj2.address.type.basic_type == "int")) {
+                        let add = head.createTmp(Type.ConstructBase("int"));
+                        let ret = new ObjectDescriptor(add);
+                        let result = head.createTmp(Type.ConstructBase('int'));
+                        ret.quadruples = obj1.quadruples.concat(obj2.quadruples);
+                        ret.quadruples.push(new Quadruple("+", obj1.address, obj2.address, result));
+                        return ret;
+                    } else {
+                        throw `目前只支持int类型的加法`;
+                    }
+                }
+            }
+        },
+        { "object:object - W3_0 object": {} },
+        { "object:object * W3_0 object": {} },
+        { "object:object / W3_0 object": {} },
+        { "object:object < W3_0 object": {} },
+        { "object:object <= W3_0 object": {} },
+        { "object:object > W3_0 object": {} },
+        { "object:object >= W3_0 object": {} },
+        {
+            "object:object == W3_0 object": {
+                action: function ($, s): ObjectDescriptor {
+                    let obj1 = $[0] as ObjectDescriptor;
+                    let obj2 = $[3] as ObjectDescriptor;
+                    let head = s.slice(-1)[0] as StmtScope;
+                    //判断需不需要重置，如果是函数重载，则不能回填
+                    //否则返回一个需要回填的objectDescriptor
+                    throw new SemanticException(`对于bool运算,不返回值，只有回填，最后到object:object=object或者stmt:object的时候才真正处理`);
+                }
+            }
+        },
         { "object:object ? object : object": { priority: "?" } },
         { "object:object ++": {} },
         { "object:object --": {} },
@@ -341,9 +404,10 @@ let grammar: Grammar = {
         { "argument_list:argument_list , argument": {} },
         { "argument:object": {} },
 
-        { "W2_0:": { action: ($, s) => s.slice(2)[0] } },
-        // { "W5_0:": { action: ($, s) => s.slice(5)[0] } },
-        // { "W8_0:": { action: ($, s) => s.slice(8)[0] } },
+        { "W2_0:": { action: ($, s) => s.slice(-2)[0] } },
+        { "W3_0:": { action: ($, s) => s.slice(-3)[0] } },
+        { "W6_0:": { action: ($, s) => s.slice(-6)[0] } },
+        { "W9_0:": { action: ($, s) => s.slice(-9)[0] } },
     ]
 };
 let tscc = new TSCC(grammar, { language: "zh-cn", debug: false });

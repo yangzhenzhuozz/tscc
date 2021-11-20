@@ -1,4 +1,4 @@
-type locationType = "global" | "function" | "class" | "stmt";//定义寻址模式,global在data区寻址,stack在栈中寻址,class则通过this指针寻址
+type locationType = "global" | "function" | "class" | "block" | "stmt" | "constant_val";//定义寻址模式,global在data区寻址,stack在栈中寻址,class则通过this指针寻址
 class Type {
     public type: "base_type" | "function" | "array" | undefined;
     public basic_type: string | undefined;
@@ -59,10 +59,10 @@ class Address {
 }
 abstract class Scope {
     public location: locationType;
-    private addressMap: Map<string, Address> = new Map();//地址空间
-    private parentScope: Scope | undefined;//父空间
-    private allocated: number = 0;//当前可以使用的地址
-    private ConflictWithParent: boolean;//声明空间是否和父空间冲突,即判断重复定义的时候需不需要搜索父空间
+    protected addressMap: Map<string, Address> = new Map();//地址空间
+    public parentScope: Scope | undefined;//父空间
+    protected allocated: number = 0;//当前可以使用的地址
+    protected ConflictWithParent: boolean;//声明空间是否和父空间冲突,即判断重复定义的时候需不需要搜索父空间
     public errorMSG = '';//用于错误提示的字符串
 
     /**
@@ -110,7 +110,7 @@ abstract class Scope {
             return result;
         }
         else {
-            if (this.ConflictWithParent && this.parentScope != undefined) {//如果本scope和父scope声明可能会冲突，则搜索父空间
+            if (this.parentScope != undefined) {//如果本scope和父scope声明可能会冲突，则搜索父空间
                 return this.parentScope?.getVariable(name);
             }
             else {
@@ -130,6 +130,13 @@ class FunctionScope extends Scope {
         super("function", false);
         this.returnType = retType;
     }
+    public removeVariableForBlockEnd(name: string) {//因为只有临时空间结束的时候才会销毁变量作用域,经过一系列的销毁，可以保证最后的allocated平衡
+        let latestAddre = this.addressMap.get(name)!.value;
+        this.allocated = latestAddre;
+        if (!this.addressMap.delete(name)) {
+            throw `理论上不可能出现的错误却出现了`;
+        }
+    }
 }
 class ClassScope extends Scope {
     constructor() {
@@ -140,7 +147,19 @@ class StmtScope extends Scope {
     constructor() {
         super("stmt", false);
     }
+    public createTmp(type: Type): Address {
+        this.addressMap.set(`${this.allocated}`, new Address(this.location, this.allocated++, type));
+        return new Address(this.location, this.allocated, type);
+    }
 }
+
+class BlockScope extends Scope {
+    public variables: Set<string> = new Set();//创建的临时遍历列表
+    constructor() {
+        super("block", false);
+    }
+}
+
 class SemanticException extends Error {
     constructor(msg: string) {
         super(msg);
@@ -148,7 +167,29 @@ class SemanticException extends Error {
     }
 }
 class StmtDescriptor {
+    public quadruples: Quadruple[] = [];
     public hasReturn: boolean = false;
-    public quadrupleCodes: string = '';
 }
-export { Scope, Address, SemanticException, Type, GlobalScope, FunctionScope, ClassScope, StmtScope, StmtDescriptor }
+class ObjectDescriptor {
+    public address: Address;
+    public quadruples: Quadruple[] = [];
+    public backPatch: boolean = false;//是否需要回填
+    public trueList: number[] = [];
+    public falseList: number[] = [];
+    constructor(add: Address) {
+        this.address = add;
+    }
+}
+class Quadruple {
+    public op: string;
+    public arg1: Address;
+    public arg2: Address
+    public result: Address;
+    constructor(op: string, arg1: Address, arg2: Address, ret: Address) {
+        this.op = op;
+        this.arg1 = arg1;
+        this.arg2 = arg2;
+        this.result = ret;
+    }
+}
+export { Scope, Address, SemanticException, Type, GlobalScope, FunctionScope, ClassScope, StmtScope, StmtDescriptor, ObjectDescriptor, BlockScope, Quadruple }

@@ -1,7 +1,9 @@
 function f():int{
-    if(a){
-        return a;
-    }else{
-        return a;
+    var a:int;
+    {
+        var b:int;
+        a+b+1;
+        a==b;
     }
+    return a;
 }
