@@ -2,8 +2,16 @@ function f():int{
     var a:int;
     {
         var b:int;
-        a+b+1;
-        a==b;
+        var c:int;
+        if(a+b+1<b){
+
+        }
+        if(b){
+            c=a<b;
+        }
+        if(1){
+
+        }
     }
     return a;
 }

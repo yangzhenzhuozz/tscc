@@ -223,7 +223,19 @@ let grammar: Grammar = {
                 }
             }
         },
-        { "statement:if ( W3_0 object ) W6_0 statement": { priority: "low_priority_for_if_stmt" } },
+        {
+            "statement:if ( W3_0 object ) W6_0 statement": {
+                action: function ($, s): StmtDescriptor {
+                    let obj = $[3] as ObjectDescriptor;
+                    debugger
+                    if (obj.backPatch) {//需要回填
+                    } else {//处理obj的address
+                        //收集
+                    }
+                    return new StmtDescriptor();
+                }, priority: "low_priority_for_if_stmt"
+            }
+        },
         {
             "statement:if ( W3_0 object ) W6_0 statement else W9_0 statement": {
                 action: function ($, s) {
@@ -343,18 +355,18 @@ let grammar: Grammar = {
         {
             "object:object + W3_0 object": {
                 action: function ($, s): ObjectDescriptor {
-                    let obj1 = $[0] as ObjectDescriptor;
-                    let obj2 = $[3] as ObjectDescriptor;
+                    let a = $[0] as ObjectDescriptor;
+                    let b = $[3] as ObjectDescriptor;
                     let head = s.slice(-1)[0] as StmtScope;
-                    if ((obj1.address.type.type == "base_type" && obj1.address.type.basic_type == "int") && (obj2.address.type.type == "base_type" && obj2.address.type.basic_type == "int")) {
+                    if ((a.address.type.type == "base_type" && a.address.type.basic_type == "int") && (b.address.type.type == "base_type" && b.address.type.basic_type == "int")) {
                         let add = head.createTmp(Type.ConstructBase("int"));
                         let ret = new ObjectDescriptor(add);
                         let result = head.createTmp(Type.ConstructBase('int'));
-                        ret.quadruples = obj1.quadruples.concat(obj2.quadruples);
-                        ret.quadruples.push(new Quadruple("+", obj1.address, obj2.address, result));
+                        ret.quadruples = a.quadruples.concat(b.quadruples);
+                        ret.quadruples.push(new Quadruple("+", a.address, b.address, result));
                         return ret;
                     } else {
-                        throw `目前只支持int类型的加法`;
+                        throw new SemanticException(`暂时只支持int类型的+运算符`);
                     }
                 }
             }
@@ -362,22 +374,39 @@ let grammar: Grammar = {
         { "object:object - W3_0 object": {} },
         { "object:object * W3_0 object": {} },
         { "object:object / W3_0 object": {} },
-        { "object:object < W3_0 object": {} },
-        { "object:object <= W3_0 object": {} },
-        { "object:object > W3_0 object": {} },
-        { "object:object >= W3_0 object": {} },
         {
-            "object:object == W3_0 object": {
+            "object:object < W3_0 object": {
                 action: function ($, s): ObjectDescriptor {
-                    let obj1 = $[0] as ObjectDescriptor;
-                    let obj2 = $[3] as ObjectDescriptor;
+                    let a = $[0] as ObjectDescriptor;
+                    let b = $[3] as ObjectDescriptor;
                     let head = s.slice(-1)[0] as StmtScope;
-                    //判断需不需要重置，如果是函数重载，则不能回填
+                    //判断需不需要重载，如果是函数重载，则不能回填
                     //否则返回一个需要回填的objectDescriptor
-                    throw new SemanticException(`对于bool运算,不返回值，只有回填，最后到object:object=object或者stmt:object的时候才真正处理`);
+                    //在object:object=object
+                    //stmt:object
+                    //if (object) xxx
+                    //if (object) xxx else xx
+                    //这四个地方回填(使用到object的地方回填)
+                    debugger
+                    if ((a.address.type.type == "base_type" && a.address.type.basic_type == "int") && (b.address.type.type == "base_type" && b.address.type.basic_type == "int")) {
+                        let falseInstruction = new Address("stmt", 0, Type.ConstructBase("PC"));
+                        let q1 = new Quadruple("ifelse <", a.address, b.address, falseInstruction);
+                        let ret = new ObjectDescriptor(falseInstruction);
+                        ret.quadruples = a.quadruples.concat(b.quadruples);
+                        ret.quadruples.push(q1);
+                        ret.backPatch = true;
+                        ret.falseList.push(falseInstruction);
+                        return ret;
+                    } else {
+                        throw new SemanticException(`暂时只支持int类型的<运算符`);
+                    }
                 }
             }
         },
+        { "object:object <= W3_0 object": {} },
+        { "object:object > W3_0 object": {} },
+        { "object:object >= W3_0 object": {} },
+        { "object:object == W3_0 object": {} },
         { "object:object ? object : object": { priority: "?" } },
         { "object:object ++": {} },
         { "object:object --": {} },

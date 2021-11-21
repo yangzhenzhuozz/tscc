@@ -171,11 +171,11 @@ class StmtDescriptor {
     public hasReturn: boolean = false;
 }
 class ObjectDescriptor {
-    public address: Address;
+    public address: Address;//如果是需要回填的指令，则没有address
     public quadruples: Quadruple[] = [];
     public backPatch: boolean = false;//是否需要回填
-    public trueList: number[] = [];
-    public falseList: number[] = [];
+    public trueList: Address[] = [];
+    public falseList: Address[] = [];
     constructor(add: Address) {
         this.address = add;
     }
