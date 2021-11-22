@@ -25,6 +25,15 @@ let grammar: Grammar = {
         { 'nonassoc': ['else'] },
     ],
     BNF: [
+        /**
+         * 任何使用到object的地方都进行回填判断
+         * 如 a<b 其中a重载和<操作符
+         * 任何时候如果进行回填，则会终止回填向上传递
+         * 因为正常情况是将回填一直向上传递，直到遇到某些代码可以进行回填
+         * 如if(a<b) xxx则是在处理if stmt的时候进行回填
+         *  a||b<c 和 a||b都会被规约成 obj1||obj2
+         * 前者在obj1不需要回填，obj2需要回填，后者两个地方都不需要回填
+         */
         { "program:createScopeForProgram import_stmts W3_1 program_units": {} },
         {
             "createScopeForProgram:": {
@@ -380,13 +389,6 @@ let grammar: Grammar = {
                     let a = $[0] as ObjectDescriptor;
                     let b = $[3] as ObjectDescriptor;
                     let head = s.slice(-1)[0] as StmtScope;
-                    //判断需不需要重载，如果是函数重载，则不能回填
-                    //否则返回一个需要回填的objectDescriptor
-                    //在object:object=object
-                    //stmt:object
-                    //if (object) xxx
-                    //if (object) xxx else xx
-                    //这四个地方回填(使用到object的地方回填)
                     debugger
                     if ((a.address.type.type == "base_type" && a.address.type.basic_type == "int") && (b.address.type.type == "base_type" && b.address.type.basic_type == "int")) {
                         let falseInstruction = new Address("stmt", 0, Type.ConstructBase("PC"));
