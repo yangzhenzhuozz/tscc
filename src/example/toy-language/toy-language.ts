@@ -76,16 +76,7 @@ let grammar: Grammar = {
                     let id = $[1] as string;
                     let type = $[3] as Type;
                     let head = s.slice(-1)[0] as Scope;
-                    let headTmp = head;
-                    for (; (headTmp instanceof StmtScope) || (headTmp instanceof BlockScope);) {
-                        headTmp = headTmp.parentScope!;
-                    }
-                    if (!headTmp.createVariable(id, type)) {
-                        throw new SemanticException(headTmp.errorMSG);//并且终止解析
-                    }
-                    if (head.parentScope instanceof BlockScope) {//如果是blockScope内部的声明,则记录
-                        head.parentScope.variables.add(id);
-                    }
+                    head.createVariable(id,type);
                     return new StmtDescriptor();
                 }
             }
@@ -236,7 +227,6 @@ let grammar: Grammar = {
             "statement:if ( W3_0 object ) W6_0 statement": {
                 action: function ($, s): StmtDescriptor {
                     let obj = $[3] as ObjectDescriptor;
-                    debugger
                     if (obj.backPatch) {//需要回填
                     } else {//处理obj的address
                         //收集
@@ -282,15 +272,8 @@ let grammar: Grammar = {
         {
             "block:{ createBlockScope statements }": {
                 action: function ($, s) {
-                    let head = s.slice(-1)[0] as Scope;
-                    let headTmp = head;//向上搜索，直到找到functionScope
-                    for (; (headTmp instanceof StmtScope);) {//因为目前BlockScope的父空间只能是StmtScope
-                        headTmp = headTmp.parentScope!;
-                    }
                     let blockScope = $[1] as BlockScope;
-                    for (let v of blockScope.variables.values()) {
-                        (headTmp as FunctionScope).removeVariableForBlockEnd(v);//销毁作用域内的变量
-                    }
+                    blockScope.removeBlockVariable();
                     return $[2];
                 }
             }
@@ -389,9 +372,8 @@ let grammar: Grammar = {
                     let a = $[0] as ObjectDescriptor;
                     let b = $[3] as ObjectDescriptor;
                     let head = s.slice(-1)[0] as StmtScope;
-                    debugger
                     if ((a.address.type.type == "base_type" && a.address.type.basic_type == "int") && (b.address.type.type == "base_type" && b.address.type.basic_type == "int")) {
-                        let falseInstruction = new Address("stmt", 0, Type.ConstructBase("PC"));
+                        let falseInstruction = new Address("constant_val", 0, Type.ConstructBase("PC"));
                         let q1 = new Quadruple("ifelse <", a.address, b.address, falseInstruction);
                         let ret = new ObjectDescriptor(falseInstruction);
                         ret.quadruples = a.quadruples.concat(b.quadruples);
@@ -441,7 +423,7 @@ let grammar: Grammar = {
         { "W9_0:": { action: ($, s) => s.slice(-9)[0] } },
     ]
 };
-let tscc = new TSCC(grammar, { language: "zh-cn", debug: false });
+let tscc = new TSCC(grammar, { language: "zh-cn", debug: true });
 let str = tscc.generate();//构造编译器代码
 if (str != null) {//如果构造成功则生成编编译器代码
     console.log(`成功`);

@@ -1,4 +1,4 @@
-type locationType = "global" | "function" | "class" | "block" | "stmt" | "constant_val";//定义寻址模式,global在data区寻址,stack在栈中寻址,class则通过this指针寻址
+type locationType = "global" | "stack" | "class" | "constant_val";//定义寻址模式,global在data区寻址,stack在栈中寻址,class则通过this指针寻址
 class Type {
     public type: "base_type" | "function" | "array" | undefined;
     public basic_type: string | undefined;
@@ -59,9 +59,9 @@ class Address {
 }
 abstract class Scope {
     public location: locationType;
-    protected addressMap: Map<string, Address> = new Map();//地址空间
+    public addressMap: Map<string, Address> = new Map();//地址空间
     public parentScope: Scope | undefined;//父空间
-    protected allocated: number = 0;//当前可以使用的地址
+    public allocated: number = 0;//当前可以使用的地址
     protected ConflictWithParent: boolean;//声明空间是否和父空间冲突,即判断重复定义的时候需不需要搜索父空间
     public errorMSG = '';//用于错误提示的字符串
 
@@ -74,25 +74,12 @@ abstract class Scope {
         this.location = location;
         this.ConflictWithParent = conflictWithParent;
     }
+    abstract createVariable(name: string, type: Type): boolean;
     public linkParentScope(scope: Scope) {
         this.parentScope = scope;
     }
-    /**
-     * 
-     * @param name 
-     * @param type 
-     * @param addTodeclareScope 是否对子空间的变量声明造成影响
-     */
-    public createVariable(name: string, type: Type): boolean {
-        if (this.checkRedeclaration(name)) {
-            this.errorMSG = `重复定义:${name}`;
-            return false;
-        } else {
-            this.addressMap.set(name, new Address(this.location, this.allocated++, type));
-            return true;
-        }
-    }
-    private checkRedeclaration(name: string): boolean {
+
+    protected checkRedeclaration(name: string): boolean {
         if (this.addressMap.has(name)) {
             return true;
         } else {
@@ -123,18 +110,29 @@ class GlobalScope extends Scope {
     constructor() {
         super("global", false);
     }
+    public createVariable(name: string, type: Type): boolean {
+        if (this.checkRedeclaration(name)) {
+            this.errorMSG = `重复定义:${name}`;
+            return false;
+        } else {
+            this.addressMap.set(name, new Address(this.location, this.allocated++, type));
+            return true;
+        }
+    }
 }
 class FunctionScope extends Scope {
     public returnType: Type;
     constructor(retType: Type) {
-        super("function", false);
+        super("stack", false);
         this.returnType = retType;
     }
-    public removeVariableForBlockEnd(name: string) {//因为只有临时空间结束的时候才会销毁变量作用域,经过一系列的销毁，可以保证最后的allocated平衡
-        let latestAddre = this.addressMap.get(name)!.value;
-        this.allocated = latestAddre;
-        if (!this.addressMap.delete(name)) {
-            throw `理论上不可能出现的错误却出现了`;
+    public createVariable(name: string, type: Type): boolean {
+        if (this.checkRedeclaration(name)) {
+            this.errorMSG = `重复定义:${name}`;
+            return false;
+        } else {
+            this.addressMap.set(name, new Address(this.location, this.allocated++, type));
+            return true;
         }
     }
 }
@@ -142,21 +140,88 @@ class ClassScope extends Scope {
     constructor() {
         super("class", false);
     }
+    public createVariable(name: string, type: Type): boolean {
+        if (this.checkRedeclaration(name)) {
+            this.errorMSG = `重复定义:${name}`;
+            return false;
+        } else {
+            this.addressMap.set(name, new Address(this.location, this.allocated++, type));
+            return true;
+        }
+    }
 }
 class StmtScope extends Scope {
+    private numOfVariable = 0;//本次stmt所申请的变量数量
     constructor() {
-        super("stmt", false);
+        super("stack", false);
     }
     public createTmp(type: Type): Address {
-        this.addressMap.set(`${this.allocated}`, new Address(this.location, this.allocated++, type));
-        return new Address(this.location, this.allocated, type);
+        let parentFunctionScope: Scope | undefined = this;
+        for (; !(parentFunctionScope instanceof FunctionScope) && (parentFunctionScope != undefined);) {
+            parentFunctionScope = parentFunctionScope.parentScope;
+        }
+        if (parentFunctionScope == undefined) {
+            throw `stmtScope必然是挂在某个functionScope下面的`;
+        }
+        this.numOfVariable++;
+        parentFunctionScope.allocated++;
+        return new Address(parentFunctionScope.location, parentFunctionScope.allocated, type);
+    }
+    //如果是由stmt->declare得到的声明，则head是一个stmtScope，此时要把变量注册到functionScope中
+    public createVariable(name: string, type: Type): boolean {
+        let parentFunctionScope: Scope | undefined = this;
+        for (; !(parentFunctionScope instanceof FunctionScope) && (parentFunctionScope != undefined);) {
+            parentFunctionScope = parentFunctionScope.parentScope;
+        }
+        if (parentFunctionScope == undefined) {
+            throw `stmtScope必然是挂在某个functionScope下面的`;
+        }
+        return parentFunctionScope.createVariable(name, type)
+    }
+    public removeTemporary() {
+        let parentFunctionScope: Scope | undefined = this;
+        for (; !(parentFunctionScope instanceof FunctionScope) && (parentFunctionScope != undefined);) {
+            parentFunctionScope = parentFunctionScope.parentScope;
+        }
+        if (parentFunctionScope == undefined) {
+            throw `stmtScope必然是挂在某个functionScope下面的`;
+        }
+        parentFunctionScope.allocated -= this.numOfVariable;
     }
 }
 
 class BlockScope extends Scope {
-    public variables: Set<string> = new Set();//创建的临时遍历列表
+    public variables: Set<string> = new Set();//创建的临时变量列表
     constructor() {
-        super("block", false);
+        super("stack", false);
+    }
+    public createVariable(name: string, type: Type): boolean {
+        let parentFunctionScope: Scope | undefined = this;
+        for (; !(parentFunctionScope instanceof FunctionScope) && (parentFunctionScope != undefined);) {
+            parentFunctionScope = parentFunctionScope.parentScope;
+        }
+        if (parentFunctionScope == undefined) {
+            throw `stmtScope必然是挂在某个functionScope下面的`;
+        }
+        if (parentFunctionScope.createVariable(name, type)) {
+            this.variables.add(name);
+            return true;
+        } else {
+            return false;
+        }
+    }
+    public removeBlockVariable() {
+        let parentFunctionScope: Scope | undefined = this;
+        for (; !(parentFunctionScope instanceof FunctionScope) && (parentFunctionScope != undefined);) {
+            parentFunctionScope = parentFunctionScope.parentScope;
+        }
+        if (parentFunctionScope == undefined) {
+            throw `stmtScope必然是挂在某个functionScope下面的`;
+        }
+        for (let name of this.variables.values()) {
+            parentFunctionScope.addressMap.delete(name);//销毁作用域内的变量
+        }
+        parentFunctionScope.allocated -= this.variables.size;
     }
 }
 
