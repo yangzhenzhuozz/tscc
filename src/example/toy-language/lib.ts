@@ -246,10 +246,12 @@ class ObjectDescriptor {
     }
 }
 class Quadruple {
+    private static PC = 0;
     public op: string;
     public arg1: Address;
     public arg2: Address
     public result: Address;
+    public pc=Quadruple.PC++;
     constructor(op: string, arg1: Address, arg2: Address, ret: Address) {
         this.op = op;
         this.arg1 = arg1;

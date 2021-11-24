@@ -76,7 +76,7 @@ let grammar: Grammar = {
                     let id = $[1] as string;
                     let type = $[3] as Type;
                     let head = s.slice(-1)[0] as Scope;
-                    head.createVariable(id,type);
+                    head.createVariable(id, type);
                     return new StmtDescriptor();
                 }
             }
@@ -227,11 +227,32 @@ let grammar: Grammar = {
             "statement:if ( W3_0 object ) W6_0 statement": {
                 action: function ($, s): StmtDescriptor {
                     let obj = $[3] as ObjectDescriptor;
+                    let stmt = $[6] as StmtDescriptor;
+                    debugger
                     if (obj.backPatch) {//需要回填
+                        for (let i of obj.trueList) {
+                            if (stmt.quadruples.length > 0) {
+                                i.value = stmt.quadruples[0].pc;
+                            } else {
+                                //stmt是空白语句
+                                i.value = obj.quadruples[obj.quadruples.length - 1].pc + 1;
+                            }
+                        }
+                        for (let i of obj.falseList) {
+                            if (stmt.quadruples.length > 0) {
+                                i.value = stmt.quadruples[stmt.quadruples.length - 1].pc + 1;
+                            } else {
+                                //stmt是空白语句
+                                i.value = obj.quadruples[obj.quadruples.length - 1].pc + 1;
+                            }
+                        }
                     } else {//处理obj的address
                         //收集
+                        //这里的object不是代码序列，需要生成if指令，并使用obj的address
                     }
-                    return new StmtDescriptor();
+                    let ret = new StmtDescriptor();
+                    ret.quadruples = obj.quadruples.concat(stmt.quadruples);
+                    return ret;
                 }, priority: "low_priority_for_if_stmt"
             }
         },
@@ -257,7 +278,9 @@ let grammar: Grammar = {
         {
             "statement:object ;": {
                 action: function ($, s): StmtDescriptor {
-                    return new StmtDescriptor();
+                    let ret = new StmtDescriptor();
+                    ret.quadruples = ($[0] as ObjectDescriptor).quadruples;
+                    return ret;
                 }
             }
         },
@@ -343,7 +366,7 @@ let grammar: Grammar = {
         { "object:( parameters ) => { statements }": {} },//lambda
         { "object:( object )": {} },
         { "object:object . id": {} },
-        { "object:object = object": {} },
+        { "object:object = W3_0 object": {} },
         {
             "object:object + W3_0 object": {
                 action: function ($, s): ObjectDescriptor {
@@ -371,7 +394,6 @@ let grammar: Grammar = {
                 action: function ($, s): ObjectDescriptor {
                     let a = $[0] as ObjectDescriptor;
                     let b = $[3] as ObjectDescriptor;
-                    let head = s.slice(-1)[0] as StmtScope;
                     if ((a.address.type.type == "base_type" && a.address.type.basic_type == "int") && (b.address.type.type == "base_type" && b.address.type.basic_type == "int")) {
                         let falseInstruction = new Address("constant_val", 0, Type.ConstructBase("PC"));
                         let q1 = new Quadruple("ifelse <", a.address, b.address, falseInstruction);
@@ -423,7 +445,7 @@ let grammar: Grammar = {
         { "W9_0:": { action: ($, s) => s.slice(-9)[0] } },
     ]
 };
-let tscc = new TSCC(grammar, { language: "zh-cn", debug: true });
+let tscc = new TSCC(grammar, { language: "zh-cn", debug: false });
 let str = tscc.generate();//构造编译器代码
 if (str != null) {//如果构造成功则生成编编译器代码
     console.log(`成功`);

@@ -4,7 +4,7 @@ function f():int{
         var b:int;
         var c:int;
         if(a+b+1<b){
-
+            a+b;
         }
         if(b){
             c=a<b;
