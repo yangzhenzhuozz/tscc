@@ -150,7 +150,7 @@ class ClassScope extends Scope {
         }
     }
 }
-class StmtScope extends Scope {
+class ObjectScope extends Scope {
     private numOfVariable = 0;//本次stmt所申请的变量数量
     constructor() {
         super("stack", false);
@@ -259,4 +259,4 @@ class Quadruple {
         this.result = ret;
     }
 }
-export { Scope, Address, SemanticException, Type, GlobalScope, FunctionScope, ClassScope, StmtScope, StmtDescriptor, ObjectDescriptor, BlockScope, Quadruple }
+export { Scope, Address, SemanticException, Type, GlobalScope, FunctionScope, ClassScope, ObjectScope, StmtDescriptor, ObjectDescriptor, BlockScope, Quadruple }
