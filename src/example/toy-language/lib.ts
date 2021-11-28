@@ -150,7 +150,7 @@ class ClassScope extends Scope {
         }
     }
 }
-class ObjectScope extends Scope {
+class StmtScope extends Scope {
     private numOfVariable = 0;//本次stmt所申请的变量数量
     constructor() {
         super("stack", false);
@@ -170,7 +170,8 @@ class ObjectScope extends Scope {
     //如果是由stmt->declare得到的声明，则head是一个stmtScope，此时要把变量注册到functionScope中
     public createVariable(name: string, type: Type): boolean {
         let parentFunctionScope: Scope | undefined = this;
-        for (; !(parentFunctionScope instanceof FunctionScope) && (parentFunctionScope != undefined);) {
+        //向上搜索出层级最近的BlockScope或者FunctionScope
+        for (; !((parentFunctionScope instanceof FunctionScope)||(parentFunctionScope instanceof BlockScope)) && (parentFunctionScope != undefined);) {
             parentFunctionScope = parentFunctionScope.parentScope;
         }
         if (parentFunctionScope == undefined) {
@@ -259,4 +260,4 @@ class Quadruple {
         this.result = ret;
     }
 }
-export { Scope, Address, SemanticException, Type, GlobalScope, FunctionScope, ClassScope, ObjectScope, StmtDescriptor, ObjectDescriptor, BlockScope, Quadruple }
+export { Scope, Address, SemanticException, Type, GlobalScope, FunctionScope, ClassScope, StmtScope, StmtDescriptor, ObjectDescriptor, BlockScope, Quadruple }

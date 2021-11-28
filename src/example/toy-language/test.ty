@@ -3,14 +3,35 @@ function f():int{
     {
         var b:int;
         var c:int;
-        if(a+b+1<b){
+        if(a){
             a+b;
         }
-        if(b){
-            c=a<b;
+        if(a+b<c){
+            a+b;
         }
-        if(1){
-
+        if(a||b){
+            a+b;
+        }
+        if(a||b+c){
+            a+b;
+        }
+        if(a||b+c<a){
+            a+b;
+        }
+        if(a||b+c<a+b){
+            a+b;
+        }
+        if(a+b||b){
+            a+b;
+        }
+        if(a+b<c||b+c){
+            a+b;
+        }
+        if(a+b<c+a||b+c<a){
+            a+b;
+        }
+        if(a<b||b+c<a+b){
+            a+b;
         }
     }
     return a;

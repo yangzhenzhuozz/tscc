@@ -2,9 +2,9 @@ import fs from "fs";
 import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
 import lexer from "./lexrule.js";
-import { Scope, Address, SemanticException, Type, GlobalScope, FunctionScope, ClassScope, ObjectScope, StmtDescriptor, ObjectDescriptor, BlockScope, Quadruple } from './lib.js'
+import { Scope, Address, SemanticException, Type, GlobalScope, FunctionScope, ClassScope, StmtScope, StmtDescriptor, ObjectDescriptor, BlockScope, Quadruple } from './lib.js'
 let grammar: Grammar = {
-    userCode: `import { Scope, Address, SemanticException, Type, GlobalScope, FunctionScope, ClassScope, ObjectScope, StmtDescriptor, ObjectDescriptor, BlockScope, Quadruple } from './lib.js'`,//让自动生成的代码包含import语句
+    userCode: `import { Scope, Address, SemanticException, Type, GlobalScope, FunctionScope, ClassScope, StmtScope, StmtDescriptor, ObjectDescriptor, BlockScope, Quadruple } from './lib.js'`,//让自动生成的代码包含import语句
     tokens: ['var', '...', ';', 'id', 'constant_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'basic_type', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'sealed', 'this', 'return'],
     association: [
         { 'right': ['='] },
@@ -224,11 +224,10 @@ let grammar: Grammar = {
             }
         },
         {
-            "statement:if ( W3_0 object ) W6_0 statement": {
+            "statement:if ( W3_0 object clearStmtScopeWithObj ) W7_0_for_stmt statement": {
                 action: function ($, s): StmtDescriptor {
                     let obj = $[3] as ObjectDescriptor;
                     let stmt = $[6] as StmtDescriptor;
-                    debugger
                     if (obj.backPatch) {//需要回填
                         for (let i of obj.trueList) {
                             if (stmt.quadruples.length > 0) {
@@ -257,7 +256,7 @@ let grammar: Grammar = {
             }
         },
         {
-            "statement:if ( W3_0 object ) W6_0 statement else W9_0 statement": {
+            "statement:if ( W3_0 object clearStmtScopeWithObj ) W7_0_for_stmt statement else W10_0_for_stmt statement": {
                 action: function ($, s) {
                     let stmt1 = $[6] as StmtDescriptor;
                     let stmt2 = $[9] as StmtDescriptor;
@@ -265,6 +264,14 @@ let grammar: Grammar = {
                     ret.hasReturn = stmt1.hasReturn && stmt2.hasReturn;
                     "判断object是值类型的还是需要回填的那种，比如if(a) xxx 这种则直接对a进行判断，如果是 if(xx||xx) xxx 这种，则进行回填";
                     return ret;
+                }
+            }
+        },
+        {
+            "clearStmtScopeWithObj:": {
+                action: function ($, s) {
+                    let ScopeContainer=s.slice(-2)[0] as StmtScope;
+                    ScopeContainer.removeTemporary();
                 }
             }
         },
@@ -313,7 +320,7 @@ let grammar: Grammar = {
         },
         { "statements:": { action: () => new StmtDescriptor() } },
         {
-            "statements:statements reachableCheckAndInherit statement": {
+            "statements:statements reachableCheckAndCreateStmtScope statement": {
                 action: function ($, s) {
                     let statements = $[0] as StmtDescriptor;
                     let statement = $[2] as StmtDescriptor;
@@ -325,7 +332,7 @@ let grammar: Grammar = {
             }
         },
         {
-            "reachableCheckAndInherit:": {
+            "reachableCheckAndCreateStmtScope:": {
                 action: function ($, s): Scope {
                     let stack = s.slice(-2);
                     let head = stack[0] as Scope;
@@ -441,8 +448,26 @@ let grammar: Grammar = {
 
         { "W2_0:": { action: ($, s) => s.slice(-2)[0] } },
         { "W3_0:": { action: ($, s) => s.slice(-3)[0] } },
-        { "W6_0:": { action: ($, s) => s.slice(-6)[0] } },
-        { "W9_0:": { action: ($, s) => s.slice(-9)[0] } },
+        {
+            "W7_0_for_stmt:": {
+                action: function ($, s): StmtScope {
+                    let head = s.slice(-7)[0] as Scope;
+                    let ret = new StmtScope();
+                    ret.linkParentScope(head);
+                    return ret;
+                }
+            }
+        },
+        {
+            "W10_0_for_stmt:": {
+                action: function ($, s): StmtScope {
+                    let head = s.slice(-10)[0] as Scope;
+                    let ret = new StmtScope();
+                    ret.linkParentScope(head);
+                    return ret;
+                }
+            }
+        },
     ]
 };
 let tscc = new TSCC(grammar, { language: "zh-cn", debug: false });
