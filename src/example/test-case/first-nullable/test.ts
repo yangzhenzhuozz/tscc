@@ -8,14 +8,15 @@ import { Grammar } from "../../../tscc/tscc.js";
  * console.log(f);
  */
 let grammar: Grammar = {
-    tokens: ['a','b','c','d'],
+    tokens: ['b', 'c', 'd'],
     association: [
     ],
     BNF: [
-       {'S:a A b c':{}},
-       {'S:a B d':{}},
-       {'A:':{}},
-       {'B:b':{}},
+        { "S:B b": {} },
+        { "S:B d": {} },
+        { "S:ε": {} },
+        { "B:S S S": {} },
+        { "B:c": {} }
     ]
 };
 let tscc = new TSCC(grammar, { language: "zh-cn", debug: true });
