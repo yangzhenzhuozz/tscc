@@ -227,7 +227,7 @@ let grammar: Grammar = {
             "statement:if ( W3_0 object clearStmtScopeWithObj ) W7_0_for_stmt statement": {
                 action: function ($, s): StmtDescriptor {
                     let obj = $[3] as ObjectDescriptor;
-                    let stmt = $[6] as StmtDescriptor;
+                    let stmt = $[7] as StmtDescriptor;
                     if (obj.backPatch) {//需要回填
                         for (let i of obj.trueList) {
                             if (stmt.quadruples.length > 0) {
@@ -419,6 +419,8 @@ let grammar: Grammar = {
         { "object:object <= W3_0 object": {} },
         { "object:object > W3_0 object": {} },
         { "object:object >= W3_0 object": {} },
+        { "object:object || W3_0 object": {} },
+        { "object:object && W3_0 object": {} },
         { "object:object == W3_0 object": {} },
         { "object:object ? object : object": { priority: "?" } },
         { "object:object ++": {} },
