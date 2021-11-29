@@ -5,6 +5,7 @@ function f():int{
         var c:int;
         if(a){
             a+b;
+            b+c;
         }
         if(a+b<c){
             a+b;

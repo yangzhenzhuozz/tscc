@@ -2,9 +2,9 @@ import fs from "fs";
 import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
 import lexer from "./lexrule.js";
-import { Scope, Address, SemanticException, Type, GlobalScope, FunctionScope, ClassScope, StmtScope, StmtDescriptor, ObjectDescriptor, BlockScope, Quadruple } from './lib.js'
+import { Descriptor, Scope, Address, SemanticException, Type, GlobalScope, FunctionScope, ClassScope, StmtScope, StmtDescriptor, ObjectDescriptor, BlockScope, Quadruple } from './lib.js'
 let grammar: Grammar = {
-    userCode: `import { Scope, Address, SemanticException, Type, GlobalScope, FunctionScope, ClassScope, StmtScope, StmtDescriptor, ObjectDescriptor, BlockScope, Quadruple } from './lib.js'`,//让自动生成的代码包含import语句
+    userCode: `import { Descriptor, Scope, Address, SemanticException, Type, GlobalScope, FunctionScope, ClassScope, StmtScope, StmtDescriptor, ObjectDescriptor, BlockScope, Quadruple } from './lib.js'`,//让自动生成的代码包含import语句
     tokens: ['var', '...', ';', 'id', 'constant_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'basic_type', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'sealed', 'this', 'return'],
     association: [
         { 'right': ['='] },
@@ -224,39 +224,38 @@ let grammar: Grammar = {
             }
         },
         {
-            "statement:if ( W3_0 object clearStmtScopeWithObj ) W7_0_for_stmt statement": {
+            "statement:if ( W3_0 object objInIfCondition ) W7_0_for_stmt statement": {
                 action: function ($, s): StmtDescriptor {
                     let obj = $[3] as ObjectDescriptor;
                     let stmt = $[7] as StmtDescriptor;
-                    if (obj.backPatch) {//需要回填
-                        for (let i of obj.trueList) {
-                            if (stmt.quadruples.length > 0) {
-                                i.value = stmt.quadruples[0].pc;
-                            } else {
-                                //stmt是空白语句
-                                i.value = obj.quadruples[obj.quadruples.length - 1].pc + 1;
-                            }
-                        }
-                        for (let i of obj.falseList) {
-                            if (stmt.quadruples.length > 0) {
-                                i.value = stmt.quadruples[stmt.quadruples.length - 1].pc + 1;
-                            } else {
-                                //stmt是空白语句
-                                i.value = obj.quadruples[obj.quadruples.length - 1].pc + 1;
-                            }
-                        }
-                    } else {//处理obj的address
-                        //收集
-                        //这里的object不是代码序列，需要生成if指令，并使用obj的address
-                    }
                     let ret = new StmtDescriptor();
+                    //经过objInIfCondition的处理,obj一定是需要回填的代码
+                    for (let i of obj.trueList) {
+                        if (stmt.quadruples.length > 0) {//stmt不是空白语句
+                            i.value = stmt.quadruples[0].pc;
+                        } else {
+                            //stmt是空白语句
+                            i.value = obj.quadruples[obj.quadruples.length - 1].pc + 1;
+                        }
+                    }
+                    for (let i of obj.falseList) {
+                        if (stmt.quadruples.length > 0) {
+                            i.value = stmt.quadruples[stmt.quadruples.length - 1].pc + 1;
+                        } else {
+                            //stmt是空白语句
+                            i.value = obj.quadruples[obj.quadruples.length - 1].pc + 1;
+                        }
+                    }
                     ret.quadruples = obj.quadruples.concat(stmt.quadruples);
+                    console.log(`${ret}`);
+                    debugger;
+                    //明天继续做 a||b,可以采取和objInIfCondition类似的操作,把a和b都处理成需要回填的类型
                     return ret;
                 }, priority: "low_priority_for_if_stmt"
             }
         },
         {
-            "statement:if ( W3_0 object clearStmtScopeWithObj ) W7_0_for_stmt statement else W10_0_for_stmt statement": {
+            "statement:if ( W3_0 object objInIfCondition ) W7_0_for_stmt statement else W10_0_for_stmt statement": {
                 action: function ($, s) {
                     let stmt1 = $[6] as StmtDescriptor;
                     let stmt2 = $[9] as StmtDescriptor;
@@ -268,10 +267,20 @@ let grammar: Grammar = {
             }
         },
         {
-            "clearStmtScopeWithObj:": {
+            "objInIfCondition:": {
                 action: function ($, s) {
-                    let ScopeContainer=s.slice(-2)[0] as StmtScope;
+                    let stack = s.slice(-2);
+                    let ScopeContainer = stack[0] as StmtScope;
+                    let obj = stack[1] as ObjectDescriptor;
                     ScopeContainer.removeTemporary();
+                    //如果obj是不需要回填的代码,如if(a)，则为其生成回填代码
+                    if (obj.quadruples.length == 0) {
+                        let falseInstruction = new Address("constant_val", 0, Type.ConstructBase("PC"));
+                        let instruction = new Quadruple("ifelse", obj.address, undefined, falseInstruction);
+                        obj.quadruples.push(instruction);
+                        obj.falseList.push(falseInstruction);
+                        obj.backPatch = true;
+                    }
                 }
             }
         },
@@ -283,11 +292,20 @@ let grammar: Grammar = {
         { "statement:continue lable_use ;": {} },
         { "statement:switch ( object ) { switch_bodys }": {} },
         {
-            "statement:object ;": {
+            "statement:object clearObjectTemporary ;": {
                 action: function ($, s): StmtDescriptor {
                     let ret = new StmtDescriptor();
                     ret.quadruples = ($[0] as ObjectDescriptor).quadruples;
                     return ret;
+                }
+            }
+        },
+        {
+            "clearObjectTemporary:": {//在每个object后面清理申请的临时空间
+                action: function ($, s) {
+                    let stack = s.slice(-2);
+                    let ScopeContainer = stack[0] as StmtScope;
+                    ScopeContainer.removeTemporary();
                 }
             }
         },
@@ -327,7 +345,8 @@ let grammar: Grammar = {
                     //此处应该把statements和statement的代码连接起来
                     let ret = new StmtDescriptor();
                     ret.hasReturn = statement.hasReturn;
-                    return statement;
+                    ret.quadruples = statements.quadruples.concat(statement.quadruples);
+                    return ret;
                 }
             }
         },
@@ -381,9 +400,8 @@ let grammar: Grammar = {
                     let b = $[3] as ObjectDescriptor;
                     let head = s.slice(-1)[0] as StmtScope;
                     if ((a.address.type.type == "base_type" && a.address.type.basic_type == "int") && (b.address.type.type == "base_type" && b.address.type.basic_type == "int")) {
-                        let add = head.createTmp(Type.ConstructBase("int"));
-                        let ret = new ObjectDescriptor(add);
                         let result = head.createTmp(Type.ConstructBase('int'));
+                        let ret = new ObjectDescriptor(result);
                         ret.quadruples = a.quadruples.concat(b.quadruples);
                         ret.quadruples.push(new Quadruple("+", a.address, b.address, result));
                         return ret;

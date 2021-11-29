@@ -56,6 +56,14 @@ class Address {
         this.value = value;
         this.type = type;
     }
+    public toString(): string {
+        switch (this.location) {
+            case "class": return `class.[${this.value}]`;
+            case "constant_val": return `${this.value}`;
+            case "global": return `global.[${this.value}]`;
+            case "stack": return `stack.[${this.value}]`;
+        }
+    }
 }
 abstract class Scope {
     public location: locationType;
@@ -164,14 +172,13 @@ class StmtScope extends Scope {
             throw `stmtScope必然是挂在某个functionScope下面的`;
         }
         this.numOfVariable++;
-        parentFunctionScope.allocated++;
-        return new Address(parentFunctionScope.location, parentFunctionScope.allocated, type);
+        return new Address(parentFunctionScope.location, parentFunctionScope.allocated++, type);
     }
     //如果是由stmt->declare得到的声明，则head是一个stmtScope，此时要把变量注册到functionScope中
     public createVariable(name: string, type: Type): boolean {
         let parentFunctionScope: Scope | undefined = this;
         //向上搜索出层级最近的BlockScope或者FunctionScope
-        for (; !((parentFunctionScope instanceof FunctionScope)||(parentFunctionScope instanceof BlockScope)) && (parentFunctionScope != undefined);) {
+        for (; !((parentFunctionScope instanceof FunctionScope) || (parentFunctionScope instanceof BlockScope)) && (parentFunctionScope != undefined);) {
             parentFunctionScope = parentFunctionScope.parentScope;
         }
         if (parentFunctionScope == undefined) {
@@ -232,32 +239,53 @@ class SemanticException extends Error {
         super.name = 'SemanticException';
     }
 }
-class StmtDescriptor {
+class Descriptor {
     public quadruples: Quadruple[] = [];
+    public toString(): string {
+        let ret = '';
+        for (let q of this.quadruples) {
+            ret += `${q}`;
+        }
+        return ret;
+    }
+}
+class StmtDescriptor extends Descriptor {
     public hasReturn: boolean = false;
 }
-class ObjectDescriptor {
+class ObjectDescriptor extends Descriptor {
     public address: Address;//如果是需要回填的指令，则没有address
-    public quadruples: Quadruple[] = [];
     public backPatch: boolean = false;//是否需要回填
     public trueList: Address[] = [];
     public falseList: Address[] = [];
     constructor(add: Address) {
+        super();
         this.address = add;
     }
 }
 class Quadruple {
     private static PC = 0;
     public op: string;
-    public arg1: Address;
-    public arg2: Address
-    public result: Address;
-    public pc=Quadruple.PC++;
-    constructor(op: string, arg1: Address, arg2: Address, ret: Address) {
+    public arg1: Address | undefined;
+    public arg2: Address | undefined;
+    public result: Address | undefined;
+    public pc = Quadruple.PC++;
+    constructor(op: string, arg1: Address | undefined, arg2: Address | undefined, ret: Address | undefined) {
         this.op = op;
         this.arg1 = arg1;
         this.arg2 = arg2;
         this.result = ret;
     }
+    public toString(): string {
+        switch (this.op) {
+            case "if":
+            case "ifelse":
+                return `${this.pc}\t${this.op}\t${this.arg1}\tgoto\t${this.result}\n`;
+            case "ifelse <": return `${this.pc}\tifelse\t${this.arg1}<${this.arg2}\tgoto\t${this.result}\n`;
+            case "ifelse >": return `${this.pc}\tifelse\t${this.arg1}<${this.arg2}\tgoto\t${this.result}\n`;
+            case "if <": return `${this.pc}\tif\t${this.arg1}<${this.arg2}\tgoto\t${this.result}\n`;
+            case "if >": return `${this.pc}\tif\t${this.arg1}<${this.arg2}\tgoto\t${this.result}\n`;
+            default: return `${this.pc}\t${this.result}\t=\t${this.arg1}\t${this.op}\t${this.arg2}\n`;
+        }
+    }
 }
-export { Scope, Address, SemanticException, Type, GlobalScope, FunctionScope, ClassScope, StmtScope, StmtDescriptor, ObjectDescriptor, BlockScope, Quadruple }
+export { Scope, Address, SemanticException, Type, GlobalScope, FunctionScope, ClassScope, StmtScope, StmtDescriptor, ObjectDescriptor, BlockScope, Quadruple, Descriptor }
