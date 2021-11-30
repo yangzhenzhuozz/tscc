@@ -39,7 +39,7 @@ lexer.addRule(['!', () => '!']);
 lexer.addRule(['.', () => '.']);
 lexer.addRule(['function', () => 'function']);
 lexer.addRule(['operator', () => 'operator']);
-lexer.addRule(['(int)|(double)|(void)', (arg) => { arg.value = Type.ConstructBase(arg.yytext); return 'basic_type'; }]);
+lexer.addRule(['(int)|(double)|(void)|(boolean)', (arg) => { arg.value = Type.ConstructBase(arg.yytext); return 'basic_type'; }]);
 lexer.addRule(['class', () => 'class']);
 lexer.addRule(['new', () => 'new']);
 lexer.addRule(['extends', () => 'extends']);

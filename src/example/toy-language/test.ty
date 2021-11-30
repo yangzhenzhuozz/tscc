@@ -1,8 +1,23 @@
 function f():int{
-    var a:int;
+    var a:boolean;
     {
-        var b:int;
-        var c:int;
+        var b:boolean;
+        var c:boolean;
+        var d:int;
+        var e:int;
+        var f:int;
+        if(a||b||d+e<f){
+            d+e;
+            e+f;
+        }
+        if(a||b||c+b){
+            a+b;
+            b+c;
+        }
+        if(a||b||c){
+            a+b;
+            b+c;
+        }
         if(a){
             a+b;
             b+c;

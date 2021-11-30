@@ -277,15 +277,22 @@ class Quadruple {
     }
     public toString(): string {
         switch (this.op) {
-            case "if":
-            case "ifelse":
-                return `${this.pc}\t${this.op}\t${this.arg1}\tgoto\t${this.result}\n`;
-            case "ifelse <": return `${this.pc}\tifelse\t${this.arg1}<${this.arg2}\tgoto\t${this.result}\n`;
-            case "ifelse >": return `${this.pc}\tifelse\t${this.arg1}<${this.arg2}\tgoto\t${this.result}\n`;
+            case "if": return `${this.pc}\t${this.op}\t${this.arg1}\tgoto\t${this.result}\n`;
             case "if <": return `${this.pc}\tif\t${this.arg1}<${this.arg2}\tgoto\t${this.result}\n`;
             case "if >": return `${this.pc}\tif\t${this.arg1}<${this.arg2}\tgoto\t${this.result}\n`;
+            case "goto": return `${this.pc}\tgoto\t${this.result}\n`;
             default: return `${this.pc}\t${this.result}\t=\t${this.arg1}\t${this.op}\t${this.arg2}\n`;
         }
     }
 }
-export { Scope, Address, SemanticException, Type, GlobalScope, FunctionScope, ClassScope, StmtScope, StmtDescriptor, ObjectDescriptor, BlockScope, Quadruple, Descriptor }
+class BackPatchTools {
+    public static backpatch(addresses: Address[], value: number) {
+        for (let address of addresses) {
+            address.value = value;
+        }
+    }
+    public static merge(a: Address[], b: Address[]) {
+        return a.concat(b);
+    }
+}
+export { BackPatchTools, Scope, Address, SemanticException, Type, GlobalScope, FunctionScope, ClassScope, StmtScope, StmtDescriptor, ObjectDescriptor, BlockScope, Quadruple, Descriptor }

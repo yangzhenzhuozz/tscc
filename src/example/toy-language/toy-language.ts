@@ -2,9 +2,9 @@ import fs from "fs";
 import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
 import lexer from "./lexrule.js";
-import { Descriptor, Scope, Address, SemanticException, Type, GlobalScope, FunctionScope, ClassScope, StmtScope, StmtDescriptor, ObjectDescriptor, BlockScope, Quadruple } from './lib.js'
+import { BackPatchTools, Descriptor, Scope, Address, SemanticException, Type, GlobalScope, FunctionScope, ClassScope, StmtScope, StmtDescriptor, ObjectDescriptor, BlockScope, Quadruple } from './lib.js'
 let grammar: Grammar = {
-    userCode: `import { Descriptor, Scope, Address, SemanticException, Type, GlobalScope, FunctionScope, ClassScope, StmtScope, StmtDescriptor, ObjectDescriptor, BlockScope, Quadruple } from './lib.js'`,//让自动生成的代码包含import语句
+    userCode: `import { BackPatchTools, Descriptor, Scope, Address, SemanticException, Type, GlobalScope, FunctionScope, ClassScope, StmtScope, StmtDescriptor, ObjectDescriptor, BlockScope, Quadruple } from './lib.js'`,//让自动生成的代码包含import语句
     tokens: ['var', '...', ';', 'id', 'constant_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'basic_type', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'sealed', 'this', 'return'],
     association: [
         { 'right': ['='] },
@@ -125,6 +125,7 @@ let grammar: Grammar = {
                             throw new SemanticException("函数必须有返回值");
                         }
                     }
+                    console.log(`${statements}`);
                 }
             }
         },
@@ -230,26 +231,18 @@ let grammar: Grammar = {
                     let stmt = $[7] as StmtDescriptor;
                     let ret = new StmtDescriptor();
                     //经过objInIfCondition的处理,obj一定是需要回填的代码
-                    for (let i of obj.trueList) {
-                        if (stmt.quadruples.length > 0) {//stmt不是空白语句
-                            i.value = stmt.quadruples[0].pc;
-                        } else {
-                            //stmt是空白语句
-                            i.value = obj.quadruples[obj.quadruples.length - 1].pc + 1;
-                        }
+                    let trueAddressValue: number;
+                    let falseAddressValue: number;
+                    if (stmt.quadruples.length > 0) {//stmt不是空白语句
+                        trueAddressValue = stmt.quadruples[0].pc;
+                        falseAddressValue = stmt.quadruples[stmt.quadruples.length - 1].pc + 1;
+                    } else {//stmt是空白语句
+                        trueAddressValue = obj.quadruples[obj.quadruples.length - 1].pc + 1;
+                        falseAddressValue = obj.quadruples[obj.quadruples.length - 1].pc + 1;
                     }
-                    for (let i of obj.falseList) {
-                        if (stmt.quadruples.length > 0) {
-                            i.value = stmt.quadruples[stmt.quadruples.length - 1].pc + 1;
-                        } else {
-                            //stmt是空白语句
-                            i.value = obj.quadruples[obj.quadruples.length - 1].pc + 1;
-                        }
-                    }
+                    BackPatchTools.backpatch(obj.trueList, trueAddressValue);
+                    BackPatchTools.backpatch(obj.falseList, falseAddressValue);
                     ret.quadruples = obj.quadruples.concat(stmt.quadruples);
-                    console.log(`${ret}`);
-                    debugger;
-                    //明天继续做 a||b,可以采取和objInIfCondition类似的操作,把a和b都处理成需要回填的类型
                     return ret;
                 }, priority: "low_priority_for_if_stmt"
             }
@@ -268,17 +261,21 @@ let grammar: Grammar = {
         },
         {
             "objInIfCondition:": {
-                action: function ($, s) {
+                action: function ($, s): void {
                     let stack = s.slice(-2);
                     let ScopeContainer = stack[0] as StmtScope;
                     let obj = stack[1] as ObjectDescriptor;
-                    ScopeContainer.removeTemporary();
+                    ScopeContainer.removeTemporary();//移除临时变量
                     //如果obj是不需要回填的代码,如if(a)，则为其生成回填代码
-                    if (obj.quadruples.length == 0) {
-                        let falseInstruction = new Address("constant_val", 0, Type.ConstructBase("PC"));
-                        let instruction = new Quadruple("ifelse", obj.address, undefined, falseInstruction);
-                        obj.quadruples.push(instruction);
-                        obj.falseList.push(falseInstruction);
+                    if (!obj.backPatch) {
+                        let trueAddress = new Address("constant_val", 0, Type.ConstructBase("PC"));
+                        let falseAddress = new Address("constant_val", 0, Type.ConstructBase("PC"));
+                        let trueInstruction = new Quadruple("if", obj.address, undefined, trueAddress);
+                        let falseInstruction = new Quadruple("goto", undefined, undefined, falseAddress);
+                        obj.quadruples.push(trueInstruction);
+                        obj.quadruples.push(falseInstruction);
+                        obj.trueList.push(trueAddress);
+                        obj.falseList.push(falseAddress);
                         obj.backPatch = true;
                     }
                 }
@@ -420,13 +417,17 @@ let grammar: Grammar = {
                     let a = $[0] as ObjectDescriptor;
                     let b = $[3] as ObjectDescriptor;
                     if ((a.address.type.type == "base_type" && a.address.type.basic_type == "int") && (b.address.type.type == "base_type" && b.address.type.basic_type == "int")) {
-                        let falseInstruction = new Address("constant_val", 0, Type.ConstructBase("PC"));
-                        let q1 = new Quadruple("ifelse <", a.address, b.address, falseInstruction);
-                        let ret = new ObjectDescriptor(falseInstruction);
+                        let trueAddress = new Address("constant_val", 0, Type.ConstructBase("PC"));
+                        let falseAddress = new Address("constant_val", 0, Type.ConstructBase("PC"));
+                        let trueInstruction = new Quadruple("if <", a.address, b.address, trueAddress);
+                        let falseInstruction = new Quadruple("goto", undefined, undefined, falseAddress);
+                        let ret = new ObjectDescriptor(new Address("constant_val",-1,Type.ConstructBase("boolean")));//需要回填，所以value是没用的,type有用
                         ret.quadruples = a.quadruples.concat(b.quadruples);
-                        ret.quadruples.push(q1);
+                        ret.quadruples.push(trueInstruction);
+                        ret.quadruples.push(falseInstruction);
+                        ret.trueList.push(trueAddress);
+                        ret.falseList.push(falseAddress);
                         ret.backPatch = true;
-                        ret.falseList.push(falseInstruction);
                         return ret;
                     } else {
                         throw new SemanticException(`暂时只支持int类型的<运算符`);
@@ -437,7 +438,47 @@ let grammar: Grammar = {
         { "object:object <= W3_0 object": {} },
         { "object:object > W3_0 object": {} },
         { "object:object >= W3_0 object": {} },
-        { "object:object || W3_0 object": {} },
+        {
+            "object:object || W3_0 object": {
+                action: function ($, s): ObjectDescriptor {
+                    let a = $[0] as ObjectDescriptor;
+                    let b = $[3] as ObjectDescriptor;
+                    if ((a.address.type.type == "base_type" && a.address.type.basic_type == "boolean") && (b.address.type.type == "base_type" && b.address.type.basic_type == "boolean")) {
+                        if (!a.backPatch) {
+                            let trueAddress = new Address("constant_val", 0, Type.ConstructBase("PC"));
+                            let falseAddress = new Address("constant_val", 0, Type.ConstructBase("PC"));
+                            let trueInstruction = new Quadruple("if", a.address, undefined, trueAddress);
+                            let falseInstruction = new Quadruple("goto", undefined, undefined, falseAddress);
+                            a.quadruples.push(trueInstruction);
+                            a.quadruples.push(falseInstruction);
+                            a.trueList.push(trueAddress);
+                            a.falseList.push(falseAddress);
+                            a.backPatch = true;
+                        }
+                        if (!b.backPatch) {
+                            let trueAddress = new Address("constant_val", 0, Type.ConstructBase("PC"));
+                            let falseAddress = new Address("constant_val", 0, Type.ConstructBase("PC"));
+                            let trueInstruction = new Quadruple("if", b.address, undefined, trueAddress);
+                            let falseInstruction = new Quadruple("goto", undefined, undefined, falseAddress);
+                            b.quadruples.push(trueInstruction);
+                            b.quadruples.push(falseInstruction);
+                            b.trueList.push(trueAddress);
+                            b.falseList.push(falseAddress);
+                            b.backPatch = true;
+                        }
+                        let ret = new ObjectDescriptor(new Address("constant_val",-1,Type.ConstructBase("boolean")));//需要回填，所以value是没用的,type有用
+                        ret.quadruples = a.quadruples.concat(b.quadruples);
+                        ret.backPatch = true;
+                        BackPatchTools.backpatch(a.falseList, b.quadruples[0].pc);
+                        ret.trueList = BackPatchTools.merge(a.trueList, b.trueList);
+                        ret.falseList = b.falseList;
+                        return ret;
+                    }else{
+                        throw new SemanticException(`||运算符两侧必须是boolean`);
+                    }
+                }
+            }
+        },
         { "object:object && W3_0 object": {} },
         { "object:object == W3_0 object": {} },
         { "object:object ? object : object": { priority: "?" } },
