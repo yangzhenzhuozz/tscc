@@ -6,48 +6,29 @@ function f():int{
         var d:int;
         var e:int;
         var f:int;
+        if(a){
+            d+e;
+            f=e+f;
+        }
+        if(d+e<f){
+            d+e;
+            f=e+f;
+        }
         if(a||b||d+e<f){
             d+e;
-            e+f;
-        }
-        if(a||b||c+b){
-            a+b;
-            b+c;
+            f=e+f;
         }
         if(a||b||c){
-            a+b;
-            b+c;
+            d+e;
+            f=e+f;
         }
-        if(a){
-            a+b;
-            b+c;
+        if(a&&b&&d+e<f){
+            d+e;
+            f=e+f;
         }
-        if(a+b<c){
-            a+b;
-        }
-        if(a||b){
-            a+b;
-        }
-        if(a||b+c){
-            a+b;
-        }
-        if(a||b+c<a){
-            a+b;
-        }
-        if(a||b+c<a+b){
-            a+b;
-        }
-        if(a+b||b){
-            a+b;
-        }
-        if(a+b<c||b+c){
-            a+b;
-        }
-        if(a+b<c+a||b+c<a){
-            a+b;
-        }
-        if(a<b||b+c<a+b){
-            a+b;
+        if(a&&b&&c){
+            d+e;
+            f=e+f;
         }
     }
     return a;

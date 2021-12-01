@@ -389,7 +389,18 @@ let grammar: Grammar = {
         { "object:( parameters ) => { statements }": {} },//lambda
         { "object:( object )": {} },
         { "object:object . id": {} },
-        { "object:object = W3_0 object": {} },
+        {
+            "object:object = W3_0 object": {
+                action: function ($, s): ObjectDescriptor {
+                    let a = $[0] as ObjectDescriptor;
+                    let b = $[3] as ObjectDescriptor;
+                    let ret = new ObjectDescriptor(a.address);
+                    ret.quadruples = a.quadruples.concat(b.quadruples);
+                    ret.quadruples.push(new Quadruple("=", b.address, undefined, a.address));
+                    return ret;
+                }
+            }
+        },
         {
             "object:object + W3_0 object": {
                 action: function ($, s): ObjectDescriptor {
@@ -421,7 +432,7 @@ let grammar: Grammar = {
                         let falseAddress = new Address("constant_val", 0, Type.ConstructBase("PC"));
                         let trueInstruction = new Quadruple("if <", a.address, b.address, trueAddress);
                         let falseInstruction = new Quadruple("goto", undefined, undefined, falseAddress);
-                        let ret = new ObjectDescriptor(new Address("constant_val",-1,Type.ConstructBase("boolean")));//需要回填，所以value是没用的,type有用
+                        let ret = new ObjectDescriptor(new Address("constant_val", -1, Type.ConstructBase("boolean")));//需要回填，所以value是没用的,type有用
                         ret.quadruples = a.quadruples.concat(b.quadruples);
                         ret.quadruples.push(trueInstruction);
                         ret.quadruples.push(falseInstruction);
@@ -438,6 +449,7 @@ let grammar: Grammar = {
         { "object:object <= W3_0 object": {} },
         { "object:object > W3_0 object": {} },
         { "object:object >= W3_0 object": {} },
+        { "object:object == W3_0 object": {} },
         {
             "object:object || W3_0 object": {
                 action: function ($, s): ObjectDescriptor {
@@ -466,22 +478,61 @@ let grammar: Grammar = {
                             b.falseList.push(falseAddress);
                             b.backPatch = true;
                         }
-                        let ret = new ObjectDescriptor(new Address("constant_val",-1,Type.ConstructBase("boolean")));//需要回填，所以value是没用的,type有用
+                        let ret = new ObjectDescriptor(new Address("constant_val", -1, Type.ConstructBase("boolean")));//需要回填，所以value是没用的,type有用
                         ret.quadruples = a.quadruples.concat(b.quadruples);
                         ret.backPatch = true;
                         BackPatchTools.backpatch(a.falseList, b.quadruples[0].pc);
                         ret.trueList = BackPatchTools.merge(a.trueList, b.trueList);
                         ret.falseList = b.falseList;
                         return ret;
-                    }else{
+                    } else {
                         throw new SemanticException(`||运算符两侧必须是boolean`);
                     }
                 }
             }
         },
-        { "object:object && W3_0 object": {} },
-        { "object:object == W3_0 object": {} },
-        { "object:object ? object : object": { priority: "?" } },
+        {
+            "object:object && W3_0 object": {
+                action: function ($, s): ObjectDescriptor {
+                    let a = $[0] as ObjectDescriptor;
+                    let b = $[3] as ObjectDescriptor;
+                    if ((a.address.type.type == "base_type" && a.address.type.basic_type == "boolean") && (b.address.type.type == "base_type" && b.address.type.basic_type == "boolean")) {
+                        if (!a.backPatch) {
+                            let trueAddress = new Address("constant_val", 0, Type.ConstructBase("PC"));
+                            let falseAddress = new Address("constant_val", 0, Type.ConstructBase("PC"));
+                            let trueInstruction = new Quadruple("if", a.address, undefined, trueAddress);
+                            let falseInstruction = new Quadruple("goto", undefined, undefined, falseAddress);
+                            a.quadruples.push(trueInstruction);
+                            a.quadruples.push(falseInstruction);
+                            a.trueList.push(trueAddress);
+                            a.falseList.push(falseAddress);
+                            a.backPatch = true;
+                        }
+                        if (!b.backPatch) {
+                            let trueAddress = new Address("constant_val", 0, Type.ConstructBase("PC"));
+                            let falseAddress = new Address("constant_val", 0, Type.ConstructBase("PC"));
+                            let trueInstruction = new Quadruple("if", b.address, undefined, trueAddress);
+                            let falseInstruction = new Quadruple("goto", undefined, undefined, falseAddress);
+                            b.quadruples.push(trueInstruction);
+                            b.quadruples.push(falseInstruction);
+                            b.trueList.push(trueAddress);
+                            b.falseList.push(falseAddress);
+                            b.backPatch = true;
+                        }
+                        let ret = new ObjectDescriptor(new Address("constant_val", -1, Type.ConstructBase("boolean")));//需要回填，所以value是没用的,type有用
+                        ret.quadruples = a.quadruples.concat(b.quadruples);
+                        ret.backPatch = true;
+                        BackPatchTools.backpatch(a.trueList, b.quadruples[0].pc);
+                        ret.falseList = BackPatchTools.merge(a.falseList, b.falseList);
+                        ret.trueList = b.trueList;
+                        return ret;
+                    } else {
+                        throw new SemanticException(`&&运算符两侧必须是boolean`);
+                    }
+                }
+            }
+        },
+        { "object:object ? object : object": {action:()=>{throw `三目运算符?还没来得及做`},priority: "?" } },
         { "object:object ++": {} },
         { "object:object --": {} },
         { "object:new { anonymous_stmts }": {} },//匿名类，类似C#而不是java

@@ -281,6 +281,7 @@ class Quadruple {
             case "if <": return `${this.pc}\tif\t${this.arg1}<${this.arg2}\tgoto\t${this.result}\n`;
             case "if >": return `${this.pc}\tif\t${this.arg1}<${this.arg2}\tgoto\t${this.result}\n`;
             case "goto": return `${this.pc}\tgoto\t${this.result}\n`;
+            case "=": return `${this.pc}\t${this.result}\t=\t${this.arg1}\n`;
             default: return `${this.pc}\t${this.result}\t=\t${this.arg1}\t${this.op}\t${this.arg2}\n`;
         }
     }
