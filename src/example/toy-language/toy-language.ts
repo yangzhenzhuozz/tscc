@@ -51,7 +51,7 @@ let grammar: Grammar = {
         },
         { "program_units:program_units W2_0 program_unit": {} },
         { "program_units:": {} },
-        { "program_unit:declare": {} },
+        { "program_unit:declare ;": {} },
         { "program_unit:cass_definition": {} },
         { "import_stmts:": {} },
         { "import_stmts:import_stmts import_stmt": {} },
@@ -66,12 +66,12 @@ let grammar: Grammar = {
         { "class_units:class_units class_unit": {} },
         { "class_units:": {} },
         { "class_unit:cass_definition": {} },
-        { "class_unit:declare": {} },
+        { "class_unit:declare ;": {} },
         { "class_unit:operator_overload": {} },
         { "operator_overload:operator + ( parameter ) : type { statements }": {} },
 
         {
-            "declare:var id : type ;": {
+            "declare:var id : type": {
                 action: function ($, s) {
                     let id = $[1] as string;
                     let type = $[3] as Type;
@@ -205,7 +205,7 @@ let grammar: Grammar = {
                 }
             }
         },
-        { "statement:declare": { action: ($, s) => $[0] } },
+        { "statement:declare ;": { action: ($, s) => $[0] } },
         {
             "statement:return W2_0 object ;": {
                 action: function ($, s): StmtDescriptor {
@@ -283,7 +283,49 @@ let grammar: Grammar = {
         },
         { "statement:lable_def do statement while ( object ) ;": {} },
         { "statement:lable_def while ( object ) statement": {} },
-        { "statement:lable_def for ( for_init ; for_condition ; for_step ) statement": {} },
+        { "statement:lable_def for ( for_loop_block_scope for_init clearObjectTemporary ; for_condition_scope for_condition for_condition_post_processor ; for_step_scope for_step clearObjectTemporary ) for_stmt_scope statement": {} },
+        {
+            "for_stmt_scope:": {
+                //继承路径为for_loop_block_scope->for_condition_scope->for_step_scope
+            }
+        },
+        { "for_step_scope:": {} },
+        {
+            "for_condition_post_processor:": {
+                //清理stmt temporary
+                //需要生成一条跳转指令，等解析完stmt之后回填
+            }
+        },
+        {
+            "for_condition_scope:": {
+                action: function ($, s): StmtScope {
+                    //直接使用for_loop_block_scope创建的stmtscope
+                    debugger
+                    let for_loop_block_scope = s.slice(-4)[0] as StmtScope;
+                    return for_loop_block_scope;
+                }
+            }
+        },
+        {
+            "for_loop_block_scope:": {
+                action: function ($, s): StmtScope {
+                    debugger
+                    let head = s.slice(-4)[0] as StmtScope;
+                    let block = new BlockScope();
+                    block.linkParentScope(head);
+                    let ret = new StmtScope();
+                    ret.linkParentScope(block);
+                    return ret;
+                }
+            }
+        },
+        { "for_init:": {} },
+        { "for_init:declare": {} },
+        { "for_init:object": {} },
+        { "for_condition:": {} },
+        { "for_condition:object": {} },
+        { "for_step:": {} },
+        { "for_step:object": {} },
         { "statement:block": { action: ($, s) => $[0] } },
         { "statement:break lable_use ;": {} },
         { "statement:continue lable_use ;": {} },
@@ -362,15 +404,6 @@ let grammar: Grammar = {
                 }
             }
         },
-
-        { "for_init:": {} },
-        { "for_init:declare": {} },
-        { "for_init:object": {} },
-        { "for_condition:": {} },
-        { "for_condition:object": {} },
-        { "for_step:": {} },
-        { "for_step:object": {} },
-
         {
             "object:id": {
                 action: function ($, s): ObjectDescriptor {
@@ -532,7 +565,7 @@ let grammar: Grammar = {
                 }
             }
         },
-        { "object:object ? object : object": {action:()=>{throw `三目运算符?还没来得及做`},priority: "?" } },
+        { "object:object ? object : object": { action: () => { throw `三目运算符?还没来得及做` }, priority: "?" } },
         { "object:object ++": {} },
         { "object:object --": {} },
         { "object:new { anonymous_stmts }": {} },//匿名类，类似C#而不是java

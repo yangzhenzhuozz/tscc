@@ -1,6 +1,6 @@
 import Parser from "./parser.js";
 import lexer from './lexrule.js';
-import {ParseException} from './parser.js';
+import { ParseException } from './parser.js';
 import fs from 'fs';
 let parser = new Parser();
 lexer.setSource(fs.readFileSync("./src/example/toy-language/test.ty", 'utf-8').toString());
@@ -10,5 +10,9 @@ try {
     let newT = new Date().getTime();
     console.log(`解析源码耗时:${newT - oldT}ms`);
 } catch (e: unknown) {
-    lexer.yyerror(`${e}`);
+    console.log(`${e}`);
+    if (e instanceof ParseException) {
+        console.log(`${e}`);
+        console.log(`${e.stack}`);
+    }
 }

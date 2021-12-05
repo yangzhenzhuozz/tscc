@@ -6,29 +6,8 @@ function f():int{
         var d:int;
         var e:int;
         var f:int;
-        if(a){
-            d+e;
-            f=e+f;
-        }
-        if(d+e<f){
-            d+e;
-            f=e+f;
-        }
-        if(a||b||d+e<f){
-            d+e;
-            f=e+f;
-        }
-        if(a||b||c){
-            d+e;
-            f=e+f;
-        }
-        if(a&&b&&d+e<f){
-            d+e;
-            f=e+f;
-        }
-        if(a&&b&&c){
-            d+e;
-            f=e+f;
+        for(d+e;a;){
+
         }
     }
     return a;
