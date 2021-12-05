@@ -283,35 +283,78 @@ let grammar: Grammar = {
         },
         { "statement:lable_def do statement while ( object ) ;": {} },
         { "statement:lable_def while ( object ) statement": {} },
-        { "statement:lable_def for ( for_loop_block_scope for_init clearObjectTemporary ; for_condition_scope for_condition for_condition_post_processor ; for_step_scope for_step clearObjectTemporary ) for_stmt_scope statement": {} },
+        { "statement:lable_def for ( for_loop_init_scope for_init for_init_post_processor ; for_condition_scope for_condition for_condition_post_processor ; for_step_scope for_step clearObjectTemporary ) for_stmt_scope statement": {} },
         {
-            "for_stmt_scope:": {
-                //继承路径为for_loop_block_scope->for_condition_scope->for_step_scope
+            "for_init_post_processor:": {
+                action: function ($, s) {
+                    let stack = s.slice(-2);
+                    let ScopeContainer = stack[0] as StmtScope;
+                    ScopeContainer.removeTemporary();//清理stmtscope
+                    throw `待完成`;
+                    //生成一条指令跳转到for_condition(等到成功交换for_step和condition后回填)
+                    //考虑为空的情况
+                }
             }
         },
-        { "for_step_scope:": {} },
+        {
+            "for_stmt_scope:": {
+                action: function ($, s) {
+                    //直接使用for_loop_init_scope创建的stmtscope
+                    debugger
+                    let for_loop_init_scope = s.slice(-12)[0] as StmtScope;
+                    return for_loop_init_scope;
+                }
+            }
+        },
+        {
+            "for_step_scope:": {
+                action: function ($, s) {
+                    //直接使用for_loop_init_scope创建的stmtscope
+                    debugger
+                    let for_loop_init_scope = s.slice(-8)[0] as StmtScope;
+                    return for_loop_init_scope;
+                }
+            }
+        },
         {
             "for_condition_post_processor:": {
-                //清理stmt temporary
-                //需要生成一条跳转指令，等解析完stmt之后回填
+                action: function ($, s) {
+                    let stack = s.slice(-2);
+                    let ScopeContainer = stack[0] as StmtScope;
+                    ScopeContainer.removeTemporary();//清理stmtscope
+                    let for_condition = stack[1] as ObjectDescriptor | undefined;
+                    if (for_condition != undefined) {
+                        let trueAddress = new Address("constant_val", 0, Type.ConstructBase("PC"));
+                        let falseAddress = new Address("constant_val", 0, Type.ConstructBase("PC"));
+                        let trueInstruction = new Quadruple("if", for_condition.address, undefined, trueAddress);
+                        let falseInstruction = new Quadruple("goto", undefined, undefined, falseAddress);
+                        for_condition.quadruples.push(trueInstruction);
+                        for_condition.quadruples.push(falseInstruction);
+                        for_condition.trueList.push(trueAddress);
+                        for_condition.falseList.push(falseAddress);
+                        for_condition.backPatch = true;
+                    } else {
+                        //if里面没有语句，不做任何处理
+                    }
+                }
             }
         },
         {
             "for_condition_scope:": {
                 action: function ($, s): StmtScope {
-                    //直接使用for_loop_block_scope创建的stmtscope
+                    //直接使用for_loop_init_scope创建的stmtscope
                     debugger
-                    let for_loop_block_scope = s.slice(-4)[0] as StmtScope;
-                    return for_loop_block_scope;
+                    let for_loop_init_scope = s.slice(-4)[0] as StmtScope;
+                    return for_loop_init_scope;
                 }
             }
         },
         {
-            "for_loop_block_scope:": {
+            "for_loop_init_scope:": {
                 action: function ($, s): StmtScope {
                     debugger
                     let head = s.slice(-4)[0] as StmtScope;
-                    let block = new BlockScope();
+                    let block = new BlockScope();//创建一个blockScope
                     block.linkParentScope(head);
                     let ret = new StmtScope();
                     ret.linkParentScope(block);
@@ -340,11 +383,11 @@ let grammar: Grammar = {
             }
         },
         {
-            "clearObjectTemporary:": {//在每个object后面清理申请的临时空间
+            "clearObjectTemporary:": {//在object后面清理申请的临时空间
                 action: function ($, s) {
                     let stack = s.slice(-2);
                     let ScopeContainer = stack[0] as StmtScope;
-                    ScopeContainer.removeTemporary();
+                    ScopeContainer.removeTemporary();//清理stmtscope
                 }
             }
         },
