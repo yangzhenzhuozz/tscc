@@ -241,6 +241,7 @@ class SemanticException extends Error {
 }
 class Descriptor {
     public quadruples: Quadruple[] = [];
+    public tag:any;//用于附带对象
     public toString(): string {
         let ret = '';
         for (let q of this.quadruples) {

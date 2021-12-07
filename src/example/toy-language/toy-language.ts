@@ -283,16 +283,55 @@ let grammar: Grammar = {
         },
         { "statement:lable_def do statement while ( object ) ;": {} },
         { "statement:lable_def while ( object ) statement": {} },
-        { "statement:lable_def for ( for_loop_init_scope for_init for_init_post_processor ; for_condition_scope for_condition for_condition_post_processor ; for_step_scope for_step clearObjectTemporary ) for_stmt_scope statement": {} },
+        {
+            "statement:lable_def for ( for_loop_init_scope for_init for_init_post_processor ; for_condition_scope for_condition for_condition_post_processor ; for_step_scope for_step for_step_post_processor ) for_stmt_scope statement": {
+                action: function ($, s) {
+                    //回填for_init的跳转指令
+                    //考虑condition和step为空的的情况，决定到底跳转到哪里
+                    //在末尾添加一条跳转指令，回调到step
+                    /**
+                     * init
+                     * step
+                     * condtion (如果有代码则回填)
+                     * stmt
+                     * goto step
+                     */
+                }
+            }
+        },
+        {
+            "for_step_post_processor:": {
+                action: function ($, s) {
+                    let stack = s.slice(-5);
+                    let ScopeContainer = stack[3] as StmtScope;
+                    ScopeContainer.removeTemporary();//清理stmtscope
+                    let condition = stack[0] as undefined | ObjectDescriptor;
+                    let step = stack[4] as undefined | ObjectDescriptor;
+                    if (condition == undefined || step == undefined) {
+                        //任意一个是undefined都不用处理了
+                    } else {
+                        //交换condition和step的指令位置
+                        let first_pc = condition.quadruples[0].pc;
+                        for (let instruction of step.quadruples) {
+                            instruction.pc = first_pc++;
+                        }
+                        for (let instruction of condition.quadruples) {
+                            instruction.pc = first_pc++;
+                        }
+                    }
+                }
+            }
+        },
         {
             "for_init_post_processor:": {
                 action: function ($, s) {
                     let stack = s.slice(-2);
                     let ScopeContainer = stack[0] as StmtScope;
                     ScopeContainer.removeTemporary();//清理stmtscope
-                    throw `待完成`;
-                    //生成一条指令跳转到for_condition(等到成功交换for_step和condition后回填)
-                    //考虑为空的情况
+                    let for_init = stack[1] as StmtDescriptor | ObjectDescriptor;
+                    let address = new Address("constant_val", 0, Type.ConstructBase("PC"));
+                    for_init.quadruples.push(new Quadruple('goto', undefined, undefined, address));
+                    for_init.tag = address;//需要回填的指令
                 }
             }
         },
@@ -300,7 +339,6 @@ let grammar: Grammar = {
             "for_stmt_scope:": {
                 action: function ($, s) {
                     //直接使用for_loop_init_scope创建的stmtscope
-                    debugger
                     let for_loop_init_scope = s.slice(-12)[0] as StmtScope;
                     return for_loop_init_scope;
                 }
@@ -310,7 +348,6 @@ let grammar: Grammar = {
             "for_step_scope:": {
                 action: function ($, s) {
                     //直接使用for_loop_init_scope创建的stmtscope
-                    debugger
                     let for_loop_init_scope = s.slice(-8)[0] as StmtScope;
                     return for_loop_init_scope;
                 }
