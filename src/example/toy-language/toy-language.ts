@@ -302,13 +302,14 @@ let grammar: Grammar = {
         {
             "for_step_post_processor:": {
                 action: function ($, s) {
+                    debugger
                     let stack = s.slice(-5);
                     let ScopeContainer = stack[3] as StmtScope;
                     ScopeContainer.removeTemporary();//清理stmtscope
                     let condition = stack[0] as undefined | ObjectDescriptor;
                     let step = stack[4] as undefined | ObjectDescriptor;
                     if (condition == undefined || step == undefined) {
-                        //任意一个是undefined都不用处理了
+                        //任意一个是undefined都不用处理了,不需要交换
                     } else {
                         //交换condition和step的指令位置
                         let first_pc = condition.quadruples[0].pc;
@@ -380,7 +381,6 @@ let grammar: Grammar = {
             "for_condition_scope:": {
                 action: function ($, s): StmtScope {
                     //直接使用for_loop_init_scope创建的stmtscope
-                    debugger
                     let for_loop_init_scope = s.slice(-4)[0] as StmtScope;
                     return for_loop_init_scope;
                 }
@@ -389,7 +389,6 @@ let grammar: Grammar = {
         {
             "for_loop_init_scope:": {
                 action: function ($, s): StmtScope {
-                    debugger
                     let head = s.slice(-4)[0] as StmtScope;
                     let block = new BlockScope();//创建一个blockScope
                     block.linkParentScope(head);
@@ -400,12 +399,36 @@ let grammar: Grammar = {
             }
         },
         { "for_init:": {} },
-        { "for_init:declare": {} },
-        { "for_init:object": {} },
+        {
+            "for_init:declare": {
+                action: function ($, s) {
+                    return $[0] as StmtDescriptor;
+                }
+            }
+        },
+        {
+            "for_init:object": {
+                action: function ($, s) {
+                    return $[0] as ObjectDescriptor;
+                }
+            }
+        },
         { "for_condition:": {} },
-        { "for_condition:object": {} },
+        {
+            "for_condition:object": {
+                action: function ($, s) {
+                    return $[0] as ObjectDescriptor;
+                }
+            }
+        },
         { "for_step:": {} },
-        { "for_step:object": {} },
+        {
+            "for_step:object": {
+                action: function ($, s) {
+                    return $[0] as ObjectDescriptor;
+                }
+            }
+        },
         { "statement:block": { action: ($, s) => $[0] } },
         { "statement:break lable_use ;": {} },
         { "statement:continue lable_use ;": {} },
