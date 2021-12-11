@@ -6,6 +6,9 @@ function f():int{
         var d:int;
         var e:int;
         var f:int;
+        for(;;){
+            
+        }
         for(d+e;a;a=b){
 
         }

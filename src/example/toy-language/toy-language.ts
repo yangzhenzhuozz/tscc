@@ -286,6 +286,12 @@ let grammar: Grammar = {
         {
             "statement:lable_def for ( for_loop_init_scope for_init for_init_post_processor ; for_condition_scope for_condition for_condition_post_processor ; for_step_scope for_step for_step_post_processor ) for_stmt_scope statement": {
                 action: function ($, s) {
+                    let for_init = $[4] as ObjectDescriptor | StmtDescriptor;
+                    let for_condition = $[8] as ObjectDescriptor | undefined;
+                    let for_step = $[12] as ObjectDescriptor | undefined;
+                    let stmt=$[16] as StmtDescriptor;
+                    debugger
+                    // (for_init?.tag as Address);//回填
                     //回填for_init的跳转指令
                     //考虑condition和step为空的的情况，决定到底跳转到哪里
                     //在末尾添加一条跳转指令，回调到step
@@ -302,7 +308,6 @@ let grammar: Grammar = {
         {
             "for_step_post_processor:": {
                 action: function ($, s) {
-                    debugger
                     let stack = s.slice(-5);
                     let ScopeContainer = stack[3] as StmtScope;
                     ScopeContainer.removeTemporary();//清理stmtscope
@@ -361,7 +366,7 @@ let grammar: Grammar = {
                     let ScopeContainer = stack[0] as StmtScope;
                     ScopeContainer.removeTemporary();//清理stmtscope
                     let for_condition = stack[1] as ObjectDescriptor | undefined;
-                    if (for_condition != undefined) {
+                    if (for_condition != undefined && !for_condition.backPatch) {//如果condition不是空白，且没有回填代码，则为其增加回填代码
                         let trueAddress = new Address("constant_val", 0, Type.ConstructBase("PC"));
                         let falseAddress = new Address("constant_val", 0, Type.ConstructBase("PC"));
                         let trueInstruction = new Quadruple("if", for_condition.address, undefined, trueAddress);
@@ -398,7 +403,11 @@ let grammar: Grammar = {
                 }
             }
         },
-        { "for_init:": {} },
+        { "for_init:": {
+            action:function($,s){
+                return new StmtDescriptor();
+            }
+        } },
         {
             "for_init:declare": {
                 action: function ($, s) {
