@@ -289,7 +289,9 @@ let grammar: Grammar = {
                     let for_init = $[4] as ObjectDescriptor | StmtDescriptor;
                     let for_condition = $[8] as ObjectDescriptor | undefined;
                     let for_step = $[12] as ObjectDescriptor | undefined;
-                    let stmt=$[16] as StmtDescriptor;
+                    let stmt = $[16] as StmtDescriptor;
+                    let jumAddress = new Address("constant_val", 0, Type.ConstructBase("PC"));
+                    stmt.quadruples.push(new Quadruple("goto", undefined, undefined, jumAddress));
                     debugger
                     // (for_init?.tag as Address);//回填
                     //回填for_init的跳转指令
@@ -403,11 +405,13 @@ let grammar: Grammar = {
                 }
             }
         },
-        { "for_init:": {
-            action:function($,s){
-                return new StmtDescriptor();
+        {
+            "for_init:": {
+                action: function ($, s) {
+                    return new StmtDescriptor();
+                }
             }
-        } },
+        },
         {
             "for_init:declare": {
                 action: function ($, s) {
