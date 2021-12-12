@@ -2,10 +2,8 @@ function f():int{
     var a:boolean;
     {
         var b:boolean;
-        var c:boolean;
         var d:int;
         var e:int;
-        var f:int;
         for(;;){
             
         }

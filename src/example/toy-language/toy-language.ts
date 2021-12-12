@@ -285,25 +285,64 @@ let grammar: Grammar = {
         { "statement:lable_def while ( object ) statement": {} },
         {
             "statement:lable_def for ( for_loop_init_scope for_init for_init_post_processor ; for_condition_scope for_condition for_condition_post_processor ; for_step_scope for_step for_step_post_processor ) for_stmt_scope statement": {
-                action: function ($, s) {
+                action: function ($, s): StmtDescriptor {
                     let for_init = $[4] as ObjectDescriptor | StmtDescriptor;
                     let for_condition = $[8] as ObjectDescriptor | undefined;
                     let for_step = $[12] as ObjectDescriptor | undefined;
                     let stmt = $[16] as StmtDescriptor;
-                    let jumAddress = new Address("constant_val", 0, Type.ConstructBase("PC"));
-                    stmt.quadruples.push(new Quadruple("goto", undefined, undefined, jumAddress));
+                    let loopAddress = new Address("constant_val", 0, Type.ConstructBase("PC"));
+                    let loopInstruction = new Quadruple("goto", undefined, undefined, loopAddress);
+                    stmt.quadruples.push(loopInstruction);
                     debugger
-                    // (for_init?.tag as Address);//回填
-                    //回填for_init的跳转指令
-                    //考虑condition和step为空的的情况，决定到底跳转到哪里
-                    //在末尾添加一条跳转指令，回调到step
+                    let ret = new StmtDescriptor();
+                    // 处理boolean回填的问题
+                    if (for_condition == undefined && for_step == undefined) {
+                        loopAddress.value = stmt.quadruples[0].pc;
+                        (for_init.tag as Address).value = stmt.quadruples[0].pc;
+                        ret.quadruples = for_init.quadruples.concat(stmt.quadruples);
+                    } else if (for_condition != undefined && for_step == undefined) {
+                        loopAddress.value = for_condition.quadruples[0].pc;
+                        (for_init.tag as Address).value = for_condition.quadruples[0].pc;
+                        ret.quadruples = for_init.quadruples.concat(for_condition.quadruples).concat(stmt.quadruples);
+                        if (for_condition.backPatch) {//回填
+                            BackPatchTools.backpatch(for_condition.trueList, stmt.quadruples[0].pc);
+                            BackPatchTools.backpatch(for_condition.falseList, loopInstruction.pc + 1);
+                        }
+                    } else if (for_condition == undefined && for_step != undefined) {
+                        loopAddress.value = for_step.quadruples[0].pc;
+                        (for_init.tag as Address).value = for_step.quadruples[0].pc;
+                        ret.quadruples = for_init.quadruples.concat(for_step.quadruples).concat(stmt.quadruples);
+                        if (for_step != undefined && for_step.backPatch) {//回填
+                            //不管如何,step都跳转到condtiton,conditon为undefined则跳转到stmt
+                            BackPatchTools.backpatch(for_step.trueList, stmt.quadruples[0].pc);
+                            BackPatchTools.backpatch(for_step.falseList, stmt.quadruples[0].pc);
+                        }
+                    } else if (for_condition != undefined && for_step != undefined) {
+                        loopAddress.value = for_condition.quadruples[0].pc;
+                        (for_init.tag as Address).value = for_step.quadruples[0].pc;
+                        ret.quadruples = for_init.quadruples.concat(for_step.quadruples).concat(for_condition.quadruples).concat(stmt.quadruples);
+                        if (for_condition.backPatch) {//回填
+                            BackPatchTools.backpatch(for_condition.trueList, stmt.quadruples[0].pc);
+                            BackPatchTools.backpatch(for_condition.falseList, loopInstruction.pc + 1);
+                        }
+                        if (for_step != undefined && for_step.backPatch) {//回填
+                            //不管如何,step都跳转到condtiton
+                            BackPatchTools.backpatch(for_step.trueList, for_condition.quadruples[0].pc);
+                            BackPatchTools.backpatch(for_step.falseList, for_condition.quadruples[0].pc);
+                        }
+                    } else {
+                        throw "没有其他可能了吧"
+                    }
                     /**
                      * init
                      * step
-                     * condtion (如果有代码则回填)
+                     * condtion
                      * stmt
                      * goto step
                      */
+                    console.log(ret.toString());
+                    debugger
+                    return ret;
                 }
             }
         },
