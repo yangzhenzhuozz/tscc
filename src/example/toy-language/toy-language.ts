@@ -293,16 +293,25 @@ let grammar: Grammar = {
                     let loopAddress = new Address("constant_val", 0, Type.ConstructBase("PC"));
                     let loopInstruction = new Quadruple("goto", undefined, undefined, loopAddress);
                     stmt.quadruples.push(loopInstruction);
-                    debugger
                     let ret = new StmtDescriptor();
                     // 处理boolean回填的问题
                     if (for_condition == undefined && for_step == undefined) {
                         loopAddress.value = stmt.quadruples[0].pc;
-                        (for_init.tag as Address).value = stmt.quadruples[0].pc;
+                        if (for_init instanceof ObjectDescriptor && for_init.backPatch) {//回填
+                            BackPatchTools.backpatch(for_init.trueList, stmt.quadruples[0].pc);
+                            BackPatchTools.backpatch(for_init.falseList, stmt.quadruples[0].pc);
+                        } else {
+                            (for_init.tag as Address).value = stmt.quadruples[0].pc;
+                        }
                         ret.quadruples = for_init.quadruples.concat(stmt.quadruples);
                     } else if (for_condition != undefined && for_step == undefined) {
                         loopAddress.value = for_condition.quadruples[0].pc;
-                        (for_init.tag as Address).value = for_condition.quadruples[0].pc;
+                        if (for_init instanceof ObjectDescriptor && for_init.backPatch) {//回填
+                            BackPatchTools.backpatch(for_init.trueList, for_condition.quadruples[0].pc);
+                            BackPatchTools.backpatch(for_init.falseList, for_condition.quadruples[0].pc);
+                        } else {
+                            (for_init.tag as Address).value = for_condition.quadruples[0].pc;
+                        }
                         ret.quadruples = for_init.quadruples.concat(for_condition.quadruples).concat(stmt.quadruples);
                         if (for_condition.backPatch) {//回填
                             BackPatchTools.backpatch(for_condition.trueList, stmt.quadruples[0].pc);
@@ -310,7 +319,12 @@ let grammar: Grammar = {
                         }
                     } else if (for_condition == undefined && for_step != undefined) {
                         loopAddress.value = for_step.quadruples[0].pc;
-                        (for_init.tag as Address).value = for_step.quadruples[0].pc;
+                        if (for_init instanceof ObjectDescriptor && for_init.backPatch) {//回填
+                            BackPatchTools.backpatch(for_init.trueList, for_step.quadruples[0].pc);
+                            BackPatchTools.backpatch(for_init.falseList, for_step.quadruples[0].pc);
+                        } else {
+                            (for_init.tag as Address).value = for_step.quadruples[0].pc;
+                        }
                         ret.quadruples = for_init.quadruples.concat(for_step.quadruples).concat(stmt.quadruples);
                         if (for_step != undefined && for_step.backPatch) {//回填
                             //不管如何,step都跳转到condtiton,conditon为undefined则跳转到stmt
@@ -319,7 +333,12 @@ let grammar: Grammar = {
                         }
                     } else if (for_condition != undefined && for_step != undefined) {
                         loopAddress.value = for_condition.quadruples[0].pc;
-                        (for_init.tag as Address).value = for_step.quadruples[0].pc;
+                        if (for_init instanceof ObjectDescriptor && for_init.backPatch) {//回填
+                            BackPatchTools.backpatch(for_init.trueList, for_step.quadruples[0].pc);
+                            BackPatchTools.backpatch(for_init.falseList, for_step.quadruples[0].pc);
+                        } else {
+                            (for_init.tag as Address).value = for_step.quadruples[0].pc;
+                        }
                         ret.quadruples = for_init.quadruples.concat(for_step.quadruples).concat(for_condition.quadruples).concat(stmt.quadruples);
                         if (for_condition.backPatch) {//回填
                             BackPatchTools.backpatch(for_condition.trueList, stmt.quadruples[0].pc);
@@ -336,99 +355,11 @@ let grammar: Grammar = {
                     /**
                      * init
                      * step
-                     * condtion
+                     * condition
                      * stmt
                      * goto step
                      */
-                    console.log(ret.toString());
-                    debugger
                     return ret;
-                }
-            }
-        },
-        {
-            "for_step_post_processor:": {
-                action: function ($, s) {
-                    let stack = s.slice(-5);
-                    let ScopeContainer = stack[3] as StmtScope;
-                    ScopeContainer.removeTemporary();//清理stmtscope
-                    let condition = stack[0] as undefined | ObjectDescriptor;
-                    let step = stack[4] as undefined | ObjectDescriptor;
-                    if (condition == undefined || step == undefined) {
-                        //任意一个是undefined都不用处理了,不需要交换
-                    } else {
-                        //交换condition和step的指令位置
-                        let first_pc = condition.quadruples[0].pc;
-                        for (let instruction of step.quadruples) {
-                            instruction.pc = first_pc++;
-                        }
-                        for (let instruction of condition.quadruples) {
-                            instruction.pc = first_pc++;
-                        }
-                    }
-                }
-            }
-        },
-        {
-            "for_init_post_processor:": {
-                action: function ($, s) {
-                    let stack = s.slice(-2);
-                    let ScopeContainer = stack[0] as StmtScope;
-                    ScopeContainer.removeTemporary();//清理stmtscope
-                    let for_init = stack[1] as StmtDescriptor | ObjectDescriptor;
-                    let address = new Address("constant_val", 0, Type.ConstructBase("PC"));
-                    for_init.quadruples.push(new Quadruple('goto', undefined, undefined, address));
-                    for_init.tag = address;//需要回填的指令
-                }
-            }
-        },
-        {
-            "for_stmt_scope:": {
-                action: function ($, s) {
-                    //直接使用for_loop_init_scope创建的stmtscope
-                    let for_loop_init_scope = s.slice(-12)[0] as StmtScope;
-                    return for_loop_init_scope;
-                }
-            }
-        },
-        {
-            "for_step_scope:": {
-                action: function ($, s) {
-                    //直接使用for_loop_init_scope创建的stmtscope
-                    let for_loop_init_scope = s.slice(-8)[0] as StmtScope;
-                    return for_loop_init_scope;
-                }
-            }
-        },
-        {
-            "for_condition_post_processor:": {
-                action: function ($, s) {
-                    let stack = s.slice(-2);
-                    let ScopeContainer = stack[0] as StmtScope;
-                    ScopeContainer.removeTemporary();//清理stmtscope
-                    let for_condition = stack[1] as ObjectDescriptor | undefined;
-                    if (for_condition != undefined && !for_condition.backPatch) {//如果condition不是空白，且没有回填代码，则为其增加回填代码
-                        let trueAddress = new Address("constant_val", 0, Type.ConstructBase("PC"));
-                        let falseAddress = new Address("constant_val", 0, Type.ConstructBase("PC"));
-                        let trueInstruction = new Quadruple("if", for_condition.address, undefined, trueAddress);
-                        let falseInstruction = new Quadruple("goto", undefined, undefined, falseAddress);
-                        for_condition.quadruples.push(trueInstruction);
-                        for_condition.quadruples.push(falseInstruction);
-                        for_condition.trueList.push(trueAddress);
-                        for_condition.falseList.push(falseAddress);
-                        for_condition.backPatch = true;
-                    } else {
-                        //if里面没有语句，不做任何处理
-                    }
-                }
-            }
-        },
-        {
-            "for_condition_scope:": {
-                action: function ($, s): StmtScope {
-                    //直接使用for_loop_init_scope创建的stmtscope
-                    let for_loop_init_scope = s.slice(-4)[0] as StmtScope;
-                    return for_loop_init_scope;
                 }
             }
         },
@@ -465,6 +396,32 @@ let grammar: Grammar = {
                 }
             }
         },
+        {
+            "for_init_post_processor:": {
+                action: function ($, s) {
+                    let stack = s.slice(-2);
+                    let ScopeContainer = stack[0] as StmtScope;
+                    ScopeContainer.removeTemporary();//清理stmtscope
+                    let for_init = stack[1] as StmtDescriptor | ObjectDescriptor;
+                    if (for_init instanceof ObjectDescriptor && for_init.backPatch) {
+                        //如果for_init本身是obj，且需要回填,则不增加goto指令
+                    } else {
+                        let address = new Address("constant_val", 0, Type.ConstructBase("PC"));
+                        for_init.quadruples.push(new Quadruple('goto', undefined, undefined, address));
+                        for_init.tag = address;//需要回填的指令
+                    }
+                }
+            }
+        },
+        {
+            "for_condition_scope:": {
+                action: function ($, s): StmtScope {
+                    //直接使用for_loop_init_scope创建的stmtscope
+                    let for_loop_init_scope = s.slice(-4)[0] as StmtScope;
+                    return for_loop_init_scope;
+                }
+            }
+        },
         { "for_condition:": {} },
         {
             "for_condition:object": {
@@ -473,11 +430,82 @@ let grammar: Grammar = {
                 }
             }
         },
+        {
+            "for_condition_post_processor:": {
+                action: function ($, s) {
+                    let stack = s.slice(-2);
+                    let ScopeContainer = stack[0] as StmtScope;
+                    ScopeContainer.removeTemporary();//清理stmtscope
+                    let for_condition = stack[1] as ObjectDescriptor | undefined;
+                    if (for_condition != undefined && !for_condition.backPatch) {//如果condition不是空白，且没有回填代码，则为其增加回填代码
+                        let trueAddress = new Address("constant_val", 0, Type.ConstructBase("PC"));
+                        let falseAddress = new Address("constant_val", 0, Type.ConstructBase("PC"));
+                        let trueInstruction = new Quadruple("if", for_condition.address, undefined, trueAddress);
+                        let falseInstruction = new Quadruple("goto", undefined, undefined, falseAddress);
+                        for_condition.quadruples.push(trueInstruction);
+                        for_condition.quadruples.push(falseInstruction);
+                        for_condition.trueList.push(trueAddress);
+                        for_condition.falseList.push(falseAddress);
+                        for_condition.backPatch = true;
+                    } else {
+                        //if里面没有语句，不做任何处理
+                    }
+                }
+            }
+        },
+        {
+            "for_step_scope:": {
+                action: function ($, s) {
+                    //直接使用for_loop_init_scope创建的stmtscope
+                    let for_loop_init_scope = s.slice(-8)[0] as StmtScope;
+                    return for_loop_init_scope;
+                }
+            }
+        },
         { "for_step:": {} },
         {
             "for_step:object": {
                 action: function ($, s) {
                     return $[0] as ObjectDescriptor;
+                }
+            }
+        },
+        {
+            "for_step_post_processor:": {
+                action: function ($, s) {
+                    let stack = s.slice(-5);
+                    let ScopeContainer = stack[3] as StmtScope;
+                    ScopeContainer.removeTemporary();//清理stmtscope
+                    let condition = stack[0] as undefined | ObjectDescriptor;
+                    let step = stack[4] as undefined | ObjectDescriptor;
+                    if (condition == undefined || step == undefined) {
+                        //任意一个是undefined都不用处理了,不需要交换
+                    } else {
+                        //交换condition和step的指令位置,同时注意跳转指令,实际上如果goto指令还在truelist或者false中，就不需要更改，后面会被回填处理
+                        //因为语义保证了condition和step不可能会跳转到其他地方，他们唯一产生跳转的原因就是内部是boolean运算,所以这里可以放心大胆的处理
+                        let first_pc = condition.quadruples[0].pc;
+                        for (let instruction of step.quadruples) {
+                            instruction.pc = first_pc++;
+                            if (instruction.isJmp) {
+                                (instruction.result.value as number) = (instruction.result.value as number) - condition.quadruples.length;
+                            }
+                        }
+                        for (let instruction of condition.quadruples) {
+                            instruction.pc = first_pc++;
+                            if (instruction.isJmp) {
+                                (instruction.result.value as number) = (instruction.result.value as number) + step.quadruples.length;
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "for_stmt_scope:": {
+                action: function ($, s) {
+                    //直接使用for_loop_init_scope创建的stmtscope
+                    let for_loop_init_scope = s.slice(-12)[0] as StmtScope;
+                    return for_loop_init_scope;
                 }
             }
         },
@@ -568,7 +596,9 @@ let grammar: Grammar = {
                     if (add == undefined) {
                         throw new SemanticException(`未定义的符号:${id}`);
                     }
-                    return new ObjectDescriptor(add);
+                    let ret = new ObjectDescriptor(add);
+                    ret.locationValue = true;
+                    return ret;
                 }
             }
         },
@@ -582,9 +612,27 @@ let grammar: Grammar = {
                 action: function ($, s): ObjectDescriptor {
                     let a = $[0] as ObjectDescriptor;
                     let b = $[3] as ObjectDescriptor;
+                    if (a.address.type.type != b.address.type.type || a.address.type.basic_type != a.address.type.basic_type) {
+                        throw new SemanticException('=号两侧类型不匹配');
+                    }
+                    if (!a.locationValue) {
+                        throw new SemanticException('=号左侧必须是左值');
+                    }
                     let ret = new ObjectDescriptor(a.address);
                     ret.quadruples = a.quadruples.concat(b.quadruples);
-                    ret.quadruples.push(new Quadruple("=", b.address, undefined, a.address));
+                    if (b.backPatch) {
+                        let trueInstruction = new Quadruple("=", new Address("constant_val", 'true', Type.ConstructBase("boolean")), undefined, a.address);
+                        let jmpInstruction = new Quadruple("goto", undefined, undefined, new Address("constant_val", 0, Type.ConstructBase("PC")));
+                        let falseInstruction = new Quadruple("=", new Address("constant_val", 'false', Type.ConstructBase("boolean")), undefined, a.address);
+                        jmpInstruction.result.value = falseInstruction.pc + 1;
+                        ret.quadruples.push(trueInstruction);
+                        ret.quadruples.push(jmpInstruction);
+                        ret.quadruples.push(falseInstruction);
+                        BackPatchTools.backpatch(b.trueList, trueInstruction.pc);
+                        BackPatchTools.backpatch(b.falseList, falseInstruction.pc);
+                    } else {
+                        ret.quadruples.push(new Quadruple("=", b.address, undefined, a.address));
+                    }
                     return ret;
                 }
             }

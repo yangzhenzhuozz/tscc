@@ -1,15 +1,18 @@
 function f():int{
-    var a:boolean;
+    var a:int;
     {
-        var b:boolean;
+        var b:int;
+        var c:int;
         var d:int;
         var e:int;
-        for(;;){
-            
+        var f:int;
+        var g:boolean;
+        for(a<b;c<d&&g;e<f){
+            g=d<e;
         }
-        for(d+e;a;a=b){
-
+        for(a<b;c<d||g;e<f){
+            g=d<e;
         }
     }
     return a;
-}
+};

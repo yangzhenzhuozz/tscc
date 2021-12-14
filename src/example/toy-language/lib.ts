@@ -1,10 +1,16 @@
 type locationType = "global" | "stack" | "class" | "constant_val";//定义寻址模式,global在data区寻址,stack在栈中寻址,class则通过this指针寻址
 class Type {
-    public type: "base_type" | "function" | "array" | undefined;
+    public type: "base_type" | "function" | "array" | "class" | undefined;
     public basic_type: string | undefined;
     public innerType: Type | undefined;
     public argumentTypes: Type[] | undefined;
     public returnType: Type | undefined;
+    public static ConstructClass(name: string) {
+        let result = new Type();
+        result.type = "base_type";
+        result.basic_type = name;
+        return result;
+    }
     public static ConstructBase(name: string) {
         let result = new Type();
         result.type = "base_type";
@@ -49,9 +55,9 @@ class Type {
 }
 class Address {
     public location: locationType;
-    public value: number;
+    public value: number | string;
     public type: Type;
-    constructor(location: locationType, value: number, type: Type) {
+    constructor(location: locationType, value: number | string, type: Type) {
         this.location = location;
         this.value = value;
         this.type = type;
@@ -241,7 +247,7 @@ class SemanticException extends Error {
 }
 class Descriptor {
     public quadruples: Quadruple[] = [];
-    public tag:any;//用于附带对象
+    public tag: any;//用于附带对象
     public toString(): string {
         let ret = '';
         for (let q of this.quadruples) {
@@ -256,6 +262,7 @@ class StmtDescriptor extends Descriptor {
 class ObjectDescriptor extends Descriptor {
     public address: Address;//如果是需要回填的指令，则没有address
     public backPatch: boolean = false;//是否需要回填
+    public locationValue: boolean = false;//是否左值
     public trueList: Address[] = [];
     public falseList: Address[] = [];
     constructor(add: Address) {
@@ -263,18 +270,25 @@ class ObjectDescriptor extends Descriptor {
         this.address = add;
     }
 }
+type operateType = "if" | "if <" | "if >" | "goto" | "=" | "+";//指令的操作类型
 class Quadruple {
     private static PC = 0;
-    public op: string;
+    public op: operateType;
     public arg1: Address | undefined;
     public arg2: Address | undefined;
-    public result: Address | undefined;
+    public result: Address;
     public pc = Quadruple.PC++;
-    constructor(op: string, arg1: Address | undefined, arg2: Address | undefined, ret: Address | undefined) {
+    public isJmp:boolean;//是否为跳转指令,无条件跳转或者有条件跳转都算
+    constructor(op: operateType, arg1: Address | undefined, arg2: Address | undefined, ret: Address) {
         this.op = op;
         this.arg1 = arg1;
         this.arg2 = arg2;
         this.result = ret;
+        if(op=='goto'||op=='if'||op=='if <'||op=='if >'){
+            this.isJmp=true;
+        }else{
+            this.isJmp=false;
+        }
     }
     public toString(): string {
         switch (this.op) {
