@@ -166,6 +166,8 @@ class ClassScope extends Scope {
 }
 class StmtScope extends Scope {
     private numOfVariable = 0;//本次stmt所申请的变量数量
+    public isLoopStmt:boolean=false;//是否是在循环语句中
+    public loopLabel:string|undefined;//
     constructor() {
         super("stack", false);
     }

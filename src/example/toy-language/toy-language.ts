@@ -504,7 +504,20 @@ let grammar: Grammar = {
             "for_stmt_scope:": {
                 action: function ($, s) {
                     //直接使用for_loop_init_scope创建的stmtscope
-                    let for_loop_init_scope = s.slice(-12)[0] as StmtScope;
+                    let stack = s.slice(-16);
+                    let for_loop_init_scope = stack[4] as StmtScope;
+                    let label = stack[1] as string;
+                    let parent = for_loop_init_scope.parentScope;
+                    for (; parent != undefined;) {
+                        if (parent instanceof StmtScope) {
+                            if (parent.isLoopStmt && parent.loopLabel == label) {
+                                throw new SemanticException('label重复');
+                            }
+                        }
+                        parent=parent.parentScope;
+                    }
+                    for_loop_init_scope.isLoopStmt = true;
+                    for_loop_init_scope.loopLabel = label;
                     return for_loop_init_scope;
                 }
             }
@@ -534,7 +547,11 @@ let grammar: Grammar = {
         { "lable_use:": {} },
         { "lable_use:id": {} },
         { "lable_def:": {} },
-        { "lable_def:id :": {} },
+        {
+            "lable_def:id :": {
+                action: ($, s) => $[0]
+            }
+        },
         { "switch_bodys:": {} },
         { "switch_bodys:switch_bodys switch_body": {} },
         { "switch_body:case constant_val : statement": {} },
