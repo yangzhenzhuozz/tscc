@@ -166,8 +166,10 @@ class ClassScope extends Scope {
 }
 class StmtScope extends Scope {
     private numOfVariable = 0;//本次stmt所申请的变量数量
-    public isLoopStmt:boolean=false;//是否是在循环语句中
-    public loopLabel:string|undefined;//
+    public isLoopStmt: boolean = false;//是否是在循环语句中
+    public loopLabel: string | undefined;//是否有label
+    public breakInstruction: Quadruple[] = [];//回填break指令
+    public continueInstruction: Quadruple[] = [];//回填continue指令
     constructor() {
         super("stack", false);
     }
@@ -280,16 +282,16 @@ class Quadruple {
     public arg2: Address | undefined;
     public result: Address;
     public pc = Quadruple.PC++;
-    public isJmp:boolean;//是否为跳转指令,无条件跳转或者有条件跳转都算
+    public isJmp: boolean;//是否为跳转指令,无条件跳转或者有条件跳转都算
     constructor(op: operateType, arg1: Address | undefined, arg2: Address | undefined, ret: Address) {
         this.op = op;
         this.arg1 = arg1;
         this.arg2 = arg2;
         this.result = ret;
-        if(op=='goto'||op=='if'||op=='if <'||op=='if >'){
-            this.isJmp=true;
-        }else{
-            this.isJmp=false;
+        if (op == 'goto' || op == 'if' || op == 'if <' || op == 'if >') {
+            this.isJmp = true;
+        } else {
+            this.isJmp = false;
         }
     }
     public toString(): string {

@@ -508,13 +508,15 @@ let grammar: Grammar = {
                     let for_loop_init_scope = stack[4] as StmtScope;
                     let label = stack[1] as string;
                     let parent = for_loop_init_scope.parentScope;
-                    for (; parent != undefined;) {
-                        if (parent instanceof StmtScope) {
-                            if (parent.isLoopStmt && parent.loopLabel == label) {
-                                throw new SemanticException('label重复');
+                    if (label != undefined) {
+                        for (; parent != undefined;) {
+                            if (parent instanceof StmtScope) {
+                                if (parent.isLoopStmt && parent.loopLabel == label) {
+                                    throw new SemanticException(`标签:${label}重复`);
+                                }
                             }
+                            parent = parent.parentScope;
                         }
-                        parent=parent.parentScope;
                     }
                     for_loop_init_scope.isLoopStmt = true;
                     for_loop_init_scope.loopLabel = label;
@@ -523,7 +525,17 @@ let grammar: Grammar = {
             }
         },
         { "statement:block": { action: ($, s) => $[0] } },
-        { "statement:break lable_use ;": {} },
+        {
+            "statement:break lable_use ;": {
+                action: function ($, s) {
+                    //判断是否有label,决定跳转指令
+                    let label = $[1] as string | undefined;
+                    let head = s.slice(-1)[0] as Scope;
+                    let parent: Scope | undefined = head;
+                    debugger
+                }
+            }
+        },
         { "statement:continue lable_use ;": {} },
         { "statement:switch ( object ) { switch_bodys }": {} },
         {
@@ -545,7 +557,11 @@ let grammar: Grammar = {
             }
         },
         { "lable_use:": {} },
-        { "lable_use:id": {} },
+        {
+            "lable_use:id": {
+                action: ($, s) => $[0]
+            }
+        },
         { "lable_def:": {} },
         {
             "lable_def:id :": {
