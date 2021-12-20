@@ -289,6 +289,7 @@ let grammar: Grammar = {
                     let for_init = $[4] as ObjectDescriptor | StmtDescriptor;
                     let for_condition = $[8] as ObjectDescriptor | undefined;
                     let for_step = $[12] as ObjectDescriptor | undefined;
+                    let for_stmt_scope = $[15] as StmtScope;
                     let stmt = $[16] as StmtDescriptor;
                     let loopAddress = new Address("constant_val", 0, Type.ConstructBase("PC"));
                     let loopInstruction = new Quadruple("goto", undefined, undefined, loopAddress);
@@ -352,6 +353,8 @@ let grammar: Grammar = {
                     } else {
                         throw "没有其他可能了吧"
                     }
+                    BackPatchTools.backpatch(for_stmt_scope.breakAddresses, ret.quadruples.slice(-1)[0].pc + 1);
+                    BackPatchTools.backpatch(for_stmt_scope.continueAddresses, loopAddress.value);
                     /**
                      * init
                      * step
@@ -527,16 +530,78 @@ let grammar: Grammar = {
         { "statement:block": { action: ($, s) => $[0] } },
         {
             "statement:break lable_use ;": {
-                action: function ($, s) {
+                action: function ($, s): StmtDescriptor {
                     //判断是否有label,决定跳转指令
                     let label = $[1] as string | undefined;
                     let head = s.slice(-1)[0] as Scope;
                     let parent: Scope | undefined = head;
-                    debugger
+                    let ret = new StmtDescriptor();
+                    let breakAddress = new Address("constant_val", -1, Type.ConstructBase("PC"));
+                    ret.quadruples.push(new Quadruple("goto", undefined, undefined, breakAddress));
+                    if (label == undefined) {
+                        //搜索最靠近的一层循环
+                        for (; ; parent = parent.parentScope) {
+                            if (parent == undefined) {
+                                throw new SemanticException(`break必须在loop中`);
+                            }
+                            if (parent instanceof StmtScope && parent.isLoopStmt) {
+                                parent.breakAddresses.push(breakAddress);
+                                break;
+                            }
+                        }
+                    } else {
+                        //搜索最靠近的一层循环
+                        for (; ; parent = parent.parentScope) {
+                            if (parent == undefined) {
+                                throw new SemanticException(`无法找到label:${label}`);
+                            }
+                            if (parent instanceof StmtScope && parent.isLoopStmt && parent.loopLabel == label) {
+                                parent.breakAddresses.push(breakAddress);
+                                break;
+                            }
+                        }
+                    }
+                    return ret;
                 }
             }
         },
-        { "statement:continue lable_use ;": {} },
+        {
+            "statement:continue lable_use ;": {
+                action: function ($, s): StmtDescriptor {
+                    //判断是否有label,决定跳转指令
+                    let label = $[1] as string | undefined;
+                    let head = s.slice(-1)[0] as Scope;
+                    let parent: Scope | undefined = head;
+                    let ret = new StmtDescriptor();
+                    let breakAddress = new Address("constant_val", -1, Type.ConstructBase("PC"));
+                    ret.quadruples.push(new Quadruple("goto", undefined, undefined, breakAddress));
+                    if (label == undefined) {
+                        //搜索最靠近的一层循环
+                        for (; ; parent = parent.parentScope) {
+                            if (parent == undefined) {
+                                throw new SemanticException(`break必须在loop中`);
+                            }
+                            if (parent instanceof StmtScope && parent.isLoopStmt) {
+                                parent.continueAddresses.push(breakAddress);
+                                break;
+                            }
+                        }
+                    } else {
+                        //搜索最靠近的一层循环
+                        for (; ; parent = parent.parentScope) {
+                            if (parent == undefined) {
+                                throw new SemanticException(`无法找到label:${label}`);
+                            }
+                            if (parent instanceof StmtScope && parent.isLoopStmt && parent.loopLabel == label) {
+                                parent.continueAddresses.push(breakAddress);
+                                break;
+                            }
+                        }
+                    }
+                    return ret;
+                }
+            }
+        },
         { "statement:switch ( object ) { switch_bodys }": {} },
         {
             "statement:object clearObjectTemporary ;": {

@@ -7,11 +7,16 @@ function f():int{
         var e:int;
         var f:int;
         var g:boolean;
-        a:for(a<b;c<d&&g;e<f){
-            g=d<e;
-            for(a<b;c<d||g;e<f){
-                g=d<e;
+        a:for(;;){
+            a=b+c;
+            break;
+            continue;
+            for(;;){
+                d=e+f;
+                break;
+                continue;
                 break a;
+                continue a;
             }
         }
     }

@@ -168,8 +168,8 @@ class StmtScope extends Scope {
     private numOfVariable = 0;//本次stmt所申请的变量数量
     public isLoopStmt: boolean = false;//是否是在循环语句中
     public loopLabel: string | undefined;//是否有label
-    public breakInstruction: Quadruple[] = [];//回填break指令
-    public continueInstruction: Quadruple[] = [];//回填continue指令
+    public breakAddresses: Address[] = [];//回填break指令
+    public continueAddresses: Address[] = [];//回填continue指令
     constructor() {
         super("stack", false);
     }
@@ -306,7 +306,7 @@ class Quadruple {
     }
 }
 class BackPatchTools {
-    public static backpatch(addresses: Address[], value: number) {
+    public static backpatch(addresses: Address[], value: number | string) {
         for (let address of addresses) {
             address.value = value;
         }
