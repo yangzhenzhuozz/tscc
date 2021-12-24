@@ -1,2 +1,2 @@
-Address.toString
-Quadruple.toString
+解析到function,判断是否被包含在classSopce中,添加this参数,如果是lambda则判断是否需要将this捕获
+如果解析到id，判断是不是在classSopce中，如果是则等待回填，否则直接报错

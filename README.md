@@ -253,7 +253,7 @@ B:b a s
 > new Parser().parse(new Lex());//Lex为词法分析器
 > ```
 # parser的使用
-> 如上面所说,使用tscc生成parser之后,调用这个类的parse方法即可,该方法的返回值为accept定义的返回值,如果在分析过程中遇到错误，将会抛出ParseException异常
+> 如上面所说,使用tscc生成parser之后,调用这个类的parse方法即可,该方法的返回值为accept定义的返回值,如果在分析过程中遇到错误，将会调用yyerror函数提示并抛出ParseException异常,其他自定义异常用户可自行处理
 # demo
 > 参考四则运算demo(这个demo我改过，运行步骤已经变了)  
 > /src/example/calculate/calculate.ts  

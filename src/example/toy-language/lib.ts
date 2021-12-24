@@ -1,16 +1,12 @@
 type locationType = "global" | "stack" | "class" | "constant_val";//定义寻址模式,global在data区寻址,stack在栈中寻址,class则通过this指针寻址
 class Type {
-    public type: "base_type" | "function" | "array" | "class" | undefined;
+    public type: "base_type" | "function" | "array"| undefined;//class也算是base_type,array和function是特殊的对象
     public basic_type: string | undefined;
     public innerType: Type | undefined;
     public argumentTypes: Type[] | undefined;
     public returnType: Type | undefined;
-    public static ConstructClass(name: string) {
-        let result = new Type();
-        result.type = "base_type";
-        result.basic_type = name;
-        return result;
-    }
+    public fields:Map<string,Type>=new Map();
+    public methods:Map<string,Type>=new Map();
     public static ConstructBase(name: string) {
         let result = new Type();
         result.type = "base_type";

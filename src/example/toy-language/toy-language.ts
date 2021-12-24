@@ -248,13 +248,24 @@ let grammar: Grammar = {
             }
         },
         {
-            "statement:if ( W3_0 object objInIfCondition ) W7_0_for_stmt statement else W10_0_for_stmt statement": {
+            "statement:if ( W3_0 object objInIfCondition ) W7_0_for_stmt statement ELSE W10_0_for_stmt statement": {
                 action: function ($, s) {
-                    let stmt1 = $[6] as StmtDescriptor;
-                    let stmt2 = $[9] as StmtDescriptor;
+                    let stmt1 = $[7] as StmtDescriptor;
+                    let stmt2 = $[10] as StmtDescriptor;
                     let ret = new StmtDescriptor();
+                    let obj = $[3] as ObjectDescriptor;
                     ret.hasReturn = stmt1.hasReturn && stmt2.hasReturn;
-                    "判断object是值类型的还是需要回填的那种，比如if(a) xxx 这种则直接对a进行判断，如果是 if(xx||xx) xxx 这种，则进行回填";
+                    debugger
+                    //经过objInIfCondition的处理,obj一定是需要回填的代码
+                    BackPatchTools.backpatch(obj.trueList, stmt1.quadruples.slice(-1)[0].pc);
+                    if (stmt2.quadruples.length != 0) {
+                        (stmt1.tag as Address).value = stmt2.quadruples.slice(-1)[0].pc + 1;
+                        BackPatchTools.backpatch(obj.falseList, stmt2.quadruples[0].pc);
+                    } else {
+                        (stmt1.tag as Address).value = stmt1.quadruples.slice(-1)[0].pc + 1;
+                        BackPatchTools.backpatch(obj.falseList, stmt1.quadruples.slice(-1)[0].pc + 1);
+                    }
+                    ret.quadruples = obj.quadruples.concat(stmt1.quadruples).concat(stmt2.quadruples);
                     return ret;
                 }
             }
@@ -268,8 +279,8 @@ let grammar: Grammar = {
                     ScopeContainer.removeTemporary();//移除临时变量
                     //如果obj是不需要回填的代码,如if(a)，则为其生成回填代码
                     if (!obj.backPatch) {
-                        let trueAddress = new Address("constant_val", 0, Type.ConstructBase("PC"));
-                        let falseAddress = new Address("constant_val", 0, Type.ConstructBase("PC"));
+                        let trueAddress = new Address("constant_val", -1, Type.ConstructBase("PC"));
+                        let falseAddress = new Address("constant_val", -1, Type.ConstructBase("PC"));
                         let trueInstruction = new Quadruple("if", obj.address, undefined, trueAddress);
                         let falseInstruction = new Quadruple("goto", undefined, undefined, falseAddress);
                         obj.quadruples.push(trueInstruction);
@@ -281,8 +292,19 @@ let grammar: Grammar = {
                 }
             }
         },
-        { "statement:lable_def do statement while ( object ) ;": {} },
-        { "statement:lable_def while ( object ) statement": {} },
+        {
+            "ELSE:else": {//用于给stmt末尾加上一个goto指令
+                action: function ($, s) {
+                    let stmt = s.slice(-1)[0] as StmtDescriptor;
+                    let jmpAddress = new Address("constant_val", -1, Type.ConstructBase("PC"));
+                    let jmpInstruction = new Quadruple("goto", undefined, undefined, jmpAddress);
+                    stmt.quadruples.push(jmpInstruction);
+                    stmt.tag = jmpAddress;
+                }
+            }
+        },
+        { "statement:lable_def do statement while ( object ) ;": {action:()=>new SemanticException('暂不支持do statement语句')} },
+        { "statement:lable_def while ( object ) statement": {action:()=>new SemanticException('暂不支持while语句')} },
         {
             "statement:lable_def for ( for_loop_init_scope for_init for_init_post_processor ; for_condition_scope for_condition for_condition_post_processor ; for_step_scope for_step for_step_post_processor ) for_stmt_scope statement": {
                 action: function ($, s): StmtDescriptor {
@@ -291,7 +313,7 @@ let grammar: Grammar = {
                     let for_step = $[12] as ObjectDescriptor | undefined;
                     let for_stmt_scope = $[15] as StmtScope;
                     let stmt = $[16] as StmtDescriptor;
-                    let loopAddress = new Address("constant_val", 0, Type.ConstructBase("PC"));
+                    let loopAddress = new Address("constant_val", -1, Type.ConstructBase("PC"));
                     let loopInstruction = new Quadruple("goto", undefined, undefined, loopAddress);
                     stmt.quadruples.push(loopInstruction);
                     let ret = new StmtDescriptor();
@@ -409,7 +431,7 @@ let grammar: Grammar = {
                     if (for_init instanceof ObjectDescriptor && for_init.backPatch) {
                         //如果for_init本身是obj，且需要回填,则不增加goto指令
                     } else {
-                        let address = new Address("constant_val", 0, Type.ConstructBase("PC"));
+                        let address = new Address("constant_val", -1, Type.ConstructBase("PC"));
                         for_init.quadruples.push(new Quadruple('goto', undefined, undefined, address));
                         for_init.tag = address;//需要回填的指令
                     }
@@ -441,8 +463,8 @@ let grammar: Grammar = {
                     ScopeContainer.removeTemporary();//清理stmtscope
                     let for_condition = stack[1] as ObjectDescriptor | undefined;
                     if (for_condition != undefined && !for_condition.backPatch) {//如果condition不是空白，且没有回填代码，则为其增加回填代码
-                        let trueAddress = new Address("constant_val", 0, Type.ConstructBase("PC"));
-                        let falseAddress = new Address("constant_val", 0, Type.ConstructBase("PC"));
+                        let trueAddress = new Address("constant_val", -1, Type.ConstructBase("PC"));
+                        let falseAddress = new Address("constant_val", -1, Type.ConstructBase("PC"));
                         let trueInstruction = new Quadruple("if", for_condition.address, undefined, trueAddress);
                         let falseInstruction = new Quadruple("goto", undefined, undefined, falseAddress);
                         for_condition.quadruples.push(trueInstruction);
@@ -602,7 +624,7 @@ let grammar: Grammar = {
                 }
             }
         },
-        { "statement:switch ( object ) { switch_bodys }": {} },
+        { "statement:switch ( object ) { switch_bodys }": {action:()=>new SemanticException('暂不支持switch语句')} },
         {
             "statement:object clearObjectTemporary ;": {
                 action: function ($, s): StmtDescriptor {
@@ -762,8 +784,8 @@ let grammar: Grammar = {
                     let a = $[0] as ObjectDescriptor;
                     let b = $[3] as ObjectDescriptor;
                     if ((a.address.type.type == "base_type" && a.address.type.basic_type == "int") && (b.address.type.type == "base_type" && b.address.type.basic_type == "int")) {
-                        let trueAddress = new Address("constant_val", 0, Type.ConstructBase("PC"));
-                        let falseAddress = new Address("constant_val", 0, Type.ConstructBase("PC"));
+                        let trueAddress = new Address("constant_val", -1, Type.ConstructBase("PC"));
+                        let falseAddress = new Address("constant_val", -1, Type.ConstructBase("PC"));
                         let trueInstruction = new Quadruple("if <", a.address, b.address, trueAddress);
                         let falseInstruction = new Quadruple("goto", undefined, undefined, falseAddress);
                         let ret = new ObjectDescriptor(new Address("constant_val", -1, Type.ConstructBase("boolean")));//需要回填，所以value是没用的,type有用
@@ -791,8 +813,8 @@ let grammar: Grammar = {
                     let b = $[3] as ObjectDescriptor;
                     if ((a.address.type.type == "base_type" && a.address.type.basic_type == "boolean") && (b.address.type.type == "base_type" && b.address.type.basic_type == "boolean")) {
                         if (!a.backPatch) {
-                            let trueAddress = new Address("constant_val", 0, Type.ConstructBase("PC"));
-                            let falseAddress = new Address("constant_val", 0, Type.ConstructBase("PC"));
+                            let trueAddress = new Address("constant_val", -1, Type.ConstructBase("PC"));
+                            let falseAddress = new Address("constant_val", -1, Type.ConstructBase("PC"));
                             let trueInstruction = new Quadruple("if", a.address, undefined, trueAddress);
                             let falseInstruction = new Quadruple("goto", undefined, undefined, falseAddress);
                             a.quadruples.push(trueInstruction);
@@ -802,8 +824,8 @@ let grammar: Grammar = {
                             a.backPatch = true;
                         }
                         if (!b.backPatch) {
-                            let trueAddress = new Address("constant_val", 0, Type.ConstructBase("PC"));
-                            let falseAddress = new Address("constant_val", 0, Type.ConstructBase("PC"));
+                            let trueAddress = new Address("constant_val", -1, Type.ConstructBase("PC"));
+                            let falseAddress = new Address("constant_val", -1, Type.ConstructBase("PC"));
                             let trueInstruction = new Quadruple("if", b.address, undefined, trueAddress);
                             let falseInstruction = new Quadruple("goto", undefined, undefined, falseAddress);
                             b.quadruples.push(trueInstruction);
@@ -832,8 +854,8 @@ let grammar: Grammar = {
                     let b = $[3] as ObjectDescriptor;
                     if ((a.address.type.type == "base_type" && a.address.type.basic_type == "boolean") && (b.address.type.type == "base_type" && b.address.type.basic_type == "boolean")) {
                         if (!a.backPatch) {
-                            let trueAddress = new Address("constant_val", 0, Type.ConstructBase("PC"));
-                            let falseAddress = new Address("constant_val", 0, Type.ConstructBase("PC"));
+                            let trueAddress = new Address("constant_val", -1, Type.ConstructBase("PC"));
+                            let falseAddress = new Address("constant_val", -1, Type.ConstructBase("PC"));
                             let trueInstruction = new Quadruple("if", a.address, undefined, trueAddress);
                             let falseInstruction = new Quadruple("goto", undefined, undefined, falseAddress);
                             a.quadruples.push(trueInstruction);
@@ -843,8 +865,8 @@ let grammar: Grammar = {
                             a.backPatch = true;
                         }
                         if (!b.backPatch) {
-                            let trueAddress = new Address("constant_val", 0, Type.ConstructBase("PC"));
-                            let falseAddress = new Address("constant_val", 0, Type.ConstructBase("PC"));
+                            let trueAddress = new Address("constant_val", -1, Type.ConstructBase("PC"));
+                            let falseAddress = new Address("constant_val", -1, Type.ConstructBase("PC"));
                             let trueInstruction = new Quadruple("if", b.address, undefined, trueAddress);
                             let falseInstruction = new Quadruple("goto", undefined, undefined, falseAddress);
                             b.quadruples.push(trueInstruction);

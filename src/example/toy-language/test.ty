@@ -1,24 +1,9 @@
 function f():int{
-    var a:int;
-    {
-        var b:int;
-        var c:int;
-        var d:int;
-        var e:int;
-        var f:int;
-        var g:boolean;
-        a:for(;;){
-            a=b+c;
-            break;
-            continue;
-            for(;;){
-                d=e+f;
-                break;
-                continue;
-                break a;
-                continue a;
-            }
-        }
+    var a:int;aa
+    if(a<0){
+        return a;
+    }else{
+    return a;
     }
     return a;
 };
