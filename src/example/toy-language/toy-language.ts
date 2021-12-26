@@ -1,11 +1,15 @@
 import fs from "fs";
 import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
-import lexer from "./lexrule.js";
 import { BackPatchTools, Descriptor, Scope, Address, SemanticException, Type, GlobalScope, FunctionScope, ClassScope, StmtScope, StmtDescriptor, ObjectDescriptor, BlockScope, Quadruple } from './lib.js'
+let base_type = new Set(['int', 'double', 'void', 'boolean']);//默认的基础类型
 let grammar: Grammar = {
-    userCode: `import { BackPatchTools, Descriptor, Scope, Address, SemanticException, Type, GlobalScope, FunctionScope, ClassScope, StmtScope, StmtDescriptor, ObjectDescriptor, BlockScope, Quadruple } from './lib.js'`,//让自动生成的代码包含import语句
-    tokens: ['var', '...', ';', 'id', 'constant_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'basic_type', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'sealed', 'this', 'return'],
+    //让自动生成的代码包含import语句
+    userCode: `
+    import { BackPatchTools, Descriptor, Scope, Address, SemanticException, Type, GlobalScope, FunctionScope, ClassScope, StmtScope, StmtDescriptor, ObjectDescriptor, BlockScope, Quadruple } from './lib.js'
+    let base_type=new Set(['int' , 'double', 'void' , 'boolean']);//默认的基础类型
+    `,
+    tokens: ['var', '...', ';', 'id', 'constant_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'sealed', 'this', 'return'],
     association: [
         { 'right': ['='] },
         { 'right': ['?'] },
@@ -73,12 +77,12 @@ let grammar: Grammar = {
             "createClassScope:": {
                 action: function ($, s): ClassScope {
                     let stack = s.slice(-6);
-                    let head = stack[0] as GlobalScope|Scope;
+                    let head = stack[0] as GlobalScope | Scope;
                     let id = stack[3] as string;
-                    if (head instanceof GlobalScope) {
-                        head.AddType(id, Type.ConstructBase(id));//在GlobalScope空间中创建类型
+                    if (!base_type.has(id)) {
+                        base_type.add(id);
                     } else {
-                        throw new Error(`目前只允许在GlobalScope中声明class`);
+                        throw new SemanticException(`类型:${id}重复定义`);
                     }
                     //创建class空间
                     let classScope = new ClassScope(id);
@@ -130,6 +134,17 @@ let grammar: Grammar = {
             "type:basic_type arr_definition": {
                 action: function ($, s) {
                     return $[1];//basic_type的属性已经被继承到arr_definition中了
+                }
+            }
+        },
+        {
+            "basic_type:id": {
+                action: function ($, s): Type {
+                    let id = $[0] as string;
+                    if (!base_type.has(id)) {
+                        throw new SemanticException(`非法类型:${id}`);
+                    }
+                    return Type.ConstructBase(id);
                 }
             }
         },
@@ -266,14 +281,21 @@ let grammar: Grammar = {
                     let obj = $[2] as ObjectDescriptor;
                     let head = s.slice(-1)[0] as Scope;
                     let parent = head.parentScope;
+                    let functionScope: FunctionScope | undefined;
+                    let classScope: ClassScope | undefined;
                     for (; ; parent = parent.parentScope) {//一直向上搜索，直到搜索到classScope
                         if (parent == undefined || parent instanceof FunctionScope) {
                             break;
                         }
                     }
                     if (parent instanceof FunctionScope) {
-                        if (parent.returnType.toString() != obj.address.type.toString()) {
-                            throw new SemanticException(`return类型不匹配\n函数声明返回类型为:${parent.returnType}\n实际返回类型为:${obj.address.type}`);
+                        let retTypeString = parent.returnType.toString();
+                        if (obj.address.isComplete) {
+                            obj.address.classScope!.addBackPatch(obj.address.nameOfClass!, parent.returnType, obj.address);
+                        } else {
+                            if (parent.returnType.toString() != obj.address.type.toString()) {
+                                throw new SemanticException(`return类型不匹配\n函数声明返回类型为:${parent.returnType}\n实际返回类型为:${obj.address.type}`);
+                            }
                         }
                     } else {
                         throw new Error(`编译器内部错误,不可能出现return语句不在FunctionScope的情况`);
@@ -791,7 +813,9 @@ let grammar: Grammar = {
                         }
                         if (parent != undefined) {
                             add = new Address('class', -1, Type.ConstructBase('undefined'));
-                            parent.addBackPatch(id, add);
+                            add.isComplete = true;
+                            add.classScope = parent;
+                            add.nameOfClass = id;
                         } else {
                             throw new SemanticException(`未定义的符号:${id}`);
                         }

@@ -1,8 +1,6 @@
-var a:int;
 class myclass{
-    var a:myclass;
-    function f():int{
-        return a.d;
+    function f():double{
+        return d;
     };
-    var d:int;
+    var d:double;
 }

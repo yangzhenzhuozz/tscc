@@ -3,7 +3,7 @@ type locationType = "global" | "stack" | "class" | "constant_val";//定义寻址
 //两个类型是否相等可以用toString来判断
 class Type {
     public type: "base_type" | "function" | "array" | undefined;//class也算是base_type,array和function是特殊的对象
-    public refType:"reference"|"value"='reference';//引用类型
+    public refType: "reference" | "value" = 'reference';//引用类型
     public basic_type: string | undefined;
     public innerType: Type | undefined;
     public argumentTypes: Type[] | undefined;
@@ -55,6 +55,9 @@ class Address {
     public location: locationType;
     public value: number | string;
     public type: Type;
+    public isComplete: boolean = true;//当前还不知道类型和地址，等待class闭合之后回填
+    public classScope: ClassScope | undefined;//如果isComplete为真，则附带其对应的scope
+    public nameOfClass: string | undefined;//如果isComplete为真，则附带其对应的名字
     constructor(location: locationType, value: number | string, type: Type) {
         this.location = location;
         this.value = value;
@@ -119,20 +122,8 @@ abstract class Scope {
     }
 }
 class GlobalScope extends Scope {
-    public types: Map<string,Type> = new Map();//已经定义的类型
     constructor() {
         super("global", false);
-    }
-    public AddType(name: string,type:Type) {
-        if (this.types.has(name)) {
-            throw new SemanticException(`类型${name}重复定义`);
-        }
-        this.types.set(name,type);
-        lexer.addRule([name, (arg) => { arg.value = Type.ConstructBase(arg.yytext); return 'basic_type'; }]);
-        let oldT = new Date().getTime();
-        lexer.compile();
-        let newT = new Date().getTime();
-        console.log(`重新编译正则耗时${newT - oldT}ms`);
     }
     public createVariable(name: string, type: Type): boolean {
         if (this.checkRedeclaration(name)) {
@@ -161,32 +152,29 @@ class FunctionScope extends Scope {
     }
 }
 class ClassScope extends Scope {
-    public backpatch_list: Map<string, Address[]> = new Map();//需要回填的地址列表
+    public backpatch_list: { name: string, expectedType: Type, address: Address }[] = [];//需要回填的地址列表
     public this_Type: Type;
     constructor(name: string) {
         super("class", false);
         this.this_Type = Type.ConstructBase(name)
     }
     //添加需要回填的地址
-    public addBackPatch(name: string, address: Address) {
-        let addresses = this.backpatch_list.get(name);
-        if (addresses == undefined) {
-            addresses = [];
-            this.backpatch_list.set(name, addresses);
-        }
-        addresses.push(address);
+    //expectedType:期望的类型
+    public addBackPatch(name: string, expectedType: Type, address: Address) {
+        this.backpatch_list.push({ name: name, expectedType: expectedType, address: address });
     }
     //回填
     public backpatch() {
-        for (let [name, addresses] of this.backpatch_list) {
-            let address = this.getVariable(name);
+        for (let obj of this.backpatch_list) {
+            let address = this.getVariable(obj.name);
             if (address == undefined) {
-                throw new SemanticException(`未定义的符号:${name}`);
+                throw new SemanticException(`未定义的符号:${obj.name}`);
             }
-            for (let add of addresses) {
-                add.value = address.value;
-                add.type = address.type;
+            if (obj.expectedType.toString() != address.type.toString()) {
+                throw new SemanticException(`期望类型为${obj.expectedType},实际类型为:${address.type}`);
             }
+            obj.address.value = address.value;
+            obj.address.type = address.type;
         }
     }
     public createVariable(name: string, type: Type): boolean {

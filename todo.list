@@ -1,9 +1,11 @@
 class myclass{    
     function f():int{
         var a:myclass;
-        return a.d;
+        d=e;//这种回填检查还没有做
+        return a.d;//这种已经做了
     };
     var d:int;
+    var e:int;
 }
 在myclass还未封闭的时候,使用了a.d
 生成如下代码
@@ -11,8 +13,6 @@ tmp_0=class.[-1] //在myclass完成的时候回填为0
 tmp_1=tmp_0.[-1] //在myclass类型回填的时候回填为0,类型回填还没做
 
 
-
-class B;//类型前置申明
 class myclass{    
     function f():int{
         var a:myclass;
