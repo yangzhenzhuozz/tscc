@@ -57,16 +57,56 @@ let grammar: Grammar = {
         { "import_stmts:import_stmts import_stmt": {} },
         { "import_stmt:import id as id ;": {} },
 
-        { "cass_definition:modifier class id extends_declare { class_units }": {} },
+        {
+            "cass_definition:modifier class id extends_declare { createClassScope class_units }": {
+                action: function ($, s) {
+                    let classScope = $[5] as ClassScope;
+                    let class_units = $[6] as StmtDescriptor;
+                    classScope.backpatch();
+                    console.log(`${class_units}`);
+                    debugger
+                    `进行类型回填`;
+                }
+            }
+        },
+        {
+            "createClassScope:": {
+                action: function ($, s): ClassScope {
+                    let stack = s.slice(-6);
+                    let head = stack[0] as GlobalScope|Scope;
+                    let id = stack[3] as string;
+                    if (head instanceof GlobalScope) {
+                        head.AddType(id, Type.ConstructBase(id));//在GlobalScope空间中创建类型
+                    } else {
+                        throw new Error(`目前只允许在GlobalScope中声明class`);
+                    }
+                    //创建class空间
+                    let classScope = new ClassScope(id);
+                    classScope.linkParentScope(head);
+                    return classScope;
+                }
+            }
+        },
         { "modifier:": {} },
         { "modifier:valuetype": {} },
         { "modifier:sealed": {} },
         { "extends_declare:extends basic_type": {} },
         { "extends_declare:": {} },
-        { "class_units:class_units class_unit": {} },
+        {
+            "class_units:class_units W2_0 class_unit": {
+                action: function ($, s): StmtDescriptor {
+                    let class_units = $[0] as StmtDescriptor | undefined;
+                    let class_unit = $[2] as StmtDescriptor;
+                    if (class_units != undefined) {
+                        class_unit.quadruples = class_units.quadruples.concat(class_unit.quadruples);
+                    }
+                    return class_unit;
+                }
+            }
+        },
         { "class_units:": {} },
         { "class_unit:cass_definition": {} },
-        { "class_unit:declare ;": {} },
+        { "class_unit:declare ;": { action: ($, s): StmtDescriptor => $[0] as StmtDescriptor } },
         { "class_unit:operator_overload": {} },
         { "operator_overload:operator + ( parameter ) : type { statements }": {} },
 
@@ -77,11 +117,14 @@ let grammar: Grammar = {
                     let type = $[3] as Type;
                     let head = s.slice(-1)[0] as Scope;
                     head.createVariable(id, type);
+                    if (head instanceof ClassScope) {
+                        head.this_Type.fields.set(id, type);//如果父空间是classScope，则为其添加属性
+                    }
                     return new StmtDescriptor();
                 }
             }
         },
-        { "declare:function_definition": {} },
+        { "declare:function_definition": { action: ($, s): StmtDescriptor => $[0] as StmtDescriptor } },
 
         {
             "type:basic_type arr_definition": {
@@ -117,7 +160,7 @@ let grammar: Grammar = {
 
         {
             "function_definition:function id ( parameters ) : type { createFunctionScope statements }": {
-                action: function ($, s) {
+                action: function ($, s): StmtDescriptor {
                     let createFunctionDescriptor = $[8] as FunctionScope;
                     let statements = $[9] as StmtDescriptor;
                     if (createFunctionDescriptor.returnType.type != "base_type" || createFunctionDescriptor.returnType.basic_type != "void") {
@@ -125,7 +168,7 @@ let grammar: Grammar = {
                             throw new SemanticException("函数必须有返回值");
                         }
                     }
-                    console.log(`${statements}`);
+                    return statements;
                 }
             }
         },
@@ -147,7 +190,17 @@ let grammar: Grammar = {
                     //创建函数空间
                     let functionScope = new FunctionScope(returnType);
                     functionScope.linkParentScope(head);
-                    for (let p of parameters) {//在函数空间中定义变量
+
+                    let parent = head.parentScope;
+                    for (; ; parent = parent.parentScope) {//一直向上搜索，直到搜索到classScope
+                        if (parent == undefined || parent instanceof ClassScope) {
+                            break;
+                        }
+                    }
+                    if (parent != undefined) {//如果是在class中定义的函数，则为其添加this变量
+                        functionScope.createVariable('this', parent.this_Type);
+                    }
+                    for (let p of parameters) {//在函数空间中定义参数声明的变量
                         if (!functionScope.createVariable(p[0], p[1])) {
                             throw new SemanticException(head.errorMSG);//并且终止解析
                         }
@@ -210,7 +263,24 @@ let grammar: Grammar = {
             "statement:return W2_0 object ;": {
                 action: function ($, s): StmtDescriptor {
                     let ret = new StmtDescriptor();
+                    let obj = $[2] as ObjectDescriptor;
+                    let head = s.slice(-1)[0] as Scope;
+                    let parent = head.parentScope;
+                    for (; ; parent = parent.parentScope) {//一直向上搜索，直到搜索到classScope
+                        if (parent == undefined || parent instanceof FunctionScope) {
+                            break;
+                        }
+                    }
+                    if (parent instanceof FunctionScope) {
+                        if (parent.returnType.toString() != obj.address.type.toString()) {
+                            throw new SemanticException(`return类型不匹配\n函数声明返回类型为:${parent.returnType}\n实际返回类型为:${obj.address.type}`);
+                        }
+                    } else {
+                        throw new Error(`编译器内部错误,不可能出现return语句不在FunctionScope的情况`);
+                    }
                     ret.hasReturn = true;
+                    ret.quadruples = obj.quadruples;
+                    ret.quadruples.push(new Quadruple("ret", undefined, undefined, obj.address));
                     return ret;
                 }
             }
@@ -255,7 +325,6 @@ let grammar: Grammar = {
                     let ret = new StmtDescriptor();
                     let obj = $[3] as ObjectDescriptor;
                     ret.hasReturn = stmt1.hasReturn && stmt2.hasReturn;
-                    debugger
                     //经过objInIfCondition的处理,obj一定是需要回填的代码
                     BackPatchTools.backpatch(obj.trueList, stmt1.quadruples.slice(-1)[0].pc);
                     if (stmt2.quadruples.length != 0) {
@@ -303,8 +372,8 @@ let grammar: Grammar = {
                 }
             }
         },
-        { "statement:lable_def do statement while ( object ) ;": {action:()=>new SemanticException('暂不支持do statement语句')} },
-        { "statement:lable_def while ( object ) statement": {action:()=>new SemanticException('暂不支持while语句')} },
+        { "statement:lable_def do statement while ( object ) ;": { action: () => new SemanticException('暂不支持do statement语句') } },
+        { "statement:lable_def while ( object ) statement": { action: () => new SemanticException('暂不支持while语句') } },
         {
             "statement:lable_def for ( for_loop_init_scope for_init for_init_post_processor ; for_condition_scope for_condition for_condition_post_processor ; for_step_scope for_step for_step_post_processor ) for_stmt_scope statement": {
                 action: function ($, s): StmtDescriptor {
@@ -624,7 +693,7 @@ let grammar: Grammar = {
                 }
             }
         },
-        { "statement:switch ( object ) { switch_bodys }": {action:()=>new SemanticException('暂不支持switch语句')} },
+        { "statement:switch ( object ) { switch_bodys }": { action: () => new SemanticException('暂不支持switch语句') } },
         {
             "statement:object clearObjectTemporary ;": {
                 action: function ($, s): StmtDescriptor {
@@ -714,7 +783,18 @@ let grammar: Grammar = {
                     let id = $[0];
                     let add = head.getVariable(id);
                     if (add == undefined) {
-                        throw new SemanticException(`未定义的符号:${id}`);
+                        let parent = head.parentScope;
+                        for (; ; parent = parent.parentScope) {//一直向上搜索，直到搜索到classScope
+                            if (parent == undefined || parent instanceof ClassScope) {
+                                break;
+                            }
+                        }
+                        if (parent != undefined) {
+                            add = new Address('class', -1, Type.ConstructBase('undefined'));
+                            parent.addBackPatch(id, add);
+                        } else {
+                            throw new SemanticException(`未定义的符号:${id}`);
+                        }
                     }
                     let ret = new ObjectDescriptor(add);
                     ret.locationValue = true;
@@ -732,8 +812,8 @@ let grammar: Grammar = {
                 action: function ($, s): ObjectDescriptor {
                     let a = $[0] as ObjectDescriptor;
                     let b = $[3] as ObjectDescriptor;
-                    if (a.address.type.type != b.address.type.type || a.address.type.basic_type != a.address.type.basic_type) {
-                        throw new SemanticException('=号两侧类型不匹配');
+                    if (a.address.type.toString() != a.address.type.toString()) {
+                        throw new SemanticException(`=号两侧类型不匹配\n左边类型为:${a.address.type}\n右边类型为:${b.address.type}`);
                     }
                     if (!a.locationValue) {
                         throw new SemanticException('=号左侧必须是左值');

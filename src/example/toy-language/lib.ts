@@ -1,12 +1,14 @@
+import lexer from './lexrule.js';
 type locationType = "global" | "stack" | "class" | "constant_val";//定义寻址模式,global在data区寻址,stack在栈中寻址,class则通过this指针寻址
+//两个类型是否相等可以用toString来判断
 class Type {
-    public type: "base_type" | "function" | "array"| undefined;//class也算是base_type,array和function是特殊的对象
+    public type: "base_type" | "function" | "array" | undefined;//class也算是base_type,array和function是特殊的对象
+    public refType:"reference"|"value"='reference';//引用类型
     public basic_type: string | undefined;
     public innerType: Type | undefined;
     public argumentTypes: Type[] | undefined;
     public returnType: Type | undefined;
-    public fields:Map<string,Type>=new Map();
-    public methods:Map<string,Type>=new Map();
+    public fields: Map<string, Type> = new Map();
     public static ConstructBase(name: string) {
         let result = new Type();
         result.type = "base_type";
@@ -117,8 +119,20 @@ abstract class Scope {
     }
 }
 class GlobalScope extends Scope {
+    public types: Map<string,Type> = new Map();//已经定义的类型
     constructor() {
         super("global", false);
+    }
+    public AddType(name: string,type:Type) {
+        if (this.types.has(name)) {
+            throw new SemanticException(`类型${name}重复定义`);
+        }
+        this.types.set(name,type);
+        lexer.addRule([name, (arg) => { arg.value = Type.ConstructBase(arg.yytext); return 'basic_type'; }]);
+        let oldT = new Date().getTime();
+        lexer.compile();
+        let newT = new Date().getTime();
+        console.log(`重新编译正则耗时${newT - oldT}ms`);
     }
     public createVariable(name: string, type: Type): boolean {
         if (this.checkRedeclaration(name)) {
@@ -147,8 +161,33 @@ class FunctionScope extends Scope {
     }
 }
 class ClassScope extends Scope {
-    constructor() {
+    public backpatch_list: Map<string, Address[]> = new Map();//需要回填的地址列表
+    public this_Type: Type;
+    constructor(name: string) {
         super("class", false);
+        this.this_Type = Type.ConstructBase(name)
+    }
+    //添加需要回填的地址
+    public addBackPatch(name: string, address: Address) {
+        let addresses = this.backpatch_list.get(name);
+        if (addresses == undefined) {
+            addresses = [];
+            this.backpatch_list.set(name, addresses);
+        }
+        addresses.push(address);
+    }
+    //回填
+    public backpatch() {
+        for (let [name, addresses] of this.backpatch_list) {
+            let address = this.getVariable(name);
+            if (address == undefined) {
+                throw new SemanticException(`未定义的符号:${name}`);
+            }
+            for (let add of addresses) {
+                add.value = address.value;
+                add.type = address.type;
+            }
+        }
     }
     public createVariable(name: string, type: Type): boolean {
         if (this.checkRedeclaration(name)) {
@@ -270,7 +309,7 @@ class ObjectDescriptor extends Descriptor {
         this.address = add;
     }
 }
-type operateType = "if" | "if <" | "if >" | "goto" | "=" | "+";//指令的操作类型
+type operateType = "if" | "if <" | "if >" | "goto" | "=" | "+" | "ret";//指令的操作类型
 class Quadruple {
     private static PC = 0;
     public op: operateType;
@@ -297,6 +336,7 @@ class Quadruple {
             case "if >": return `${this.pc}\tif\t${this.arg1}<${this.arg2}\tgoto\t${this.result}\n`;
             case "goto": return `${this.pc}\tgoto\t${this.result}\n`;
             case "=": return `${this.pc}\t${this.result}\t=\t${this.arg1}\n`;
+            case "ret": return `${this.pc}\t ret ${this.result != undefined ? this.result : ''}\n`;
             default: return `${this.pc}\t${this.result}\t=\t${this.arg1}\t${this.op}\t${this.arg2}\n`;
         }
     }

@@ -126,6 +126,9 @@ class Lexer {
     public setSource(src: string) {
         this.source = src;
     }
+    /**
+     * 后面添加的规则优先级更高，见this.epsilon_closure()
+     */
     public addRule(rule: [string, ruleResolver]) {//添加规则
         this.lexer.setSource(rule[0]);
         let automaton: Automaton = this.parser.parse(this.lexer);//如果source不符合我写的正则文法,会抛出异常
