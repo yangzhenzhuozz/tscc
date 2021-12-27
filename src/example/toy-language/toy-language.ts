@@ -121,8 +121,8 @@ let grammar: Grammar = {
                     let type = $[3] as Type;
                     let head = s.slice(-1)[0] as Scope;
                     head.createVariable(id, type);
-                    if (head instanceof ClassScope) {
-                        head.this_Type.fields.set(id, type);//如果父空间是classScope，则为其添加属性
+                    if (head.classScope != undefined) {
+                        head.classScope.this_Type.fields.set(id, type);//如果父空间是classScope，则为其添加属性
                     }
                     return new StmtDescriptor();
                 }
@@ -205,15 +205,10 @@ let grammar: Grammar = {
                     //创建函数空间
                     let functionScope = new FunctionScope(returnType);
                     functionScope.linkParentScope(head);
-
-                    let parent = head.parentScope;
-                    for (; ; parent = parent.parentScope) {//一直向上搜索，直到搜索到classScope
-                        if (parent == undefined || parent instanceof ClassScope) {
-                            break;
-                        }
-                    }
-                    if (parent != undefined) {//如果是在class中定义的函数，则为其添加this变量
-                        functionScope.createVariable('this', parent.this_Type);
+                    if (head.classScope != undefined && head.functionScope == undefined) {//如果是在class中定义的函数，则为其添加this变量
+                        functionScope.createVariable('this', head.classScope.this_Type);
+                    } else {
+                        //如果head.functionScope 不为空，则说明当前是一个closure
                     }
                     for (let p of parameters) {//在函数空间中定义参数声明的变量
                         if (!functionScope.createVariable(p[0], p[1])) {
@@ -280,22 +275,13 @@ let grammar: Grammar = {
                     let ret = new StmtDescriptor();
                     let obj = $[2] as ObjectDescriptor;
                     let head = s.slice(-1)[0] as Scope;
-                    let parent = head.parentScope;
-                    let functionScope: FunctionScope | undefined;
-                    let classScope: ClassScope | undefined;
-                    for (; ; parent = parent.parentScope) {//一直向上搜索，直到搜索到classScope
-                        if (parent == undefined || parent instanceof FunctionScope) {
-                            break;
-                        }
-                    }
-                    if (parent instanceof FunctionScope) {
-                        let retTypeString = parent.returnType.toString();
+                    if (head.functionScope != undefined) {
                         if (obj.address.isComplete) {
-                            obj.address.classScope!.addBackPatch(obj.address.nameOfClass!, parent.returnType, obj.address);
-                        } else {
-                            if (parent.returnType.toString() != obj.address.type.toString()) {
-                                throw new SemanticException(`return类型不匹配\n函数声明返回类型为:${parent.returnType}\n实际返回类型为:${obj.address.type}`);
+                            if (head.functionScope.returnType.toString() != obj.address.type.toString()) {
+                                throw new SemanticException(`return类型不匹配\n函数声明返回类型为:${head.functionScope.returnType}\n实际返回类型为:${obj.address.type}`);
                             }
+                        } else {
+                            obj.address.classScope!.addBackPatch(obj.address.nameOfClass!, head.functionScope.returnType, obj.address);//如果isComplete为真，则一定是在classScope中，就不做额外判断了
                         }
                     } else {
                         throw new Error(`编译器内部错误,不可能出现return语句不在FunctionScope的情况`);
@@ -369,16 +355,24 @@ let grammar: Grammar = {
                     let obj = stack[1] as ObjectDescriptor;
                     ScopeContainer.removeTemporary();//移除临时变量
                     //如果obj是不需要回填的代码,如if(a)，则为其生成回填代码
-                    if (!obj.backPatch) {
-                        let trueAddress = new Address("constant_val", -1, Type.ConstructBase("PC"));
-                        let falseAddress = new Address("constant_val", -1, Type.ConstructBase("PC"));
-                        let trueInstruction = new Quadruple("if", obj.address, undefined, trueAddress);
-                        let falseInstruction = new Quadruple("goto", undefined, undefined, falseAddress);
-                        obj.quadruples.push(trueInstruction);
-                        obj.quadruples.push(falseInstruction);
-                        obj.trueList.push(trueAddress);
-                        obj.falseList.push(falseAddress);
-                        obj.backPatch = true;
+                    if (obj.address.type.toString() != 'boolean') {
+                        if (obj.address.isComplete) {
+                            throw new SemanticException(`条件语句必须使用boolean类型`);
+                        } else {
+                            obj.address.classScope!.addBackPatch(obj.address.nameOfClass!, Type.ConstructBase("boolean"), obj.address);//如果isComplete为真，则一定是在classScope中，就不做额外判断了
+                        }
+                    } else {
+                        if (!obj.boolBackPatch) {
+                            let trueAddress = new Address("constant_val", -1, Type.ConstructBase("PC"));
+                            let falseAddress = new Address("constant_val", -1, Type.ConstructBase("PC"));
+                            let trueInstruction = new Quadruple("if", obj.address, undefined, trueAddress);
+                            let falseInstruction = new Quadruple("goto", undefined, undefined, falseAddress);
+                            obj.quadruples.push(trueInstruction);
+                            obj.quadruples.push(falseInstruction);
+                            obj.trueList.push(trueAddress);
+                            obj.falseList.push(falseAddress);
+                            obj.boolBackPatch = true;
+                        }
                     }
                 }
             }
@@ -411,7 +405,7 @@ let grammar: Grammar = {
                     // 处理boolean回填的问题
                     if (for_condition == undefined && for_step == undefined) {
                         loopAddress.value = stmt.quadruples[0].pc;
-                        if (for_init instanceof ObjectDescriptor && for_init.backPatch) {//回填
+                        if (for_init instanceof ObjectDescriptor && for_init.boolBackPatch) {//回填
                             BackPatchTools.backpatch(for_init.trueList, stmt.quadruples[0].pc);
                             BackPatchTools.backpatch(for_init.falseList, stmt.quadruples[0].pc);
                         } else {
@@ -420,45 +414,45 @@ let grammar: Grammar = {
                         ret.quadruples = for_init.quadruples.concat(stmt.quadruples);
                     } else if (for_condition != undefined && for_step == undefined) {
                         loopAddress.value = for_condition.quadruples[0].pc;
-                        if (for_init instanceof ObjectDescriptor && for_init.backPatch) {//回填
+                        if (for_init instanceof ObjectDescriptor && for_init.boolBackPatch) {//回填
                             BackPatchTools.backpatch(for_init.trueList, for_condition.quadruples[0].pc);
                             BackPatchTools.backpatch(for_init.falseList, for_condition.quadruples[0].pc);
                         } else {
                             (for_init.tag as Address).value = for_condition.quadruples[0].pc;
                         }
                         ret.quadruples = for_init.quadruples.concat(for_condition.quadruples).concat(stmt.quadruples);
-                        if (for_condition.backPatch) {//回填
+                        if (for_condition.boolBackPatch) {//回填
                             BackPatchTools.backpatch(for_condition.trueList, stmt.quadruples[0].pc);
                             BackPatchTools.backpatch(for_condition.falseList, loopInstruction.pc + 1);
                         }
                     } else if (for_condition == undefined && for_step != undefined) {
                         loopAddress.value = for_step.quadruples[0].pc;
-                        if (for_init instanceof ObjectDescriptor && for_init.backPatch) {//回填
+                        if (for_init instanceof ObjectDescriptor && for_init.boolBackPatch) {//回填
                             BackPatchTools.backpatch(for_init.trueList, for_step.quadruples[0].pc);
                             BackPatchTools.backpatch(for_init.falseList, for_step.quadruples[0].pc);
                         } else {
                             (for_init.tag as Address).value = for_step.quadruples[0].pc;
                         }
                         ret.quadruples = for_init.quadruples.concat(for_step.quadruples).concat(stmt.quadruples);
-                        if (for_step != undefined && for_step.backPatch) {//回填
+                        if (for_step != undefined && for_step.boolBackPatch) {//回填
                             //不管如何,step都跳转到condtiton,conditon为undefined则跳转到stmt
                             BackPatchTools.backpatch(for_step.trueList, stmt.quadruples[0].pc);
                             BackPatchTools.backpatch(for_step.falseList, stmt.quadruples[0].pc);
                         }
                     } else if (for_condition != undefined && for_step != undefined) {
                         loopAddress.value = for_condition.quadruples[0].pc;
-                        if (for_init instanceof ObjectDescriptor && for_init.backPatch) {//回填
+                        if (for_init instanceof ObjectDescriptor && for_init.boolBackPatch) {//回填
                             BackPatchTools.backpatch(for_init.trueList, for_step.quadruples[0].pc);
                             BackPatchTools.backpatch(for_init.falseList, for_step.quadruples[0].pc);
                         } else {
                             (for_init.tag as Address).value = for_step.quadruples[0].pc;
                         }
                         ret.quadruples = for_init.quadruples.concat(for_step.quadruples).concat(for_condition.quadruples).concat(stmt.quadruples);
-                        if (for_condition.backPatch) {//回填
+                        if (for_condition.boolBackPatch) {//回填
                             BackPatchTools.backpatch(for_condition.trueList, stmt.quadruples[0].pc);
                             BackPatchTools.backpatch(for_condition.falseList, loopInstruction.pc + 1);
                         }
-                        if (for_step != undefined && for_step.backPatch) {//回填
+                        if (for_step != undefined && for_step.boolBackPatch) {//回填
                             //不管如何,step都跳转到condtiton
                             BackPatchTools.backpatch(for_step.trueList, for_condition.quadruples[0].pc);
                             BackPatchTools.backpatch(for_step.falseList, for_condition.quadruples[0].pc);
@@ -519,7 +513,7 @@ let grammar: Grammar = {
                     let ScopeContainer = stack[0] as StmtScope;
                     ScopeContainer.removeTemporary();//清理stmtscope
                     let for_init = stack[1] as StmtDescriptor | ObjectDescriptor;
-                    if (for_init instanceof ObjectDescriptor && for_init.backPatch) {
+                    if (for_init instanceof ObjectDescriptor && for_init.boolBackPatch) {
                         //如果for_init本身是obj，且需要回填,则不增加goto指令
                     } else {
                         let address = new Address("constant_val", -1, Type.ConstructBase("PC"));
@@ -553,16 +547,28 @@ let grammar: Grammar = {
                     let ScopeContainer = stack[0] as StmtScope;
                     ScopeContainer.removeTemporary();//清理stmtscope
                     let for_condition = stack[1] as ObjectDescriptor | undefined;
-                    if (for_condition != undefined && !for_condition.backPatch) {//如果condition不是空白，且没有回填代码，则为其增加回填代码
-                        let trueAddress = new Address("constant_val", -1, Type.ConstructBase("PC"));
-                        let falseAddress = new Address("constant_val", -1, Type.ConstructBase("PC"));
-                        let trueInstruction = new Quadruple("if", for_condition.address, undefined, trueAddress);
-                        let falseInstruction = new Quadruple("goto", undefined, undefined, falseAddress);
-                        for_condition.quadruples.push(trueInstruction);
-                        for_condition.quadruples.push(falseInstruction);
-                        for_condition.trueList.push(trueAddress);
-                        for_condition.falseList.push(falseAddress);
-                        for_condition.backPatch = true;
+                    //如果obj是不需要回填的代码,如if(a)，则为其生成回填代码
+                    if (for_condition != undefined) {//如果condition不是空白
+                        if (!for_condition.boolBackPatch) {//如果没有回填代码，则为其增加回填代码
+                            if (for_condition.address.type.toString() != 'boolean') {
+                                if (for_condition.address.isComplete) {
+                                    throw new SemanticException(`循环条件必须使用boolean类型`);
+                                } else {
+                                    for_condition.address.classScope!.addBackPatch(for_condition.address.nameOfClass!, Type.ConstructBase("boolean"), for_condition.address);//如果isComplete为真，则一定是在classScope中，就不做额外判断了
+                                }
+                            }
+                            let trueAddress = new Address("constant_val", -1, Type.ConstructBase("PC"));
+                            let falseAddress = new Address("constant_val", -1, Type.ConstructBase("PC"));
+                            let trueInstruction = new Quadruple("if", for_condition.address, undefined, trueAddress);
+                            let falseInstruction = new Quadruple("goto", undefined, undefined, falseAddress);
+                            for_condition.quadruples.push(trueInstruction);
+                            for_condition.quadruples.push(falseInstruction);
+                            for_condition.trueList.push(trueAddress);
+                            for_condition.falseList.push(falseAddress);
+                            for_condition.boolBackPatch = true;
+                        } else {
+                            //本身就是boolean回填代码，不需要处理
+                        }
                     } else {
                         //if里面没有语句，不做任何处理
                     }
@@ -625,7 +631,7 @@ let grammar: Grammar = {
                     let label = stack[1] as string;
                     let parent = for_loop_init_scope.parentScope;
                     if (label != undefined) {
-                        for (; parent != undefined;) {
+                        for (; parent != undefined;) {//搜索label标签是否重复
                             if (parent instanceof StmtScope) {
                                 if (parent.isLoopStmt && parent.loopLabel == label) {
                                     throw new SemanticException(`标签:${label}重复`);
@@ -805,16 +811,10 @@ let grammar: Grammar = {
                     let id = $[0];
                     let add = head.getVariable(id);
                     if (add == undefined) {
-                        let parent = head.parentScope;
-                        for (; ; parent = parent.parentScope) {//一直向上搜索，直到搜索到classScope
-                            if (parent == undefined || parent instanceof ClassScope) {
-                                break;
-                            }
-                        }
-                        if (parent != undefined) {
+                        if (head.classScope != undefined) {
                             add = new Address('class', -1, Type.ConstructBase('undefined'));
-                            add.isComplete = true;
-                            add.classScope = parent;
+                            add.isComplete = false;
+                            add.classScope = head.classScope;//往classScope中记录信息
                             add.nameOfClass = id;
                         } else {
                             throw new SemanticException(`未定义的符号:${id}`);
@@ -844,7 +844,7 @@ let grammar: Grammar = {
                     }
                     let ret = new ObjectDescriptor(a.address);
                     ret.quadruples = a.quadruples.concat(b.quadruples);
-                    if (b.backPatch) {
+                    if (b.boolBackPatch) {
                         let trueInstruction = new Quadruple("=", new Address("constant_val", 'true', Type.ConstructBase("boolean")), undefined, a.address);
                         let jmpInstruction = new Quadruple("goto", undefined, undefined, new Address("constant_val", 0, Type.ConstructBase("PC")));
                         let falseInstruction = new Quadruple("=", new Address("constant_val", 'false', Type.ConstructBase("boolean")), undefined, a.address);
@@ -898,7 +898,7 @@ let grammar: Grammar = {
                         ret.quadruples.push(falseInstruction);
                         ret.trueList.push(trueAddress);
                         ret.falseList.push(falseAddress);
-                        ret.backPatch = true;
+                        ret.boolBackPatch = true;
                         return ret;
                     } else {
                         throw new SemanticException(`暂时只支持int类型的<运算符`);
@@ -916,7 +916,7 @@ let grammar: Grammar = {
                     let a = $[0] as ObjectDescriptor;
                     let b = $[3] as ObjectDescriptor;
                     if ((a.address.type.type == "base_type" && a.address.type.basic_type == "boolean") && (b.address.type.type == "base_type" && b.address.type.basic_type == "boolean")) {
-                        if (!a.backPatch) {
+                        if (!a.boolBackPatch) {
                             let trueAddress = new Address("constant_val", -1, Type.ConstructBase("PC"));
                             let falseAddress = new Address("constant_val", -1, Type.ConstructBase("PC"));
                             let trueInstruction = new Quadruple("if", a.address, undefined, trueAddress);
@@ -925,9 +925,9 @@ let grammar: Grammar = {
                             a.quadruples.push(falseInstruction);
                             a.trueList.push(trueAddress);
                             a.falseList.push(falseAddress);
-                            a.backPatch = true;
+                            a.boolBackPatch = true;
                         }
-                        if (!b.backPatch) {
+                        if (!b.boolBackPatch) {
                             let trueAddress = new Address("constant_val", -1, Type.ConstructBase("PC"));
                             let falseAddress = new Address("constant_val", -1, Type.ConstructBase("PC"));
                             let trueInstruction = new Quadruple("if", b.address, undefined, trueAddress);
@@ -936,11 +936,11 @@ let grammar: Grammar = {
                             b.quadruples.push(falseInstruction);
                             b.trueList.push(trueAddress);
                             b.falseList.push(falseAddress);
-                            b.backPatch = true;
+                            b.boolBackPatch = true;
                         }
                         let ret = new ObjectDescriptor(new Address("constant_val", -1, Type.ConstructBase("boolean")));//需要回填，所以value是没用的,type有用
                         ret.quadruples = a.quadruples.concat(b.quadruples);
-                        ret.backPatch = true;
+                        ret.boolBackPatch = true;
                         BackPatchTools.backpatch(a.falseList, b.quadruples[0].pc);
                         ret.trueList = BackPatchTools.merge(a.trueList, b.trueList);
                         ret.falseList = b.falseList;
@@ -957,7 +957,7 @@ let grammar: Grammar = {
                     let a = $[0] as ObjectDescriptor;
                     let b = $[3] as ObjectDescriptor;
                     if ((a.address.type.type == "base_type" && a.address.type.basic_type == "boolean") && (b.address.type.type == "base_type" && b.address.type.basic_type == "boolean")) {
-                        if (!a.backPatch) {
+                        if (!a.boolBackPatch) {
                             let trueAddress = new Address("constant_val", -1, Type.ConstructBase("PC"));
                             let falseAddress = new Address("constant_val", -1, Type.ConstructBase("PC"));
                             let trueInstruction = new Quadruple("if", a.address, undefined, trueAddress);
@@ -966,9 +966,9 @@ let grammar: Grammar = {
                             a.quadruples.push(falseInstruction);
                             a.trueList.push(trueAddress);
                             a.falseList.push(falseAddress);
-                            a.backPatch = true;
+                            a.boolBackPatch = true;
                         }
-                        if (!b.backPatch) {
+                        if (!b.boolBackPatch) {
                             let trueAddress = new Address("constant_val", -1, Type.ConstructBase("PC"));
                             let falseAddress = new Address("constant_val", -1, Type.ConstructBase("PC"));
                             let trueInstruction = new Quadruple("if", b.address, undefined, trueAddress);
@@ -977,11 +977,11 @@ let grammar: Grammar = {
                             b.quadruples.push(falseInstruction);
                             b.trueList.push(trueAddress);
                             b.falseList.push(falseAddress);
-                            b.backPatch = true;
+                            b.boolBackPatch = true;
                         }
                         let ret = new ObjectDescriptor(new Address("constant_val", -1, Type.ConstructBase("boolean")));//需要回填，所以value是没用的,type有用
                         ret.quadruples = a.quadruples.concat(b.quadruples);
-                        ret.backPatch = true;
+                        ret.boolBackPatch = true;
                         BackPatchTools.backpatch(a.trueList, b.quadruples[0].pc);
                         ret.falseList = BackPatchTools.merge(a.falseList, b.falseList);
                         ret.trueList = b.trueList;

@@ -1,6 +1,10 @@
 class myclass{
     function f():double{
+        for(;d;){
+
+        }
         return d;
     };
+    var c:boolean;
     var d:double;
 }

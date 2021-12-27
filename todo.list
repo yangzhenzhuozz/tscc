@@ -1,4 +1,9 @@
-class myclass{    
+处理所有 obj=obj obj+obj || && <这些对于 ！iscomplete的部分
+对于obj=obj，可能需要扩展classScope的回填，用于判断两边类型是否一致
+
+
+
+class myclass{
     function f():int{
         var a:myclass;
         d=e;//这种回填检查还没有做

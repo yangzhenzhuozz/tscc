@@ -79,6 +79,8 @@ abstract class Scope {
     public allocated: number = 0;//当前可以使用的地址
     protected ConflictWithParent: boolean;//声明空间是否和父空间冲突,即判断重复定义的时候需不需要搜索父空间
     public errorMSG = '';//用于错误提示的字符串
+    public classScope: ClassScope | undefined;//每个scope chain只可能有唯一一个classScope
+    public functionScope: FunctionScope | undefined;//每个scope chain只可能有唯一一个classScope
 
     /**
      * 
@@ -92,6 +94,12 @@ abstract class Scope {
     abstract createVariable(name: string, type: Type): boolean;
     public linkParentScope(scope: Scope) {
         this.parentScope = scope;
+        if (scope.classScope != undefined) {
+            this.classScope = scope.classScope;
+        }
+        if (scope.functionScope != undefined) {
+            this.functionScope = scope.functionScope;
+        }
     }
 
     protected checkRedeclaration(name: string): boolean {
@@ -140,6 +148,7 @@ class FunctionScope extends Scope {
     constructor(retType: Type) {
         super("stack", false);
         this.returnType = retType;
+        this.functionScope = this;
     }
     public createVariable(name: string, type: Type): boolean {
         if (this.checkRedeclaration(name)) {
@@ -156,7 +165,8 @@ class ClassScope extends Scope {
     public this_Type: Type;
     constructor(name: string) {
         super("class", false);
-        this.this_Type = Type.ConstructBase(name)
+        this.this_Type = Type.ConstructBase(name);
+        this.classScope = this;
     }
     //添加需要回填的地址
     //expectedType:期望的类型
@@ -288,7 +298,7 @@ class StmtDescriptor extends Descriptor {
 }
 class ObjectDescriptor extends Descriptor {
     public address: Address;//如果是需要回填的指令，则没有address
-    public backPatch: boolean = false;//是否需要回填
+    public boolBackPatch: boolean = false;//是否需要bool回填
     public locationValue: boolean = false;//是否左值
     public trueList: Address[] = [];
     public falseList: Address[] = [];
