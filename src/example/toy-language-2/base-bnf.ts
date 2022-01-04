@@ -1,37 +1,5 @@
-import fs from "fs";
-import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
-import { Scope, ProgramScope } from "./auxiliary.js";
-/**
- * 这是第一次扫描用的BNF，和第二次扫描几乎没有多大区别
- * 因为解析器是从左往右扫描的，在解析某个片段时可能会依赖后续输入，所以第一次扫描有两个任务
- * 1.得到class的Type信息
- * class A{
- * function fun():int{
- * return a+a;
- * }
- * var a:int;
- * }
- * 在解析到return a+a的时候，还不知道a的信息，所以记录类型信息，得到
- * class A{
- * var a:int;
- * var fun():int;
- * }
- * 2.记录closure需要捕获的变量
- * function outer():int{
- * var a:int;
- * a=a*2;
- * function inner():int{
- * a=a+1;
- * return a;
- * }
- * }
- * 因为在解析到a=a*2的时候，还不知道变量a是需要被closure捕获，所以无法生成正确的代码
- */
 let grammar: Grammar = {
-    userCode:`
-import { Scope, ProgramScope } from "./auxiliary.js";
-    `,
     tokens: ['var', '...', ';', 'id', 'constant_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'sealed', 'this', 'return'],
     association: [
         { 'right': ['='] },
@@ -52,16 +20,8 @@ import { Scope, ProgramScope } from "./auxiliary.js";
         { 'nonassoc': ['else'] },
     ],
     BNF: [
-        { "program:import_stmts createProgramScope program_units": {} },
-        {
-            "createProgramScope:": {
-                action: function (): ProgramScope {
-                    let ret = new ProgramScope();
-                    return ret;
-                }
-            }
-        },
-        { "program_units:program_units W2_0 program_unit": {} },
+        { "program:import_stmts program_units": {} },
+        { "program_units:program_units program_unit": {} },
         { "program_units:": {} },
         { "program_unit:declare ;": {} },
         { "program_unit:cass_definition": {} },
@@ -173,20 +133,5 @@ import { Scope, ProgramScope } from "./auxiliary.js";
         { "argument_list:argument": {} },
         { "argument_list:argument_list , argument": {} },
         { "argument:object": {} },
-        {
-            "W2_0:": {
-                action: function ($, s) {
-                    return s.slice(-2)[0];
-                }
-            }
-        }
     ]
-};
-let tscc = new TSCC(grammar, { language: "zh-cn", debug: false });
-let str = tscc.generate();//构造编译器代码
-if (str != null) {//如果构造成功则生成编编译器代码
-    console.log(`成功`);
-    fs.writeFileSync('./src/example/toy-language-2/parser-1.ts', str);
-} else {
-    console.log(`失败`);
 }
