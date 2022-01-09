@@ -1,11 +1,11 @@
 import Lexer from '../lexer/lexer.js'
-import { Address, Type } from './auxiliary.js'
+import * as auxiliary from "./auxiliary.js";
 let oldT = new Date().getTime();
 //词法规则
 let lexer = new Lexer();
 lexer.addRule(['( |\t|\r|\n)( |\t|\r|\n)*', undefined]);//忽略空格、制表、回车、换行
 lexer.addRule(['//( |\t|a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z|A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z|1|2|3|4|5|6|7|8|9|0)*\r\n', undefined]);//忽略注释
-lexer.addRule(['(1|2|3|4|5|6|7|8|9|0)(1|2|3|4|5|6|7|8|9|0)*', (arg) => { arg.value = new Address("constant", Number(arg.yytext), new Type()); return "constant_val"; }]);
+lexer.addRule(['(1|2|3|4|5|6|7|8|9|0)(1|2|3|4|5|6|7|8|9|0)*', (arg) => { arg.value = new auxiliary.Address("constant", Number(arg.yytext), new auxiliary.Type("int32")); return "constant_val"; }]);
 lexer.addRule(['(a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z|A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z)(a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z|A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z|1|2|3|4|5|6|7|8|9|0)*', (arg) => { arg.value = arg.yytext; return 'id'; }]);
 lexer.addRule(['var', () => 'var']);
 lexer.addRule(['=>', () => '=>']);

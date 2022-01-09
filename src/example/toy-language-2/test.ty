@@ -1,10 +1,17 @@
-class myclass{
-    function f():double{
-        for(;d;){
+class a{
+    function a():int{
 
-        }
-        return d;
-    };
-    var c:boolean;
-    var d:double;
+};
+function a(a:int):int{
+
+};
+function a(a:int,b:int):int{
+
+};
+function a(...a:int):int{
+
+};
+function a(a:int,...b:int):int{
+
+};
 }
