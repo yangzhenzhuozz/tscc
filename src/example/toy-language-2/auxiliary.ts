@@ -4,6 +4,11 @@ class Type {
     constructor(name: string) {
         this.name = name;
     }
+    //也可以用作签名
+    public toString(){
+        let ret=`${this.name}`;
+        return ret;
+    }
 }
 class ArrayType extends Type {
     public innerType: Type;//数组的基本类型
@@ -24,6 +29,16 @@ class FunctionType extends Type {
             throw new SemanticException(`变量`);
         }
         this.parameters.set(name, type);
+    }
+    public toString(){
+        let parametersSign:string;//参数签名
+        if(this.parameters.size!=0){
+            parametersSign=`${[...this.parameters.values()].map((value)=>`${value}`).reduce((previous,current)=>`${previous},${current}`)}`;
+        }else{
+            parametersSign='';
+        }
+        let ret=`${this.name}(${parametersSign})`;
+        return ret;
     }
 }
 type Location = "constant" | "program" | "class" | "function";//值存放的位置，分别为立即数、全局空间、class空间、函数空间
@@ -66,7 +81,7 @@ class ClassScope extends Scope {
     constructor(parent: ProgramScope, descriptor: Type) {
         super();
         this.parentScope = parent;
-        this.descriptor=descriptor;
+        this.descriptor = descriptor;
     }
     public register(name: string, type: Type) {
         super.register_k(name, type, "class")
@@ -74,9 +89,9 @@ class ClassScope extends Scope {
 }
 class FunctionScope extends Scope {
     public descriptor: FunctionType;//本函数的描述符
-    public parentScope: ProgramScope | ClassScope;
+    public parentScope: ProgramScope | ClassScope | FunctionScope;
     public BlockFields: Map<string, Address> = new Map();//用于给block声明变量
-    constructor(parent: ProgramScope | ClassScope, descriptor: FunctionType) {
+    constructor(parent: ProgramScope | ClassScope | FunctionScope, descriptor: FunctionType) {
         super();
         this.parentScope = parent;
         this.descriptor = descriptor;

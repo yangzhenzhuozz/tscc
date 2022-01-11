@@ -1,17 +1,13 @@
 class a{
-    function a():int{
-
-};
-function a(a:int):int{
-
-};
-function a(a:int,b:int):int{
-
-};
-function a(...a:int):int{
-
-};
-function a(a:int,...b:int):int{
-
-};
+    var a:int;
+    function b():int{
+        var a:int;
+        function inner():void{
+            var a:int;
+        };
+    };
+    function c(a:int):int{};
+    function d(a:int,b:int):int{};
+    function e(...a:int):int{};
+    function f(a:int,...b:int):int{};
 }
