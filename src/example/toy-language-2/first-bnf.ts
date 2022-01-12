@@ -74,14 +74,24 @@ let grammar: Grammar = {
                 action: function ($, s): auxiliary.ClassScope {
                     let head = s.slice(-6)[0] as auxiliary.ProgramScope;
                     let id = s.slice(-3)[0] as string;
+                    let modifier = s.slice(-5)[0] as string | undefined;
                     let classType = new auxiliary.Type(id);//先创建一个临时Type作为描述符
+                    if (modifier == "valuetype") {
+                        classType.modifier = "valuetype";
+                    }
                     let ret = new auxiliary.ClassScope(head, classType);
                     return ret;
                 }
             }
         },
         { "modifier:": {} },
-        { "modifier:valuetype": {} },
+        {
+            "modifier:valuetype": {
+                action: function ($, s): string {
+                    return "valuetype";
+                }
+            }
+        },
         { "modifier:sealed": {} },
         { "extends_declare:extends basic_type": {} },
         { "extends_declare:": {} },
@@ -188,7 +198,7 @@ let grammar: Grammar = {
         {
             "createFunctionScope:": {
                 action: function ($, s): auxiliary.FunctionScope {
-                    let head = s.slice(-9)[0] as auxiliary.ProgramScope | auxiliary.ClassScope;
+                    let head = s.slice(-9)[0] as auxiliary.ProgramScope | auxiliary.ClassScope | auxiliary.FunctionScope;
                     let id = s.slice(-7)[0] as string;
                     let ret_type = s.slice(-2)[0] as auxiliary.Type;
                     let parameters = s.slice(-5)[0] as { name: string, type: auxiliary.Type }[];
@@ -199,7 +209,15 @@ let grammar: Grammar = {
                     if (head instanceof auxiliary.ClassScope) {//如果是在class中定义的函数，则进行注册
                         head.register(id, functionType);
                     }
-                    let ret = new auxiliary.FunctionScope(head, functionType);
+                    let ret: auxiliary.FunctionScope;
+                    debugger
+                    if (head instanceof auxiliary.ProgramScope) {//如果不是在class中定义的函数
+                        ret = new auxiliary.FunctionScope(head, undefined, undefined, functionType);
+                    } else if (head instanceof auxiliary.ClassScope) {
+                        ret = new auxiliary.FunctionScope(head.programScope, head, undefined, functionType);
+                    } else {  // head instanceof auxiliary.FunctionScope
+                        ret = new auxiliary.FunctionScope(head.programScope, head.classScope, head, functionType);
+                    }
                     return ret;
                 }
             }
@@ -304,12 +322,11 @@ let grammar: Grammar = {
         { "statements:statements W2_0 statement": {} },
         {
             "object:id": {
+                //函数能且仅能在这里取变量
                 action: function ($, s) {
-                    let head=s.slice(-1)[0] as auxiliary.FunctionScope;
-                    debugger
-                    //只搜索变量，如果变量是在父scope，且父空间是function，则标记为闭包捕获(支持向外多级搜索，如果不是在functionScope，而是在classScop或者programScope则不做捕获标记)
-                    //出现捕获，不管有多少级，只需要创建一个innerClass即可
-                    throw new auxiliary.SemanticException(`闭包捕获`);
+                    let head = s.slice(-1)[0] as auxiliary.FunctionScope;
+                    let id = $[0] as string;
+                    head.closureCheck(id);//闭包变量检查
                 }
             }
         },

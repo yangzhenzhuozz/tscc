@@ -1,10 +1,16 @@
+function b():int{
+    var a:int;
+    a;
+    function inner():void{
+        a;
+    };
+};
 class a{
     var a:int;
     function b():int{
         var a:int;
         a;
         function inner():void{
-            var a:int;
             a;
         };
     };

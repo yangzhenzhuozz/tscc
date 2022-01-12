@@ -1,12 +1,13 @@
 class Type {
     public fields: Map<string, Type> = new Map();//属性列表
+    public modifier:"valuetype"|"referentialType"="referentialType";//默认是引用类型
     public name: string;
     constructor(name: string) {
         this.name = name;
     }
     //也可以用作签名
-    public toString(){
-        let ret=`${this.name}`;
+    public toString() {
+        let ret = `${this.name}`;
         return ret;
     }
 }
@@ -30,14 +31,14 @@ class FunctionType extends Type {
         }
         this.parameters.set(name, type);
     }
-    public toString(){
-        let parametersSign:string;//参数签名
-        if(this.parameters.size!=0){
-            parametersSign=`${[...this.parameters.values()].map((value)=>`${value}`).reduce((previous,current)=>`${previous},${current}`)}`;
-        }else{
-            parametersSign='';
+    public toString() {
+        let parametersSign: string;//参数签名
+        if (this.parameters.size != 0) {
+            parametersSign = `${[...this.parameters.values()].map((value) => `${value}`).reduce((previous, current) => `${previous},${current}`)}`;
+        } else {
+            parametersSign = '';
         }
-        let ret=`${this.name}(${parametersSign})`;
+        let ret = `${this.name}(${parametersSign})`;
         return ret;
     }
 }
@@ -62,6 +63,7 @@ abstract class Scope {
         }
         this.Fields.set(name, new Address(loc, -1, type));
     }
+    abstract getVariable(name: string): Address;
 }
 class ProgramScope extends Scope {
     public types: Map<string, Type> = new Map();//类型，用户自定义了class，则新增一个类型
@@ -74,33 +76,73 @@ class ProgramScope extends Scope {
     public register(name: string, type: Type) {
         super.register_k(name, type, "program")
     }
+    public getVariable(name: string): Address {
+        let ret = this.Fields.get(name);
+        if (ret == undefined) {
+            throw new SemanticException(`未定义的变量:${name}`);
+        }
+        return ret;
+    }
 }
 class ClassScope extends Scope {
     public descriptor: Type;//本class的描述符
-    public parentScope: ProgramScope;
-    constructor(parent: ProgramScope, descriptor: Type) {
+    public programScope: ProgramScope;
+    constructor(programScope: ProgramScope, descriptor: Type) {
         super();
-        this.parentScope = parent;
+        this.programScope = programScope;
         this.descriptor = descriptor;
     }
     public register(name: string, type: Type) {
         super.register_k(name, type, "class")
     }
+    public getVariable(name: string): Address {
+        let ret = this.Fields.get(name);
+        if (ret == undefined) {//如果在class空间搜索不到，则去program空间搜索
+            return this.programScope.getVariable(name);
+        }
+        return ret;
+    }
 }
 class FunctionScope extends Scope {
     public descriptor: FunctionType;//本函数的描述符
-    public parentScope: ProgramScope | ClassScope | FunctionScope;
+    public programScope: ProgramScope;
+    public classScope: ClassScope | undefined;
+    public parentFunctionScope: FunctionScope | undefined;//父函数空间
     public BlockFields: Map<string, Address> = new Map();//用于给block声明变量
-    constructor(parent: ProgramScope | ClassScope | FunctionScope, descriptor: FunctionType) {
+    public rootFunctionScope: FunctionScope;//最外层的函数空间，用于生成闭包类
+    constructor(programScope: ProgramScope, classScope: ClassScope | undefined, parentFunctionScope: FunctionScope | undefined, descriptor: FunctionType) {
         super();
-        this.parentScope = parent;
+        this.programScope = programScope;
+        this.classScope = classScope;
+        this.parentFunctionScope = parentFunctionScope;
         this.descriptor = descriptor;
+        if (parentFunctionScope == undefined) {
+            this.rootFunctionScope = this;//如果外层不是函数空间，则说明本层就是最先出现的一个函数空间
+        } else {
+            this.rootFunctionScope = parentFunctionScope.rootFunctionScope;//否则记录最外层的函数空间
+        }
     }
     public register(name: string, type: Type) {
         super.register_k(name, type, "function")
     }
     public register_tmp(name: string, type: Type) {
         throw new SemanticException(`register_tmp还未实现`);
+    }
+    public closureCheck(name:string){
+        //只在父函数空间搜索变量
+        //先在本空间搜索，如果搜索不到则向上一层函数空间搜索,如果搜索到了则标记为闭包变量,在program注册该变量，并且把对应的父函数空间所有对这个变量的引用指向Program空间
+        throw new Error("Method not implemented.");
+    }
+    public getVariable(name: string): Address {
+        throw new Error("Method not implemented.");
+        //先在本空间搜索
+        //然后在class空间搜索
+        //在program空间搜索
+        // let ret = this.Fields.get(name);
+        // if (ret == undefined) {
+        //     throw new SemanticException(`未定义的变量:${name}`);
+        // }
+        // return ret;
     }
 }
 class SemanticException extends Error {
