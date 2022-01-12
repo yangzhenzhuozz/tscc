@@ -1,7 +1,6 @@
 import fs from "fs";
 import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
-import { SemanticException } from "../toy-language/lib.js";
 import * as auxiliary from "./auxiliary.js";
 /**
  * 这是第一次扫描用的BNF，和第二次扫描几乎没有多大区别
@@ -306,9 +305,11 @@ let grammar: Grammar = {
         {
             "object:id": {
                 action: function ($, s) {
+                    let head=s.slice(-1)[0] as auxiliary.FunctionScope;
+                    debugger
                     //只搜索变量，如果变量是在父scope，且父空间是function，则标记为闭包捕获(支持向外多级搜索，如果不是在functionScope，而是在classScop或者programScope则不做捕获标记)
                     //出现捕获，不管有多少级，只需要创建一个innerClass即可
-                    throw new SemanticException(`闭包捕获`);
+                    throw new auxiliary.SemanticException(`闭包捕获`);
                 }
             }
         },
