@@ -109,18 +109,12 @@ class FunctionScope extends Scope {
     public classScope: ClassScope | undefined;
     public parentFunctionScope: FunctionScope | undefined;//父函数空间
     public BlockFields: Map<string, Address> = new Map();//用于给block声明变量
-    public rootFunctionScope: FunctionScope;//最外层的函数空间，用于生成闭包类
     constructor(programScope: ProgramScope, classScope: ClassScope | undefined, parentFunctionScope: FunctionScope | undefined, descriptor: FunctionType) {
         super();
         this.programScope = programScope;
         this.classScope = classScope;
         this.parentFunctionScope = parentFunctionScope;
         this.descriptor = descriptor;
-        if (parentFunctionScope == undefined) {
-            this.rootFunctionScope = this;//如果外层不是函数空间，则说明本层就是最先出现的一个函数空间
-        } else {
-            this.rootFunctionScope = parentFunctionScope.rootFunctionScope;//否则记录最外层的函数空间
-        }
     }
     public register(name: string, type: Type) {
         super.register_k(name, type, "function")
