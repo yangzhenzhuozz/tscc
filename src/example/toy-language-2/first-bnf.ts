@@ -74,10 +74,10 @@ let grammar: Grammar = {
                 action: function ($, s): auxiliary.ClassScope {
                     let head = s.slice(-6)[0] as auxiliary.ProgramScope;
                     let id = s.slice(-3)[0] as string;
-                    let modifier = s.slice(-5)[0] as string | undefined;
+                    let modifier = s.slice(-5)[0] as "valuetype" | "sealed" | undefined;
                     let classType = new auxiliary.Type(id);//先创建一个临时Type作为描述符
-                    if (modifier == "valuetype") {
-                        classType.modifier = "valuetype";
+                    if (modifier != undefined) {
+                        classType.modifier = modifier;
                     }
                     let ret = new auxiliary.ClassScope(head, classType);
                     return ret;
@@ -92,7 +92,13 @@ let grammar: Grammar = {
                 }
             }
         },
-        { "modifier:sealed": {} },
+        {
+            "modifier:sealed": {
+                action: function ($, s): string {
+                    return "sealed";
+                }
+            }
+        },
         { "extends_declare:extends basic_type": {} },
         { "extends_declare:": {} },
         { "class_units:class_units W2_0 class_unit": {} },

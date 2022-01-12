@@ -1,6 +1,6 @@
 class Type {
     public fields: Map<string, Type> = new Map();//属性列表
-    public modifier:"valuetype"|"referentialType"="referentialType";//默认是引用类型
+    public modifier: "valuetype" | "sealed" | "referentialType" = "referentialType";//默认是引用类型,valueType也是不可继承的，包含了sealed
     public name: string;
     constructor(name: string) {
         this.name = name;
@@ -128,7 +128,7 @@ class FunctionScope extends Scope {
     public register_tmp(name: string, type: Type) {
         throw new SemanticException(`register_tmp还未实现`);
     }
-    public closureCheck(name:string){
+    public closureCheck(name: string) {
         //只在父函数空间搜索变量
         //先在本空间搜索，如果搜索不到则向上一层函数空间搜索,如果搜索到了则标记为闭包变量,在program注册该变量，并且把对应的父函数空间所有对这个变量的引用指向Program空间
         throw new Error("Method not implemented.");
