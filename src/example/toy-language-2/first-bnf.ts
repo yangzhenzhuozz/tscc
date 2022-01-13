@@ -216,7 +216,6 @@ let grammar: Grammar = {
                         head.register(id, functionType);
                     }
                     let ret: auxiliary.FunctionScope;
-                    debugger
                     if (head instanceof auxiliary.ProgramScope) {//如果不是在class中定义的函数
                         ret = new auxiliary.FunctionScope(head, undefined, undefined, functionType);
                     } else if (head instanceof auxiliary.ClassScope) {
@@ -323,14 +322,29 @@ let grammar: Grammar = {
         { "switch_bodys:switch_bodys switch_body": {} },
         { "switch_body:case constant_val : statement": {} },
         { "switch_body:default : statement": {} },
-        { "block:{ statements }": {} },
+        { "block:{ createBlockScope statements }": {} },
+        {
+            "createBlockScope:": {
+                action: function ($, s): auxiliary.BlockScope {
+                    let head = s.slice(-2)[0] as auxiliary.FunctionScope | auxiliary.BlockScope;
+                    let ret: auxiliary.BlockScope;
+                    if (head instanceof auxiliary.FunctionScope) {
+                        ret = new auxiliary.BlockScope(head, undefined);
+                    } else {
+                        ret = new auxiliary.BlockScope(head.parentFunctionScope, head);
+                    }
+                    debugger
+                    return ret;
+                }
+            }
+        },
         { "statements:": {} },
         { "statements:statements W2_0 statement": {} },
         {
             "object:id": {
                 //函数能且仅能在这里取变量
                 action: function ($, s) {
-                    let head = s.slice(-1)[0] as auxiliary.FunctionScope;
+                    let head = s.slice(-1)[0] as auxiliary.FunctionScope | auxiliary.BlockScope;
                     let id = $[0] as string;
                     head.closureCheck(id);//闭包变量检查
                 }

@@ -108,7 +108,7 @@ class FunctionScope extends Scope {
     public programScope: ProgramScope;
     public classScope: ClassScope | undefined;
     public parentFunctionScope: FunctionScope | undefined;//父函数空间
-    public BlockFields: Map<string, Address> = new Map();//用于给block声明变量
+    public blockScopes: BlockScope[] = [];//记录内部的Block
     constructor(programScope: ProgramScope, classScope: ClassScope | undefined, parentFunctionScope: FunctionScope | undefined, descriptor: FunctionType) {
         super();
         this.programScope = programScope;
@@ -123,8 +123,9 @@ class FunctionScope extends Scope {
         throw new SemanticException(`register_tmp还未实现`);
     }
     public closureCheck(name: string) {
-        //只在父函数空间搜索变量
-        //先在本空间搜索，如果搜索不到则向上一层函数空间搜索,如果搜索到了则标记为闭包变量,在program注册该变量，并且把对应的父函数空间所有对这个变量的引用指向Program空间
+        //在父函数空间搜索变量
+        //先在本空间搜索(搜索到的就不是闭包)，如果搜索不到则向上一层函数空间搜索,如果搜索到了则标记为闭包变量,在program注册该变量，并且把对应的父函数空间所有对这个变量的引用指向Program空间
+        //应对在函数中又定义了函数又定义了函数这种情况
         throw new Error("Method not implemented.");
     }
     public getVariable(name: string): Address {
@@ -139,10 +140,43 @@ class FunctionScope extends Scope {
         // return ret;
     }
 }
+class BlockScope extends Scope {
+    public parentFunctionScope: FunctionScope;//父函数空间,blockScope必定位于函数空间中
+    public parentBlockScope: BlockScope | undefined;//可能位于一个BlockScope
+    constructor(parentFunctionScope: FunctionScope, parentBlockScope: BlockScope | undefined) {
+        super();
+        this.parentFunctionScope = parentFunctionScope;
+        this.parentBlockScope = parentBlockScope;
+        parentFunctionScope.blockScopes.push(this);
+    }
+    register(name: string, type: Type): void {
+        //检查父空间是否已经有定义,一直检查到函数空间
+        if (this.parentFunctionScope.Fields.has(name)) {
+            throw new SemanticException(`变量${name}重复声明`);
+        }
+        let node: BlockScope | undefined = this;
+        for (; node != undefined; node = node.parentBlockScope) {
+            if (node.Fields.has(name)) {
+                throw new SemanticException(`变量${name}重复声明`);
+            }
+        }
+        this.Fields.set(name, new Address("function", -1, type));
+    }
+    getVariable(name: string): Address {
+        throw new Error("Method not implemented.");
+    }
+    public closureCheck(name: string) {
+        //在父函数空间搜索变量
+        //先在本空间搜索(搜索到的就不是闭包)，如果搜索不到则向上一层函数空间搜索,如果搜索到了则标记为闭包变量,在program注册该变量，并且把对应的父函数空间所有对这个变量的引用指向Program空间
+        //应对在函数中又定义了函数又定义了函数这种情况
+        //和函数空间判断闭包几乎一摸一样，主要是因为Block的作用域问题，否则我都想把变量直接注册到函数空间了
+        throw new Error("Method not implemented.");
+    }
+}
 class SemanticException extends Error {
     constructor(msg: string) {
         super(msg);
     }
 }
 let baseType = new Set(['int', 'double', 'void', 'boolean']);//默认的基础类型
-export { Type, FunctionType, ArrayType, Address, ProgramScope, ClassScope, FunctionScope, Scope, SemanticException, baseType };
+export { Type, FunctionType, ArrayType, Address, ProgramScope, ClassScope, FunctionScope, Scope, SemanticException, BlockScope, baseType };

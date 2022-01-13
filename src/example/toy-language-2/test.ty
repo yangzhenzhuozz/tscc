@@ -1,6 +1,14 @@
 function b():int{
     var a:int;
-    a;
+    {
+        var b:int;
+        {
+            var c:int;
+            a;
+            b;
+            c;
+        }
+    }
     function inner():void{
         a;
     };
