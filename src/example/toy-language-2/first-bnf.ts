@@ -1,6 +1,7 @@
 import fs from "fs";
 import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
+import { Scope } from "../toy-language/lib.js";
 import * as auxiliary from "./auxiliary.js";
 /**
  * 这是第一次扫描用的BNF，和第二次扫描几乎没有多大区别
@@ -52,7 +53,16 @@ let grammar: Grammar = {
         { 'nonassoc': ['else'] },
     ],
     BNF: [
-        { "program:import_stmts createProgramScope program_units": {} },
+        {
+            "program:import_stmts createProgramScope program_units": {
+                action: function ($, s) {
+                    let programScope = $[1] as auxiliary.ProgramScope;
+                    console.log('检查类型注册是否完整');
+                    console.log(programScope);
+                    debugger
+                }
+            }
+        },
         {
             "createProgramScope:": {
                 action: function (): auxiliary.ProgramScope {
@@ -68,18 +78,29 @@ let grammar: Grammar = {
         { "import_stmts:": {} },
         { "import_stmts:import_stmts import_stmt": {} },
         { "import_stmt:import id as id ;": {} },
-        { "cLass_definition:modifier class id extends_declare { createClassScope class_units }": {} },
+        {
+            "cLass_definition:modifier class id extends_declare { createClassScope class_units }": {
+                action: function ($, s) {
+                    let classScope = $[5] as auxiliary.ClassScope;
+                    let id = $[2] as string;
+                    let modifier = $[0] as "valuetype" | "sealed" | undefined;
+                    let type = new auxiliary.Type(id, modifier);
+                    if (modifier != undefined) {
+                        type.modifier = modifier;
+                    }
+                    classScope.programScope.registerType(id, type);
+                    for (let [k, v] of classScope.Fields) {
+                        type.registerField(k, v);
+                    }
+                }
+            }
+        },
         {
             "createClassScope:": {
                 action: function ($, s): auxiliary.ClassScope {
                     let head = s.slice(-6)[0] as auxiliary.ProgramScope;
                     let id = s.slice(-3)[0] as string;
-                    let modifier = s.slice(-5)[0] as "valuetype" | "sealed" | undefined;
-                    let classType = new auxiliary.Type(id);//先创建一个临时Type作为描述符
-                    if (modifier != undefined) {
-                        classType.modifier = modifier;
-                    }
-                    let ret = new auxiliary.ClassScope(head, classType);
+                    let ret = new auxiliary.ClassScope(head);
                     return ret;
                 }
             }
@@ -107,11 +128,11 @@ let grammar: Grammar = {
         { "class_unit:operator_overload": {} },
         { "operator_overload:operator + ( parameter ) : type { statements }": {} },
         {
-            "declare:var id : type": {
+            "declare:var id : W4_0 type": {
                 action: function ($, s) {
                     let head = s.slice(-1)[0] as auxiliary.Scope;
                     let id = $[1] as string;
-                    let type = $[3] as auxiliary.Type;
+                    let type = $[4] as auxiliary.Type;
                     head.register(id, type);
                 }
             }
@@ -147,19 +168,34 @@ let grammar: Grammar = {
             "basic_type:id": {
                 action: function ($, s): auxiliary.Type {
                     let id = $[0] as string;
-                    if (auxiliary.baseType.has(id)) {
-                        return new auxiliary.Type(id);
+                    let head = s.slice(-1)[0] as auxiliary.ProgramScope | auxiliary.ClassScope | auxiliary.FunctionScope | auxiliary.BlockScope;
+                    if (head instanceof auxiliary.ProgramScope) {
+                        if (head.registeredTypes.has(id)) {
+                            return head.registeredTypes.get(id)!;
+                        } else {
+                            throw new auxiliary.SemanticException(`未识别的类型${id}`);
+                        }
+                    } else if (head instanceof auxiliary.ClassScope) {
+                        if (head.programScope.registeredTypes.has(id)) {
+                            return head.programScope.registeredTypes.get(id)!;
+                        } else {
+                            throw new auxiliary.SemanticException(`未识别的类型${id}`);
+                        }
                     } else {
-                        throw new auxiliary.SemanticException(`未识别的类型${id}`);
+                        if (head.topFunctionScope.programScope.registeredTypes.has(id)) {
+                            return head.topFunctionScope.programScope.registeredTypes.get(id)!;
+                        } else {
+                            throw new auxiliary.SemanticException(`未识别的类型${id}`);
+                        }
                     }
                 }
             }
         },
         {
-            "type:( function_parameter_types ) => type": {
+            "type:( W2_0 function_parameter_types ) => W6_0 type": {
                 action: function ($, s): auxiliary.Type {
-                    let function_parameter_types = $[1] as auxiliary.Type[];
-                    let ret_type = $[4] as auxiliary.Type;
+                    let function_parameter_types = $[2] as auxiliary.Type[];
+                    let ret_type = $[6] as auxiliary.Type;
                     let ret = new auxiliary.FunctionType(ret_type);
                     let index = 0;
                     for (let type of function_parameter_types) {
@@ -184,10 +220,10 @@ let grammar: Grammar = {
             }
         },
         {
-            "function_parameter_type_list:function_parameter_type_list , type": {
+            "function_parameter_type_list:function_parameter_type_list , W3_0 type": {
                 action: function ($, s): auxiliary.Type[] {
                     let function_parameter_type_list_0 = $[0] as auxiliary.Type[];
-                    let type = $[2] as auxiliary.Type;
+                    let type = $[3] as auxiliary.Type;
                     function_parameter_type_list_0.push(type);
                     return function_parameter_type_list_0;
                 }
@@ -200,14 +236,34 @@ let grammar: Grammar = {
                 }
             }
         },
-        { "function_definition:function id ( parameters ) : type { createFunctionScope statements }": {} },
+        //函数在class中的注册已经由createFunctionScope完成
+        {
+            "function_definition:function id ( W4_0 parameters ) : W8_0 type { createFunctionScope statements }": {
+                action: function ($, s) {
+                    let head = s.slice(-1)[0] as auxiliary.ProgramScope | auxiliary.ClassScope | auxiliary.FunctionScope | auxiliary.BlockScope;
+                    if (head instanceof auxiliary.ProgramScope || head instanceof auxiliary.ClassScope) {//说明是顶层函数空间
+                        let functionScope = $[10] as auxiliary.FunctionScope;
+                        if (functionScope.closureScope != undefined) {
+                            let programScope = functionScope.programScope;
+                            let name = programScope.getClosureClassNameAutomatic();
+                            let type = new auxiliary.Type(name, "valuetype");
+                            functionScope.closureClass = name;
+                            functionScope.programScope.registerType(name, type);
+                            for (let [k, v] of functionScope.closureScope.Fields) {
+                                type.registerField(k, v);
+                            }
+                        }
+                    }
+                }
+            }
+        },
         {
             "createFunctionScope:": {
                 action: function ($, s): auxiliary.FunctionScope {
-                    let head = s.slice(-9)[0] as auxiliary.ProgramScope | auxiliary.ClassScope | auxiliary.FunctionScope;
-                    let id = s.slice(-7)[0] as string;
+                    let head = s.slice(-11)[0] as auxiliary.ProgramScope | auxiliary.ClassScope | auxiliary.FunctionScope | auxiliary.BlockScope;
+                    let id = s.slice(-9)[0] as string;
                     let ret_type = s.slice(-2)[0] as auxiliary.Type;
-                    let parameters = s.slice(-5)[0] as { name: string, type: auxiliary.Type }[];
+                    let parameters = s.slice(-6)[0] as { name: string, type: auxiliary.Type }[];
                     let functionType = new auxiliary.FunctionType(ret_type);
                     for (let parameter of parameters) {
                         functionType.registerParameter(parameter.name, parameter.type);
@@ -216,12 +272,14 @@ let grammar: Grammar = {
                         head.register(id, functionType);
                     }
                     let ret: auxiliary.FunctionScope;
-                    if (head instanceof auxiliary.ProgramScope) {//如果不是在class中定义的函数
+                    if (head instanceof auxiliary.ProgramScope) {
                         ret = new auxiliary.FunctionScope(head, undefined, undefined, functionType);
                     } else if (head instanceof auxiliary.ClassScope) {
                         ret = new auxiliary.FunctionScope(head.programScope, head, undefined, functionType);
-                    } else {  // head instanceof auxiliary.FunctionScope
+                    } else if (head instanceof auxiliary.FunctionScope) {
                         ret = new auxiliary.FunctionScope(head.programScope, head.classScope, head, functionType);
+                    } else {//head instanceof auxiliary.BlockScope
+                        ret = new auxiliary.FunctionScope(head.parentFunctionScope.programScope, head.parentFunctionScope.classScope, head, functionType);
                     }
                     return ret;
                 }
@@ -242,10 +300,10 @@ let grammar: Grammar = {
             }
         },
         {
-            "parameters:parameter_list , varible_argument": {
+            "parameters:parameter_list , W3_0 varible_argument": {
                 action: function ($, s): { name: string, type: auxiliary.Type }[] {
                     let parameter_list = $[0] as { name: string, type: auxiliary.Type }[];
-                    let varible_argument = $[2] as { name: string, type: auxiliary.Type }[];
+                    let varible_argument = $[3] as { name: string, type: auxiliary.Type }[];
                     return parameter_list.concat(varible_argument);
                 }
             }
@@ -258,10 +316,10 @@ let grammar: Grammar = {
             }
         },
         {
-            "parameter_list:parameter_list , parameter": {
+            "parameter_list:parameter_list , W3_0 parameter": {
                 action: function ($, s): { name: string, type: auxiliary.Type }[] {
                     let parameter_list = $[0] as { name: string, type: auxiliary.Type }[];
-                    let parameter = $[2] as { name: string, type: auxiliary.Type };
+                    let parameter = $[3] as { name: string, type: auxiliary.Type };
                     parameter_list.push(parameter);
                     return parameter_list;
                 }
@@ -275,19 +333,19 @@ let grammar: Grammar = {
             }
         },
         {
-            "parameter:id : type": {
+            "parameter:id : W3_0 type": {
                 action: function ($, s): { name: string, type: auxiliary.Type } {
                     let id = $[0] as string;
-                    let type = $[2] as auxiliary.Type;
+                    let type = $[3] as auxiliary.Type;
                     return { name: id, type: type };
                 }
             }
         },
         {
-            "varible_argument: ... id : type": {
+            "varible_argument: ... id : W4_0 type": {
                 action: function ($, s): { name: string, type: auxiliary.Type }[] {
                     let id = $[1] as string;
-                    let type = $[3] as auxiliary.Type;
+                    let type = $[4] as auxiliary.Type;
                     let ret_type = new auxiliary.ArrayType(type);
                     return [{ name: id, type: ret_type }];
                 }
@@ -329,9 +387,9 @@ let grammar: Grammar = {
                     let head = s.slice(-2)[0] as auxiliary.FunctionScope | auxiliary.BlockScope;
                     let ret: auxiliary.BlockScope;
                     if (head instanceof auxiliary.FunctionScope) {
-                        ret = new auxiliary.BlockScope(head, undefined);
+                        ret = new auxiliary.BlockScope(head, head, head);
                     } else {
-                        ret = new auxiliary.BlockScope(head.parentFunctionScope, head);
+                        ret = new auxiliary.BlockScope(head.topFunctionScope, head.parentFunctionScope, head);
                     }
                     return ret;
                 }
@@ -393,6 +451,34 @@ let grammar: Grammar = {
             "W2_0:": {
                 action: function ($, s) {
                     return s.slice(-2)[0];
+                }
+            }
+        },
+        {
+            "W3_0:": {
+                action: function ($, s) {
+                    return s.slice(-3)[0];
+                }
+            }
+        },
+        {
+            "W4_0:": {
+                action: function ($, s) {
+                    return s.slice(-4)[0];
+                }
+            }
+        },
+        {
+            "W6_0:": {
+                action: function ($, s) {
+                    return s.slice(-6)[0];
+                }
+            }
+        },
+        {
+            "W8_0:": {
+                action: function ($, s) {
+                    return s.slice(-8)[0];
                 }
             }
         }

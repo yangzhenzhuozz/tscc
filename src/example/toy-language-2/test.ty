@@ -1,3 +1,4 @@
+var a:int;
 function b():int{
     var a:int;
     {
@@ -7,10 +8,30 @@ function b():int{
             a;
             b;
             c;
+            function inner():void{
+                a;
+                {
+                    b;
+                    {
+                        c;
+                    }
+                }
+            };
         }
+        function inner():void{
+            a;
+            {
+                b;
+                {
+                    
+                }
+            }
+        };
     }
     function inner():void{
         a;
+        {
+        }
     };
 };
 class a{
@@ -23,7 +44,7 @@ class a{
         };
     };
     function c(a:int):int{};
-    function d(a:int,b:int):int{};
+    function d(a:int,b:int):()=>int{};
     function e(...a:int):int{};
     function f(a:int,...b:int):int{};
 }
