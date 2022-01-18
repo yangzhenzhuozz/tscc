@@ -333,7 +333,6 @@ let grammar: Grammar = {
                     } else {
                         ret = new auxiliary.BlockScope(head.parentFunctionScope, head);
                     }
-                    debugger
                     return ret;
                 }
             }

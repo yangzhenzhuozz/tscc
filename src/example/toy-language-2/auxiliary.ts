@@ -107,13 +107,13 @@ class FunctionScope extends Scope {
     public descriptor: FunctionType;//本函数的描述符
     public programScope: ProgramScope;
     public classScope: ClassScope | undefined;
-    public parentFunctionScope: FunctionScope | undefined;//父函数空间
+    public parent: FunctionScope | BlockScope | undefined;//父空间
     public blockScopes: BlockScope[] = [];//记录内部的Block
-    constructor(programScope: ProgramScope, classScope: ClassScope | undefined, parentFunctionScope: FunctionScope | undefined, descriptor: FunctionType) {
+    constructor(programScope: ProgramScope, classScope: ClassScope | undefined, parent: FunctionScope | BlockScope | undefined, descriptor: FunctionType) {
         super();
         this.programScope = programScope;
         this.classScope = classScope;
-        this.parentFunctionScope = parentFunctionScope;
+        this.parent = parent;
         this.descriptor = descriptor;
     }
     public register(name: string, type: Type) {
@@ -142,20 +142,16 @@ class FunctionScope extends Scope {
 }
 class BlockScope extends Scope {
     public parentFunctionScope: FunctionScope;//父函数空间,blockScope必定位于函数空间中
-    public parentBlockScope: BlockScope | undefined;//可能位于一个BlockScope
-    constructor(parentFunctionScope: FunctionScope, parentBlockScope: BlockScope | undefined) {
+    public parent: FunctionScope | BlockScope | undefined;//父空间
+    constructor(parentFunctionScope: FunctionScope, parent: FunctionScope | BlockScope | undefined) {
         super();
         this.parentFunctionScope = parentFunctionScope;
-        this.parentBlockScope = parentBlockScope;
+        this.parent = parent;
         parentFunctionScope.blockScopes.push(this);
     }
     register(name: string, type: Type): void {
-        //检查父空间是否已经有定义,一直检查到函数空间
-        if (this.parentFunctionScope.Fields.has(name)) {
-            throw new SemanticException(`变量${name}重复声明`);
-        }
-        let node: BlockScope | undefined = this;
-        for (; node != undefined; node = node.parentBlockScope) {
+        let node: FunctionScope | BlockScope | undefined = this;
+        for (; node != undefined; node = node.parent) {
             if (node.Fields.has(name)) {
                 throw new SemanticException(`变量${name}重复声明`);
             }
