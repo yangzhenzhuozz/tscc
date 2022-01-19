@@ -1,4 +1,4 @@
-import Lexer from '../lexer/lexer.js'
+import Lexer from "../lexer/lexer.js";
 import * as auxiliary from "./auxiliary.js";
 let oldT = new Date().getTime();
 //词法规则

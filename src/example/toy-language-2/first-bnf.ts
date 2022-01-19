@@ -246,7 +246,7 @@ let grammar: Grammar = {
                         if (functionScope.closureScope != undefined) {
                             let programScope = functionScope.programScope;
                             let name = programScope.getClosureClassNameAutomatic();
-                            let type = new auxiliary.Type(name, "valuetype");
+                            let type = new auxiliary.Type(name, "referentialType");
                             functionScope.closureClass = name;
                             functionScope.programScope.registerType(name, type);
                             for (let [k, v] of functionScope.closureScope.Fields) {
