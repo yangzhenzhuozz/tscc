@@ -1,7 +1,6 @@
 import fs from "fs";
 import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
-import { Scope } from "../toy-language/lib.js";
 import * as auxiliary from "./auxiliary.js";
 /**
  * 这是第一次扫描用的BNF，和第二次扫描几乎没有多大区别
@@ -45,6 +44,7 @@ let grammar: Grammar = {
         { 'left': ['+', '-'] },
         { 'left': ['*', '/'] },
         { 'left': ['++', '--'] },
+        { 'right': ['=>'] },
         { 'nonassoc': ['low_priority_for_array_placeholder'] },
         { 'right': ['['] },
         { 'nonassoc': ['('] },
@@ -350,14 +350,13 @@ let grammar: Grammar = {
             }
         },
         { "statement:declare ;": {} },
-        { "statement:return object ;": {} },
+        { "statement:return W2_0 object ;": {} },
         { "statement:return ;": {} },
-        { "statement:if ( object ) statement": { priority: "low_priority_for_if_stmt" } },
-        { "statement:if ( object ) statement ELSE statement": {} },
-        { "ELSE:else": {} },
-        { "statement:lable_def do statement while ( object ) ;": {} },
-        { "statement:lable_def while ( object ) statement": {} },
-        { "statement:lable_def for ( for_init ; for_condition ; for_step ) statement": {} },
+        { "statement:if ( W3_0 object ) W6_0 statement": { priority: "low_priority_for_if_stmt" } },
+        { "statement:if ( W3_0 object ) W6_0 statement else W9_0 statement": {} },
+        { "statement:lable_def do W3_0 statement while ( W6_0 object ) ;": {} },
+        { "statement:lable_def while ( W4_0 object ) W7_0 statement": {} },
+        { "statement:lable_def for ( W4_0 for_init ; W7_0 for_condition ; W10_0 for_step ) W12_0 statement": {} },
         { "for_init:": {} },
         { "for_init:declare": {} },
         { "for_init:object": {} },
@@ -368,7 +367,7 @@ let grammar: Grammar = {
         { "statement:block": { action: ($, s) => $[0] } },
         { "statement:break lable_use ;": {} },
         { "statement:continue lable_use ;": {} },
-        { "statement:switch ( object ) { switch_bodys }": {} },
+        { "statement:switch ( W3_0 object ) { switch_bodys }": {} },
         { "statement:object ;": {} },
         { "lable_use:": {} },
         { "lable_use:id": {} },
@@ -376,9 +375,9 @@ let grammar: Grammar = {
         { "lable_def:id :": {} },
         { "switch_bodys:": {} },
         { "switch_bodys:switch_bodys switch_body": {} },
-        { "switch_body:case constant_val : statement": {} },
-        { "switch_body:default : statement": {} },
-        { "block:{ createBlockScope statements }": {} },
+        { "switch_body:case constant_val : W4_0 statement": {} },
+        { "switch_body:default : W3_0 statement": {} },
+        { "block:{ createBlockScope W3_0 statements }": {} },
         {
             "createBlockScope:": {
                 action: function ($, s): auxiliary.BlockScope {
@@ -407,44 +406,48 @@ let grammar: Grammar = {
         },
         { "object:constant_val": {} },
         { "object:object ( arguments )": {} },
-        { "object:( parameters ) => { statements }": {} },//lambda
-        { "object:( object )": {} },
+        { "object:object => { W4_0 statements }": {} },//lambda,单个参数可以不加括号，即使有括号也会被解析成 (object)====>object
+        { "object:( W2_0 lambda_arguments ) => { W7_0 statements }": {} },//参数必须为0个或者两个及以上
+        { "object:( W2_0 object )": {} },
         { "object:object . id": {} },
-        { "object:object = object": {} },
-        { "object:object + object": {} },
-        { "object:object - object": {} },
-        { "object:object * object": {} },
-        { "object:object / object": {} },
-        { "object:object < object": {} },
-        { "object:object <= object": {} },
-        { "object:object > object": {} },
-        { "object:object >= object": {} },
-        { "object:object == object": {} },
-        { "object:object || object": {} },
-        { "object:object && object": {} },
-        { "object:object ? object : object": { priority: "?" } },
+        { "object:object = W3_0 object": {} },
+        { "object:object + W3_0 object": {} },
+        { "object:object - W3_0 object": {} },
+        { "object:object * W3_0 object": {} },
+        { "object:object / W3_0 object": {} },
+        { "object:object < W3_0 object": {} },
+        { "object:object <= W3_0 object": {} },
+        { "object:object > W3_0 object": {} },
+        { "object:object >= W3_0 object": {} },
+        { "object:object == W3_0 object": {} },
+        { "object:object || W3_0 object": {} },
+        { "object:object && W3_0 object": {} },
+        { "object:object ? W3_0 object : W6_0 object": { priority: "?" } },
         { "object:object ++": {} },
         { "object:object --": {} },
-        { "object:new { anonymous_stmts }": {} },//匿名类，类似C#而不是java
-        { "object:new basic_type ( arguments )": {} },
-        { "object:new basic_type array_init_list": {} },
-        { "object:object [ object ]": {} },
+        { "object:new { W3_0 anonymous_stmts }": {} },//匿名类，类似C#而不是java
+        { "object:new basic_type ( W4_0 arguments )": {} },
+        { "object:new basic_type W3_0 array_init_list": {} },
+        { "object:object [ W3_0 object ]": {} },
         { "object:this": {} },
         { "array_init_list:array_inits array_placeholder": {} },
-        { "array_inits:array_inits [ object ]": {} },
-        { "array_inits:[ object ]": {} },
+        { "array_inits:array_inits [ W3_0 object ]": {} },
+        { "array_inits:[ W2_0 object ]": {} },
         { "array_placeholder:array_placeholder_list": { priority: "low_priority_for_array_placeholder" } },//遇到方括号一律选择移入
         { "array_placeholder:": { priority: "low_priority_for_array_placeholder" } },
         { "array_placeholder_list:array_placeholder_list [ ]": {} },
         { "array_placeholder_list:[ ]": { priority: "low_priority_for_array_placeholder" } },
         { "anonymous_stmts:anonymous_stmts anonymous_stmt": {} },
         { "anonymous_stmts:": {} },
-        { "anonymous_stmt:id = object ;": {} },
+        { "anonymous_stmt:id = W3_0 object ;": {} },
         { "arguments:argument_list": {} },
         { "arguments:": {} },
-        { "argument_list:argument": {} },
-        { "argument_list:argument_list , argument": {} },
-        { "argument:object": {} },
+        { "argument_list:object": {} },
+        { "argument_list:argument_list , W3_0 object": {} },
+        { "lambda_arguments:": {} },
+        { "lambda_arguments:lambda_argument_list": {} },
+        { "lambda_argument_list:lambda_argument_list , W3_0 object": {} },
+        { "lambda_argument_list:object , W3_0 object": {} },
         {
             "W2_0:": {
                 action: function ($, s) {
@@ -474,9 +477,37 @@ let grammar: Grammar = {
             }
         },
         {
+            "W7_0:": {
+                action: function ($, s) {
+                    return s.slice(-7)[0];
+                }
+            }
+        },
+        {
             "W8_0:": {
                 action: function ($, s) {
                     return s.slice(-8)[0];
+                }
+            }
+        },
+        {
+            "W9_0:": {
+                action: function ($, s) {
+                    return s.slice(-9)[0];
+                }
+            }
+        },
+        {
+            "W10_0:": {
+                action: function ($, s) {
+                    return s.slice(-10)[0];
+                }
+            }
+        },
+        {
+            "W12_0:": {
+                action: function ($, s) {
+                    return s.slice(-10)[0];
                 }
             }
         }

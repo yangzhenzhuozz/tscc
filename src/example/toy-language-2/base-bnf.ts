@@ -1,3 +1,4 @@
+import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
 let grammar: Grammar = {
     tokens: ['var', '...', ';', 'id', 'constant_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'sealed', 'this', 'return'],
@@ -12,6 +13,7 @@ let grammar: Grammar = {
         { 'left': ['+', '-'] },
         { 'left': ['*', '/'] },
         { 'left': ['++', '--'] },
+        { 'right': ['=>'] },
         { 'nonassoc': ['low_priority_for_array_placeholder'] },
         { 'right': ['['] },
         { 'nonassoc': ['('] },
@@ -63,8 +65,7 @@ let grammar: Grammar = {
         { "statement:return object ;": {} },
         { "statement:return ;": {} },
         { "statement:if ( object ) statement": { priority: "low_priority_for_if_stmt" } },
-        { "statement:if ( object ) statement ELSE statement": {} },
-        { "ELSE:else": {} },
+        { "statement:if ( object ) statement else statement": {} },
         { "statement:lable_def do statement while ( object ) ;": {} },
         { "statement:lable_def while ( object ) statement": {} },
         { "statement:lable_def for ( for_init ; for_condition ; for_step ) statement": {} },
@@ -94,7 +95,8 @@ let grammar: Grammar = {
         { "object:id": {} },
         { "object:constant_val": {} },
         { "object:object ( arguments )": {} },
-        { "object:( parameters ) => { statements }": {} },//lambda
+        { "object:object => { statements }": {} },//lambda,单个参数可以不加括号，即使有括号也会被解析成 (object)====>object
+        { "object:( lambda_arguments ) => { statements }": {} },//参数必须为0个或者两个及以上
         { "object:( object )": {} },
         { "object:object . id": {} },
         { "object:object = object": {} },
@@ -120,7 +122,7 @@ let grammar: Grammar = {
         { "array_init_list:array_inits array_placeholder": {} },
         { "array_inits:array_inits [ object ]": {} },
         { "array_inits:[ object ]": {} },
-        { "array_placeholder:array_placeholder_list": { priority: "low_priority_for_array_placeholder" } },//遇到方括号一律选择移入
+        { "array_placeholder:array_placeholder_list": { priority: "low_priority_for_array_placeholder" } },//遇到方括号一律选择移入,array_placeholder用于占位，如new int[1][][][],后面悬空的就是占位
         { "array_placeholder:": { priority: "low_priority_for_array_placeholder" } },
         { "array_placeholder_list:array_placeholder_list [ ]": {} },
         { "array_placeholder_list:[ ]": { priority: "low_priority_for_array_placeholder" } },
@@ -129,8 +131,18 @@ let grammar: Grammar = {
         { "anonymous_stmt:id = object ;": {} },
         { "arguments:argument_list": {} },
         { "arguments:": {} },
-        { "argument_list:argument": {} },
-        { "argument_list:argument_list , argument": {} },
-        { "argument:object": {} },
+        { "argument_list:object": {} },
+        { "argument_list:argument_list , object": {} },
+        { "lambda_arguments:": {} },
+        { "lambda_arguments:lambda_argument_list": {} },
+        { "lambda_argument_list:lambda_argument_list , object": {} },
+        { "lambda_argument_list:object , object": {} },
     ]
+}
+let tscc = new TSCC(grammar, { language: "zh-cn", debug: false });
+let str = tscc.generate();//构造编译器代码
+if (str != null) {//如果构造成功则生成编编译器代码
+    console.log(`成功`);
+} else {
+    console.log(`失败`);
 }
