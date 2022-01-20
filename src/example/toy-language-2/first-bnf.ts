@@ -126,7 +126,7 @@ let grammar: Grammar = {
         { "class_units:": {} },
         { "class_unit:declare ;": {} },
         { "class_unit:operator_overload": {} },
-        { "operator_overload:operator + ( parameter ) : type { statements }": {} },
+        { "operator_overload:operator + ( W4_0 parameter ) : W8_0 type { W11_0 statements }": {} },
         {
             "declare:var id : W4_0 type": {
                 action: function ($, s) {
@@ -505,9 +505,16 @@ let grammar: Grammar = {
             }
         },
         {
+            "W11_0:": {
+                action: function ($, s) {
+                    return s.slice(-11)[0];
+                }
+            }
+        },
+        {
             "W12_0:": {
                 action: function ($, s) {
-                    return s.slice(-10)[0];
+                    return s.slice(-12)[0];
                 }
             }
         }
