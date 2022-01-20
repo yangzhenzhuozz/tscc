@@ -77,23 +77,23 @@ abstract class Scope {
 }
 class ProgramScope extends Scope {
     private automaticName = 0;//用于自动取名
-    public types: Map<string, Type> = new Map();//类型，用户自定义了class，则新增一个类型
-    public registeredTypes:Map<string,Type>=new Map();//已经注册了的类型
-    constructor(){
+    public registeredTypes: Map<string, Type> = new Map();//已经注册了的类型
+    public FunctionScopeIndex: FunctionScope[] = [];//函数空间，因为函数是没有名字的，所以只能使用index作为索引
+    constructor() {
         super();
-        this.registeredTypes.set("int",new Type("int","valuetype"));
-        this.registeredTypes.set("double",new Type("double","valuetype"));
-        this.registeredTypes.set("void",new Type("void","valuetype"));
-        this.registeredTypes.set("boolean",new Type("boolean","valuetype"));
+        this.registeredTypes.set("int", new Type("int", "valuetype"));
+        this.registeredTypes.set("double", new Type("double", "valuetype"));
+        this.registeredTypes.set("void", new Type("void", "valuetype"));
+        this.registeredTypes.set("boolean", new Type("boolean", "valuetype"));
     }
     public getClosureClassNameAutomatic(): string {
         return `closure_class_${this.automaticName++}`;
     }
     public registerType(name: string, type: Type) {
-        if (this.types.has(name)) {
+        if (this.registeredTypes.has(name)) {
             throw new SemanticException(`类型${name}重复声明`);
         }
-        this.types.set(name, type);
+        this.registeredTypes.set(name, type);
     }
     public register(name: string, type: Type) {
         return super.register_k(name, type, "program");
@@ -140,7 +140,6 @@ class FunctionScope extends Scope {
     public programScope: ProgramScope;
     public classScope: ClassScope | undefined;
     public parent: FunctionScope | BlockScope | undefined;//父空间
-    public blockScopes: BlockScope[] = [];//记录内部的Block
     public closureScope: ClosureScope | undefined;//闭包空间，只有最外层的函数才有，即program或者class内部的第一层function
     public closureClass: string = '';//闭包类的类名
     public topFunctionScope: FunctionScope;//顶层函数空间
@@ -155,6 +154,7 @@ class FunctionScope extends Scope {
         } else {
             this.topFunctionScope = parent.topFunctionScope;
         }
+        this.programScope.FunctionScopeIndex.push(this);
     }
     public register(name: string, type: Type) {
         return super.register_k(name, type, "function");
@@ -225,7 +225,6 @@ class BlockScope extends Scope {
         super();
         this.parentFunctionScope = parentFunctionScope;
         this.parent = parent;
-        parentFunctionScope.blockScopes.push(this);
         this.topFunctionScope = topFunctionScope;
     }
     public register(name: string, type: Type) {

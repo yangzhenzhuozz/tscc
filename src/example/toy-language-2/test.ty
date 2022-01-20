@@ -34,6 +34,7 @@ function b():int{
         }
     };
 };
+var b:int;
 class a{
     var a:int;
     function b():int{

@@ -268,9 +268,7 @@ let grammar: Grammar = {
                     for (let parameter of parameters) {
                         functionType.registerParameter(parameter.name, parameter.type);
                     }
-                    if (head instanceof auxiliary.ClassScope) {//如果是在class中定义的函数，则进行注册
-                        head.register(id, functionType);
-                    }
+                    head.register(id, functionType);//注册变量
                     let ret: auxiliary.FunctionScope;
                     if (head instanceof auxiliary.ProgramScope) {
                         ret = new auxiliary.FunctionScope(head, undefined, undefined, functionType);
