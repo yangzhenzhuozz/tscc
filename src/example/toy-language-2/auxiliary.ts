@@ -1,5 +1,10 @@
+interface Function {
+    type: FunctionType;
+    functionIndexOfProgram: number;
+}
 class Type {
     public fields: Map<string, Address> = new Map();//属性列表
+    public operatorOverload: Map<string, Function> = new Map();//操作符重载列表
     public modifier: "valuetype" | "sealed" | "referentialType" | undefined;
     public name: string;
     constructor(name: string, modifier: "valuetype" | "sealed" | "referentialType" | undefined) {
@@ -11,6 +16,12 @@ class Type {
             throw new SemanticException(`属性:${name}重复定义`);
         }
         this.fields.set(name, address);
+    }
+    public registerOperatorOverload(name: string, fun: Function) {
+        if (this.operatorOverload.has(name)) {
+            throw new SemanticException(`重载符号:${name}重复定义`);
+        }
+        this.operatorOverload.set(name, fun);
     }
     //也可以用作签名
     public toString() {
@@ -49,7 +60,7 @@ class FunctionType extends Type {
         return ret;
     }
 }
-type Location = "constant" | "program" | "class" | "function";//值存放的位置，分别为立即数、全局空间、class空间、函数空间
+type Location = "constant" | "program" | "class" | "function" | "text";//值存放的位置，分别为立即数、全局空间、class空间、函数空间、代码段
 class Address {
     public localtion: Location;
     public value: Number;
@@ -107,6 +118,7 @@ class ProgramScope extends Scope {
     }
 }
 class ClassScope extends Scope {
+    public operatorOverload: Map<string, Function> = new Map();//操作符重载列表
     public programScope: ProgramScope;
     constructor(programScope: ProgramScope) {
         super();
@@ -136,24 +148,26 @@ class ClosureScope extends Scope {
 
 }
 class FunctionScope extends Scope {
-    public descriptor: FunctionType;//本函数的描述符
+    public type: FunctionType;//本函数的描述符
     public programScope: ProgramScope;
     public classScope: ClassScope | undefined;
     public parent: FunctionScope | BlockScope | undefined;//父空间
     public closureScope: ClosureScope | undefined;//闭包空间，只有最外层的函数才有，即program或者class内部的第一层function
     public closureClass: string = '';//闭包类的类名
     public topFunctionScope: FunctionScope;//顶层函数空间
-    constructor(programScope: ProgramScope, classScope: ClassScope | undefined, parent: FunctionScope | BlockScope | undefined, descriptor: FunctionType) {
+    public functionIndexOfProgram:number;//本函数在程序中的序号
+    constructor(programScope: ProgramScope, classScope: ClassScope | undefined, parent: FunctionScope | BlockScope | undefined, type: FunctionType) {
         super();
         this.programScope = programScope;
         this.classScope = classScope;
         this.parent = parent;
-        this.descriptor = descriptor;
+        this.type = type;
         if (parent == undefined) {//如果没有传入父空间，则说明当前函数为顶层
             this.topFunctionScope = this;
         } else {
             this.topFunctionScope = parent.topFunctionScope;
         }
+        this.functionIndexOfProgram=this.programScope.FunctionScopeIndex.length;
         this.programScope.FunctionScopeIndex.push(this);
     }
     public register(name: string, type: Type) {

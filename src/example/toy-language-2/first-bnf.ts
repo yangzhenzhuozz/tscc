@@ -92,6 +92,9 @@ let grammar: Grammar = {
                     for (let [k, v] of classScope.Fields) {
                         type.registerField(k, v);
                     }
+                    for (let [k, v] of classScope.operatorOverload) {
+                        type.registerOperatorOverload(k, v);
+                    }
                 }
             }
         },
@@ -126,7 +129,29 @@ let grammar: Grammar = {
         { "class_units:": {} },
         { "class_unit:declare ;": {} },
         { "class_unit:operator_overload": {} },
-        { "operator_overload:operator + ( W4_0 parameter ) : W8_0 type { W11_0 statements }": {} },
+        {
+            "operator_overload:operator + ( W4_0 parameter ) : W8_0 type { createFunction_operator_overload statements }": {
+                action: function ($, s) {
+                    let head = s.slice(-1)[0] as auxiliary.ClassScope;
+                    let functionScope = $[9] as auxiliary.FunctionScope;
+                    head.operatorOverload.set('+', { type: functionScope.type, functionIndexOfProgram: functionScope.functionIndexOfProgram });
+                }
+            }
+        },
+        {
+            "createFunction_operator_overload:": {
+                action: function ($, s) {
+                    let head = s.slice(-11)[0] as auxiliary.ClassScope;
+                    let ret_type = s.slice(-2)[0] as auxiliary.Type;
+                    let functionType = new auxiliary.FunctionType(ret_type);
+                    let parameter = s.slice(-6)[0] as { name: string, type: auxiliary.Type };
+                    functionType.registerParameter(parameter.name, parameter.type);
+                    let ret: auxiliary.FunctionScope;
+                    ret = new auxiliary.FunctionScope(head.programScope, head, undefined, functionType);
+                    return ret;
+                }
+            }
+        },
         {
             "declare:var id : W4_0 type": {
                 action: function ($, s) {
@@ -501,13 +526,6 @@ let grammar: Grammar = {
             "W10_0:": {
                 action: function ($, s) {
                     return s.slice(-10)[0];
-                }
-            }
-        },
-        {
-            "W11_0:": {
-                action: function ($, s) {
-                    return s.slice(-11)[0];
                 }
             }
         },
