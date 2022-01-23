@@ -75,7 +75,7 @@ class Address {
 abstract class Scope {
     public Fields: Map<string, Address> = new Map();
     private allocatedAddress: number = 0;
-    abstract register(name: string, type: Type): Address;
+    abstract registerField(name: string, type: Type): Address;
     protected register_k(name: string, type: Type, loc: Location) {
         if (this.Fields.has(name)) {
             throw new SemanticException(`变量${name}重复声明`);
@@ -88,7 +88,7 @@ abstract class Scope {
 }
 class ProgramScope extends Scope {
     private automaticName = 0;//用于自动取名
-    public registeredTypes: Map<string, Type> = new Map();//已经注册了的类型
+    private registeredTypes: Map<string, Type> = new Map();//已经注册了的类型
     public FunctionScopeIndex: FunctionScope[] = [];//函数空间，因为函数是没有名字的，所以只能使用index作为索引
     constructor() {
         super();
@@ -106,7 +106,15 @@ class ProgramScope extends Scope {
         }
         this.registeredTypes.set(name, type);
     }
-    public register(name: string, type: Type) {
+    public getRegisteredType(name: string): Type {
+        if (this.registeredTypes.has(name)) {
+            return this.registeredTypes.get(name)!;
+        } else {
+            throw new SemanticException(`未识别的类型${name}`);
+        }
+
+    }
+    public registerField(name: string, type: Type) {
         return super.register_k(name, type, "program");
     }
     public getVariable(name: string): Address {
@@ -124,7 +132,7 @@ class ClassScope extends Scope {
         super();
         this.programScope = programScope;
     }
-    public register(name: string, type: Type) {
+    public registerField(name: string, type: Type) {
         return super.register_k(name, type, "class");
     }
     public getVariable(name: string): Address {
@@ -137,7 +145,7 @@ class ClassScope extends Scope {
 }
 class ClosureScope extends Scope {
     private automaticName = 0;//用于自动取名
-    register(name: string, type: Type): Address {//注册闭包变量
+    registerField(name: string, type: Type): Address {//注册闭包变量
         let ret = super.register_k(`closure_${this.automaticName}_${name}`, type, "class");
         ret.isClosure = true;
         return ret
@@ -154,29 +162,22 @@ class FunctionScope extends Scope {
     public parent: FunctionScope | BlockScope | undefined;//父空间
     public closureScope: ClosureScope | undefined;//闭包空间，只有最外层的函数才有，即program或者class内部的第一层function
     public closureClass: string = '';//闭包类的类名
-    public topFunctionScope: FunctionScope;//顶层函数空间
-    public functionIndexOfProgram:number;//本函数在程序中的序号
+    public functionIndexOfProgram: number;//本函数在程序中的序号
     constructor(programScope: ProgramScope, classScope: ClassScope | undefined, parent: FunctionScope | BlockScope | undefined, type: FunctionType) {
         super();
         this.programScope = programScope;
         this.classScope = classScope;
         this.parent = parent;
         this.type = type;
-        if (parent == undefined) {//如果没有传入父空间，则说明当前函数为顶层
-            this.topFunctionScope = this;
-        } else {
-            this.topFunctionScope = parent.topFunctionScope;
-        }
-        this.functionIndexOfProgram=this.programScope.FunctionScopeIndex.length;
+        this.functionIndexOfProgram = this.programScope.FunctionScopeIndex.length;
         this.programScope.FunctionScopeIndex.push(this);
     }
-    public register(name: string, type: Type) {
+    public registerField(name: string, type: Type) {
         return super.register_k(name, type, "function");
     }
     public closureCheck(name: string) {
         let node: FunctionScope | BlockScope | undefined = this;
         let add: Address | undefined;
-        let TopFunctionScope: FunctionScope;
         for (; node != undefined; node = node.parent) {
             if (node.Fields.has(name)) {
                 add = node.Fields.get(name);
@@ -188,19 +189,19 @@ class FunctionScope extends Scope {
                 if (node instanceof FunctionScope) {
                     if (node != this) {
                         //闭包变量
-                        if (node.topFunctionScope.closureScope == undefined) {
-                            node.topFunctionScope.closureScope = new ClosureScope();
+                        if (node.closureScope == undefined) {
+                            node.closureScope = new ClosureScope();
                         }
-                        let tmp = node.topFunctionScope.closureScope.register(`${name}`, add!.type);
+                        let tmp = node.closureScope.registerField(`${name}`, add!.type);
                         node.Fields.set(name, tmp);
                     }
                 } else if (node instanceof BlockScope) {
                     if (node.parentFunctionScope != this) {
                         //闭包变量
-                        if (node.topFunctionScope.closureScope == undefined) {
-                            node.topFunctionScope.closureScope = new ClosureScope();
+                        if (node.parentFunctionScope.closureScope == undefined) {
+                            node.parentFunctionScope.closureScope = new ClosureScope();
                         }
-                        let tmp = node.topFunctionScope.closureScope.register(`${name}`, add!.type);
+                        let tmp = node.parentFunctionScope.closureScope.registerField(`${name}`, add!.type);
                         node.Fields.set(name, tmp);
                     }
                 }
@@ -232,16 +233,14 @@ class FunctionScope extends Scope {
     }
 }
 class BlockScope extends Scope {
-    public topFunctionScope: FunctionScope;//顶层函数空间
     public parentFunctionScope: FunctionScope;//父函数空间,blockScope必定位于函数空间中
     public parent: FunctionScope | BlockScope;//父空间
-    constructor(topFunctionScope: FunctionScope, parentFunctionScope: FunctionScope, parent: FunctionScope | BlockScope) {
+    constructor(parentFunctionScope: FunctionScope, parent: FunctionScope | BlockScope) {
         super();
         this.parentFunctionScope = parentFunctionScope;
         this.parent = parent;
-        this.topFunctionScope = topFunctionScope;
     }
-    public register(name: string, type: Type) {
+    public registerField(name: string, type: Type) {
         let node: FunctionScope | BlockScope | undefined = this;
         for (; node != undefined; node = node.parent) {
             if (node.Fields.has(name)) {
@@ -269,19 +268,19 @@ class BlockScope extends Scope {
                 if (node instanceof FunctionScope) {
                     if (node != this.parentFunctionScope) {
                         //闭包变量
-                        if (node.topFunctionScope.closureScope == undefined) {
-                            node.topFunctionScope.closureScope = new ClosureScope();
+                        if (node.closureScope == undefined) {
+                            node.closureScope = new ClosureScope();
                         }
-                        let tmp = node.topFunctionScope.closureScope!.register(`${name}`, add!.type);
+                        let tmp = node.closureScope!.registerField(`${name}`, add!.type);
                         node.Fields.set(name, tmp);
                     }
                 } else if (node instanceof BlockScope) {
                     if (node.parentFunctionScope != this.parentFunctionScope) {
                         //闭包变量
-                        if (node.topFunctionScope.closureScope == undefined) {
-                            node.topFunctionScope.closureScope = new ClosureScope();
+                        if (node.parentFunctionScope.closureScope == undefined) {
+                            node.parentFunctionScope.closureScope = new ClosureScope();
                         }
-                        let tmp = node.topFunctionScope.closureScope!.register(`${name}`, add!.type);
+                        let tmp = node.parentFunctionScope.closureScope!.registerField(`${name}`, add!.type);
                         node.Fields.set(name, tmp);
                     }
                 }

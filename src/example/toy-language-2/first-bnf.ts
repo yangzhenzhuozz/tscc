@@ -158,7 +158,7 @@ let grammar: Grammar = {
                     let head = s.slice(-1)[0] as auxiliary.Scope;
                     let id = $[1] as string;
                     let type = $[4] as auxiliary.Type;
-                    head.register(id, type);
+                    head.registerField(id, type);
                 }
             }
         },
@@ -195,23 +195,13 @@ let grammar: Grammar = {
                     let id = $[0] as string;
                     let head = s.slice(-1)[0] as auxiliary.ProgramScope | auxiliary.ClassScope | auxiliary.FunctionScope | auxiliary.BlockScope;
                     if (head instanceof auxiliary.ProgramScope) {
-                        if (head.registeredTypes.has(id)) {
-                            return head.registeredTypes.get(id)!;
-                        } else {
-                            throw new auxiliary.SemanticException(`未识别的类型${id}`);
-                        }
+                        return head.getRegisteredType(id);
                     } else if (head instanceof auxiliary.ClassScope) {
-                        if (head.programScope.registeredTypes.has(id)) {
-                            return head.programScope.registeredTypes.get(id)!;
-                        } else {
-                            throw new auxiliary.SemanticException(`未识别的类型${id}`);
-                        }
+                        return head.programScope.getRegisteredType(id);
+                    } else if (head instanceof auxiliary.FunctionScope) {
+                        return head.programScope.getRegisteredType(id);
                     } else {
-                        if (head.topFunctionScope.programScope.registeredTypes.has(id)) {
-                            return head.topFunctionScope.programScope.registeredTypes.get(id)!;
-                        } else {
-                            throw new auxiliary.SemanticException(`未识别的类型${id}`);
-                        }
+                        return head.parentFunctionScope.programScope.getRegisteredType(id);
                     }
                 }
             }
@@ -265,18 +255,15 @@ let grammar: Grammar = {
         {
             "function_definition:function id ( W4_0 parameters ) : W8_0 type { createFunctionScope statements }": {
                 action: function ($, s) {
-                    let head = s.slice(-1)[0] as auxiliary.ProgramScope | auxiliary.ClassScope | auxiliary.FunctionScope | auxiliary.BlockScope;
-                    if (head instanceof auxiliary.ProgramScope || head instanceof auxiliary.ClassScope) {//说明是顶层函数空间
-                        let functionScope = $[10] as auxiliary.FunctionScope;
-                        if (functionScope.closureScope != undefined) {
-                            let programScope = functionScope.programScope;
-                            let name = programScope.getClosureClassNameAutomatic();
-                            let type = new auxiliary.Type(name, "referentialType");
-                            functionScope.closureClass = name;
-                            functionScope.programScope.registerType(name, type);
-                            for (let [k, v] of functionScope.closureScope.Fields) {
-                                type.registerField(k, v);
-                            }
+                    let functionScope = $[10] as auxiliary.FunctionScope;
+                    if (functionScope.closureScope != undefined) {//如果变量被捕获，则注册闭包类
+                        let programScope = functionScope.programScope;
+                        let name = programScope.getClosureClassNameAutomatic();
+                        let type = new auxiliary.Type(name, "referentialType");
+                        functionScope.closureClass = name;
+                        functionScope.programScope.registerType(name, type);
+                        for (let [k, v] of functionScope.closureScope.Fields) {
+                            type.registerField(k, v);
                         }
                     }
                 }
@@ -293,7 +280,7 @@ let grammar: Grammar = {
                     for (let parameter of parameters) {
                         functionType.registerParameter(parameter.name, parameter.type);
                     }
-                    head.register(id, functionType);//注册变量
+                    head.registerField(id, functionType);//注册变量
                     let ret: auxiliary.FunctionScope;
                     if (head instanceof auxiliary.ProgramScope) {
                         ret = new auxiliary.FunctionScope(head, undefined, undefined, functionType);
@@ -409,9 +396,9 @@ let grammar: Grammar = {
                     let head = s.slice(-2)[0] as auxiliary.FunctionScope | auxiliary.BlockScope;
                     let ret: auxiliary.BlockScope;
                     if (head instanceof auxiliary.FunctionScope) {
-                        ret = new auxiliary.BlockScope(head, head, head);
+                        ret = new auxiliary.BlockScope(head, head);
                     } else {
-                        ret = new auxiliary.BlockScope(head.topFunctionScope, head.parentFunctionScope, head);
+                        ret = new auxiliary.BlockScope(head.parentFunctionScope, head.parentFunctionScope);
                     }
                     return ret;
                 }

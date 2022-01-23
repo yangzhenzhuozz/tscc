@@ -4,3 +4,16 @@
 还有各个函数注册到Program中了，这时候var a=()=>{},因为object: ()=>{},这时候object的值是在Program中注册的函数索引
 包括函数重载和function fun():int{}这种形式
 在Type中增加记录overload的字段
+
+测试多重闭包
+function a(){
+    var a:int;
+    function b(){
+        a;//使用了闭包
+        var b:int;
+        function c(){
+            b;//使用了闭包
+        }
+    }
+}
+测试是否能正确处理这种函数嵌套
