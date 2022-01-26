@@ -57,6 +57,11 @@ let grammar: Grammar = {
             "program:import_stmts createProgramScope program_units": {
                 action: function ($, s) {
                     let programScope = $[1] as auxiliary.ProgramScope;
+                    if (programScope.unregisteredTypes.size != 0) {
+                        let msg = `存在未定义的类型:${[...programScope.unregisteredTypes].reduce((p, c) => `${p},${c}`)}`;
+                        throw new auxiliary.SemanticException(msg);
+                    }
+                    programScope.scopeFinished();
                     console.log('检查类型注册是否完整');
                     console.log(programScope);
                     debugger
@@ -89,7 +94,7 @@ let grammar: Grammar = {
                         type.modifier = modifier;
                     }
                     classScope.programScope.registerType(id, type);
-                    for (let [k, v] of classScope.Fields) {
+                    for (let [k, v] of classScope.fields) {
                         type.registerField(k, v);
                     }
                     for (let [k, v] of classScope.operatorOverload) {
@@ -102,7 +107,6 @@ let grammar: Grammar = {
             "createClassScope:": {
                 action: function ($, s): auxiliary.ClassScope {
                     let head = s.slice(-6)[0] as auxiliary.ProgramScope;
-                    let id = s.slice(-3)[0] as string;
                     let ret = new auxiliary.ClassScope(head);
                     return ret;
                 }
@@ -130,7 +134,7 @@ let grammar: Grammar = {
         { "class_unit:declare ;": {} },
         { "class_unit:operator_overload": {} },
         {
-            "operator_overload:operator + ( W4_0 parameter ) : W8_0 type { createFunction_operator_overload statements }": {
+            "operator_overload:operator + ( W4_0 parameter ) : W8_0 type { createFunctionScope_operator_overload statements }": {
                 action: function ($, s) {
                     let head = s.slice(-1)[0] as auxiliary.ClassScope;
                     let functionScope = $[9] as auxiliary.FunctionScope;
@@ -139,7 +143,7 @@ let grammar: Grammar = {
             }
         },
         {
-            "createFunction_operator_overload:": {
+            "createFunctionScope_operator_overload:": {
                 action: function ($, s) {
                     let head = s.slice(-11)[0] as auxiliary.ClassScope;
                     let ret_type = s.slice(-2)[0] as auxiliary.Type;
@@ -262,7 +266,7 @@ let grammar: Grammar = {
                         let type = new auxiliary.Type(name, "referentialType");
                         functionScope.closureClass = name;
                         functionScope.programScope.registerType(name, type);
-                        for (let [k, v] of functionScope.closureScope.Fields) {
+                        for (let [k, v] of functionScope.closureScope.fields) {
                             type.registerField(k, v);
                         }
                     }
@@ -418,8 +422,16 @@ let grammar: Grammar = {
         },
         { "object:constant_val": {} },
         { "object:object ( arguments )": {} },
-        { "object:object => { W4_0 statements }": {} },//lambda,单个参数可以不加括号，即使有括号也会被解析成 (object)====>object
-        { "object:( W2_0 lambda_arguments ) => { W7_0 statements }": {} },//参数必须为0个或者两个及以上
+        { "object:object => { createFunctionScope_lambda_W4_0 statements }": {} },//lambda,单个参数可以不加括号，即使有括号也会被解析成 (object)====>object
+        {
+            "createFunctionScope_lambda_W4_0:": {
+                action: function ($, s) {
+                    console.error('暂时无法完成，需要将所有的object都解析成Type类型,一共有27个');
+                    console.error('需要解决lambda返回自身的问题');
+                }
+            }
+        },
+        { "object:( W2_0 lambda_arguments ) : type => { W7_0 statements }": {} },//参数必须为0个或者两个及以上
         { "object:( W2_0 object )": {} },
         { "object:object . id": {} },
         { "object:object = W3_0 object": {} },

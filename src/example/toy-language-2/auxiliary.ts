@@ -23,6 +23,17 @@ class Type {
         }
         this.operatorOverload.set(name, fun);
     }
+    //值类型循环包含检测
+    public valueTypeLoopIncludeCheck(name: string) {
+        for (let [k, v] of this.fields) {
+            if (name == v.type.name) {
+                throw new SemanticException(`值类型:${name}循环包含`);
+            }
+            if (v.type.modifier == "valuetype") {
+                v.type.valueTypeLoopIncludeCheck(name);
+            }
+        }
+    }
     //也可以用作签名
     public toString() {
         let ret = `${this.name}`;
@@ -73,15 +84,15 @@ class Address {
     }
 }
 abstract class Scope {
-    public Fields: Map<string, Address> = new Map();
+    public fields: Map<string, Address> = new Map();
     private allocatedAddress: number = 0;
     abstract registerField(name: string, type: Type): Address;
     protected register_k(name: string, type: Type, loc: Location) {
-        if (this.Fields.has(name)) {
+        if (this.fields.has(name)) {
             throw new SemanticException(`变量${name}重复声明`);
         }
         let add = new Address(loc, this.allocatedAddress++, type);
-        this.Fields.set(name, add);
+        this.fields.set(name, add);
         return add;
     }
     abstract getVariable(name: string): Address;
@@ -90,6 +101,8 @@ class ProgramScope extends Scope {
     private automaticName = 0;//用于自动取名
     private registeredTypes: Map<string, Type> = new Map();//已经注册了的类型
     public FunctionScopeIndex: FunctionScope[] = [];//函数空间，因为函数是没有名字的，所以只能使用index作为索引
+    public unregisteredTypes: Set<string> = new Set();//还未注册的类型
+    public tmpTypes: Type[] = [];//还未解析完成的类型，先记录下来，后续填充
     constructor() {
         super();
         this.registeredTypes.set("int", new Type("int", "valuetype"));
@@ -101,6 +114,7 @@ class ProgramScope extends Scope {
         return `closure_class_${this.automaticName++}`;
     }
     public registerType(name: string, type: Type) {
+        this.unregisteredTypes.delete(name);//现在注册该类型了，可以从未注册列表删除
         if (this.registeredTypes.has(name)) {
             throw new SemanticException(`类型${name}重复声明`);
         }
@@ -110,7 +124,10 @@ class ProgramScope extends Scope {
         if (this.registeredTypes.has(name)) {
             return this.registeredTypes.get(name)!;
         } else {
-            throw new SemanticException(`未识别的类型${name}`);
+            let tmpType = new Type(name, "valuetype");
+            this.unregisteredTypes.add(name);
+            this.tmpTypes.push(tmpType);
+            return tmpType;
         }
 
     }
@@ -118,11 +135,28 @@ class ProgramScope extends Scope {
         return super.register_k(name, type, "program");
     }
     public getVariable(name: string): Address {
-        let ret = this.Fields.get(name);
+        let ret = this.fields.get(name);
         if (ret == undefined) {
             throw new SemanticException(`未定义的变量:${name}`);
         }
         return ret;
+    }
+    //程序空间已经闭合,开始检查类型完整性
+    public scopeFinished() {
+        //回填真正的类型
+        for (let type of this.tmpTypes) {
+            let realType = this.getRegisteredType(type.name);
+            type.fields = realType.fields;
+            type.operatorOverload = realType.operatorOverload;
+            type.modifier = realType.modifier;
+        }
+        //值类型循环包含检测
+        for (let [k, v] of this.registeredTypes) {
+            if (v.modifier == "valuetype") {
+                v.valueTypeLoopIncludeCheck(v.name);
+            }
+        }
+        console.error('继承的检查还没有做');
     }
 }
 class ClassScope extends Scope {
@@ -136,7 +170,7 @@ class ClassScope extends Scope {
         return super.register_k(name, type, "class");
     }
     public getVariable(name: string): Address {
-        let ret = this.Fields.get(name);
+        let ret = this.fields.get(name);
         if (ret == undefined) {//如果在class空间搜索不到，则去program空间搜索
             return this.programScope.getVariable(name);
         }
@@ -179,8 +213,8 @@ class FunctionScope extends Scope {
         let node: FunctionScope | BlockScope | undefined = this;
         let add: Address | undefined;
         for (; node != undefined; node = node.parent) {
-            if (node.Fields.has(name)) {
-                add = node.Fields.get(name);
+            if (node.fields.has(name)) {
+                add = node.fields.get(name);
                 break;
             }
         }
@@ -193,7 +227,7 @@ class FunctionScope extends Scope {
                             node.closureScope = new ClosureScope();
                         }
                         let tmp = node.closureScope.registerField(`${name}`, add!.type);
-                        node.Fields.set(name, tmp);
+                        node.fields.set(name, tmp);
                     }
                 } else if (node instanceof BlockScope) {
                     if (node.parentFunctionScope != this) {
@@ -202,7 +236,7 @@ class FunctionScope extends Scope {
                             node.parentFunctionScope.closureScope = new ClosureScope();
                         }
                         let tmp = node.parentFunctionScope.closureScope.registerField(`${name}`, add!.type);
-                        node.Fields.set(name, tmp);
+                        node.fields.set(name, tmp);
                     }
                 }
             }
@@ -210,11 +244,11 @@ class FunctionScope extends Scope {
         else {
             //先在classScope搜索变量
             if (this.classScope != undefined) {
-                if (!this.classScope.Fields.has(name)) {
+                if (!this.classScope.fields.has(name)) {
                     throw new SemanticException(`未定义的变量:${name}`);
                 }
             } else {//然后在Program搜索变量
-                if (!this.programScope.Fields.has(name)) {
+                if (!this.programScope.fields.has(name)) {
                     throw new SemanticException(`未定义的变量:${name}`);
                 }
             }
@@ -225,7 +259,7 @@ class FunctionScope extends Scope {
         //先在本空间搜索
         //然后在class空间搜索
         //在program空间搜索
-        // let ret = this.Fields.get(name);
+        // let ret = this.fields.get(name);
         // if (ret == undefined) {
         //     throw new SemanticException(`未定义的变量:${name}`);
         // }
@@ -243,12 +277,12 @@ class BlockScope extends Scope {
     public registerField(name: string, type: Type) {
         let node: FunctionScope | BlockScope | undefined = this;
         for (; node != undefined; node = node.parent) {
-            if (node.Fields.has(name)) {
+            if (node.fields.has(name)) {
                 throw new SemanticException(`变量${name}重复声明`);
             }
         }
         let add = new Address("function", -1, type);
-        this.Fields.set(name, add);
+        this.fields.set(name, add);
         return add;
     }
     public getVariable(name: string): Address {
@@ -258,8 +292,8 @@ class BlockScope extends Scope {
         let node: FunctionScope | BlockScope | undefined = this;
         let add: Address | undefined;
         for (; node != undefined; node = node.parent) {
-            if (node.Fields.has(name)) {
-                add = node.Fields.get(name);
+            if (node.fields.has(name)) {
+                add = node.fields.get(name);
                 break;
             }
         }
@@ -272,7 +306,7 @@ class BlockScope extends Scope {
                             node.closureScope = new ClosureScope();
                         }
                         let tmp = node.closureScope!.registerField(`${name}`, add!.type);
-                        node.Fields.set(name, tmp);
+                        node.fields.set(name, tmp);
                     }
                 } else if (node instanceof BlockScope) {
                     if (node.parentFunctionScope != this.parentFunctionScope) {
@@ -281,18 +315,18 @@ class BlockScope extends Scope {
                             node.parentFunctionScope.closureScope = new ClosureScope();
                         }
                         let tmp = node.parentFunctionScope.closureScope!.registerField(`${name}`, add!.type);
-                        node.Fields.set(name, tmp);
+                        node.fields.set(name, tmp);
                     }
                 }
             }
         } else {
             //先在classScope搜索变量
             if (this.parentFunctionScope.classScope != undefined) {
-                if (!this.parentFunctionScope.classScope.Fields.has(name)) {
+                if (!this.parentFunctionScope.classScope.fields.has(name)) {
                     throw new SemanticException(`未定义的变量:${name}`);
                 }
             } else {//然后在Program搜索变量
-                if (!this.parentFunctionScope.programScope.Fields.has(name)) {
+                if (!this.parentFunctionScope.programScope.fields.has(name)) {
                     throw new SemanticException(`未定义的变量:${name}`);
                 }
             }
