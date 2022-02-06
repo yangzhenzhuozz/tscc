@@ -71,7 +71,7 @@ class FunctionType extends Type {
         return ret;
     }
 }
-type Location = "constant" | "program" | "class" | "function" | "text";//值存放的位置，分别为立即数、全局空间、class空间、函数空间、代码段
+type Location = "immediate" | "program" | "class" | "function" | "text";//值存放的位置，分别为立即数、全局空间、class空间、函数空间、代码段
 class Address {
     public localtion: Location;
     public value: Number;
