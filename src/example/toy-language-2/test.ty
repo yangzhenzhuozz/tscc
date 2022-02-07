@@ -1,8 +1,11 @@
 var a=5;
-valuetype class A{
+class A{
+    constructor(){
+        var a=(a)=>{return a;};//recursive value   
+    }
     var a:B;
 }
 valuetype class B{
     var b:int;
+    
 }
-var a=(a)=>{return a};//recursive value

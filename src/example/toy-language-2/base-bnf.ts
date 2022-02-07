@@ -40,6 +40,7 @@ let grammar: Grammar = {
         { "class_units:class_units class_unit": {} },
         { "class_units:": {} },
         { "class_unit:declare_in__class ;": {} },
+        { "class_unit:_constructor": {} },
         { "class_unit:operator_overload": {} },
         { "class_unit:get id ( ) : type { statements }": {} },
         { "class_unit:set id ( id : type ) { statements }": {} },
@@ -48,11 +49,10 @@ let grammar: Grammar = {
         { "declare_in_function:var id : type = object": {} },
         { "declare_in_function:var id : type": {} },
         { "declare_in_function:function_definition": {} },
-        { "declare_in__class:var id : type = immediate_object": {} },//program和class不能包含可执行代码，所以只能使用一个立即数、数组、一个new出来的对象,lambda表达式
+        { "declare_in__class:var id : type = immediate_object": {} },//program和class的声明语句也不能包含可执行代码，所以只能使用一个立即数、数组、一个new出来的对象,因为我懒得专门定义使用immediate的lambda了，所以program和class中暂时不允许使用lambda
         { "declare_in__class:var id = immediate_object": {} },
-        { "declare_in__class:var id : type": {} },//class中的声明可以不初始化，由构造函数初始化
+        { "declare_in__class:var id : type": {} },
         { "declare_in__class:function_definition": {} },
-        { "declare_in__class:_constructor": {} },//构造函数
         { "declare_in_program:var id : type = immediate_object": {} },//program中的声明必须初始化
         { "declare_in_program:var id = immediate_object": {} },
         { "declare_in_program:function_definition": {} },
