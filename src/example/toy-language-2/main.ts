@@ -1,4 +1,4 @@
-import Parser from "./parser-1.js";
+import Parser from "./parser-2.js";
 import lexer from './lexrule.js';
 import fs from 'fs';
 let parser = new Parser();

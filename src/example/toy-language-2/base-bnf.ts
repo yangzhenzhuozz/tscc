@@ -1,7 +1,8 @@
+import fs from "fs";
 import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
 let grammar: Grammar = {
-    tokens: ['var', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'sealed', 'this', 'return','get','set'],
+    tokens: ['var', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'sealed', 'this', 'return','get','set','constructor'],
     association: [
         { 'right': ['='] },
         { 'right': ['?'] },
@@ -25,7 +26,7 @@ let grammar: Grammar = {
         { "program:import_stmts program_units": {} },
         { "program_units:program_units program_unit": {} },
         { "program_units:": {} },
-        { "program_unit:declare_in_program_or_class ;": {} },
+        { "program_unit:declare_in_program ;": {} },
         { "program_unit:cLass_definition": {} },
         { "import_stmts:": {} },
         { "import_stmts:import_stmts import_stmt": {} },
@@ -38,18 +39,23 @@ let grammar: Grammar = {
         { "extends_declare:": {} },
         { "class_units:class_units class_unit": {} },
         { "class_units:": {} },
-        { "class_unit:declare_in_program_or_class ;": {} },
+        { "class_unit:declare_in__class ;": {} },
         { "class_unit:operator_overload": {} },
         { "class_unit:get id ( ) : type { statements }": {} },
         { "class_unit:set id ( id : type ) { statements }": {} },
         { "operator_overload:operator + ( parameter ) : type { statements }": {} },
         { "declare_in_function:var id = object": {} },
         { "declare_in_function:var id : type = object": {} },
-        { "declare_in_function:base_declare": {} },
-        { "declare_in_program_or_class:var id : type = immediate_object": {} },//program和class不能包含可执行代码，所以只能使用一个立即数、数组、一个new出来的对象
-        { "declare_in_program_or_class:base_declare": {} },
-        { "base_declare:var id : type": {} },//最基本的声明形式
-        { "base_declare:function_definition": {} },
+        { "declare_in_function:var id : type": {} },
+        { "declare_in_function:function_definition": {} },
+        { "declare_in__class:var id : type = immediate_object": {} },//program和class不能包含可执行代码，所以只能使用一个立即数、数组、一个new出来的对象,lambda表达式
+        { "declare_in__class:var id = immediate_object": {} },
+        { "declare_in__class:var id : type": {} },//class中的声明可以不初始化，由构造函数初始化
+        { "declare_in__class:function_definition": {} },
+        { "declare_in__class:_constructor": {} },//构造函数
+        { "declare_in_program:var id : type = immediate_object": {} },//program中的声明必须初始化
+        { "declare_in_program:var id = immediate_object": {} },
+        { "declare_in_program:function_definition": {} },
         { "type:basic_type arr_definition": {} },
         { "arr_definition:arr_definition [ ]": {} },
         { "arr_definition:": {} },
@@ -60,6 +66,7 @@ let grammar: Grammar = {
         { "function_parameter_type_list:function_parameter_type_list , type": {} },
         { "function_parameter_type_list:type": {} },
         { "function_definition:function id ( parameters ) : type { statements }": {} },
+        { "_constructor:constructor ( parameters ) { statements }": {} },
         { "parameters:parameter_list": {} },
         { "parameters:varible_argument": {} },
         { "parameters:parameter_list , varible_argument": {} },
@@ -151,6 +158,7 @@ let tscc = new TSCC(grammar, { language: "zh-cn", debug: false });
 let str = tscc.generate();//构造编译器代码
 if (str != null) {//如果构造成功则生成编编译器代码
     console.log(`成功`);
+    fs.writeFileSync('./src/example/toy-language-2/parser-2.ts', str);
 } else {
     console.log(`失败`);
 }
