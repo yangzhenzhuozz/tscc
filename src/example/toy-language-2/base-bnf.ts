@@ -1,7 +1,7 @@
 import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
 let grammar: Grammar = {
-    tokens: ['var', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'sealed', 'this', 'return'],
+    tokens: ['var', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'sealed', 'this', 'return','get','set'],
     association: [
         { 'right': ['='] },
         { 'right': ['?'] },
@@ -40,6 +40,8 @@ let grammar: Grammar = {
         { "class_units:": {} },
         { "class_unit:declare_in_program_or_class ;": {} },
         { "class_unit:operator_overload": {} },
+        { "class_unit:get id ( ) : type { statements }": {} },
+        { "class_unit:set id ( id : type ) { statements }": {} },
         { "operator_overload:operator + ( parameter ) : type { statements }": {} },
         { "declare_in_function:var id = object": {} },
         { "declare_in_function:var id : type = object": {} },
