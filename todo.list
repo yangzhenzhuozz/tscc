@@ -1,2 +1,2 @@
-recursive value
-即 var a=xxx,如果在推导a的类型的时候又出现了对a的使用，则表示这是一个recursive value,拒绝执行
+recursive value 即 var a=xxx,如果在推导a的类型的时候又出现了对a的使用，则表示这是一个recursive value,拒绝执行
+函数有个标志表示是否需要this

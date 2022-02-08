@@ -2,7 +2,7 @@ import fs from "fs";
 import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
 let grammar: Grammar = {
-    tokens: ['var', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'sealed', 'this', 'return','get','set','constructor'],
+    tokens: ['var', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'sealed', 'this', 'return', 'get', 'set', 'constructor'],
     association: [
         { 'right': ['='] },
         { 'right': ['?'] },
@@ -49,7 +49,7 @@ let grammar: Grammar = {
         { "declare_in_function:var id : type = object": {} },
         { "declare_in_function:var id : type": {} },
         { "declare_in_function:function_definition": {} },
-        { "declare_in__class:var id : type = immediate_object": {} },//program和class的声明语句也不能包含可执行代码，所以只能使用一个立即数、数组、一个new出来的对象,因为我懒得专门定义使用immediate的lambda了，所以program和class中暂时不允许使用lambda
+        { "declare_in__class:var id : type = immediate_object": {} },//program和class的声明语句也不能包含可执行代码，所以只能使用一个立即数、数组、一个new出来的对象或者是lambda表达式
         { "declare_in__class:var id = immediate_object": {} },
         { "declare_in__class:var id : type": {} },
         { "declare_in__class:function_definition": {} },
@@ -106,9 +106,7 @@ let grammar: Grammar = {
         { "block:{ statements }": {} },
         { "statements:": {} },
         { "statements:statements statement": {} },
-        { "object:object ( arguments )": {} },
-        { "object:object => { statements }": {} },//lambda,单个参数可以不加括号，即使有括号也会被解析成 (object)====>object
-        { "object:( lambda_arguments ) => { statements }": {} },//参数必须为0个或者两个及以上
+        { "object:object ( arguments )": {} },//函数调用
         { "object:( object )": {} },
         { "object:object . id": {} },
         { "object:object = object": {} },
@@ -134,6 +132,7 @@ let grammar: Grammar = {
         { "immediate_object:immediate_val": {} },
         { "immediate_object:new basic_type ( arguments )": {} },
         { "immediate_object:new basic_type array_init_list": {} },
+        { "immediate_object:( lambda_arguments ) => { statements }": {} },//lambda
         { "array_init_list:array_inits array_placeholder": {} },
         { "array_inits:array_inits [ object ]": {} },
         { "array_inits:[ object ]": {} },
@@ -150,8 +149,8 @@ let grammar: Grammar = {
         { "argument_list:argument_list , object": {} },
         { "lambda_arguments:": {} },
         { "lambda_arguments:lambda_argument_list": {} },
-        { "lambda_argument_list:lambda_argument_list , object": {} },
-        { "lambda_argument_list:object , object": {} },
+        { "lambda_argument_list:lambda_argument_list , id : type": {} },
+        { "lambda_argument_list:id : type": {} },
     ]
 }
 let tscc = new TSCC(grammar, { language: "zh-cn", debug: false });
