@@ -6,6 +6,7 @@ compiler.ts
 src/example/toy-language/parser.ts
 src/example/calculate/parser.ts
 src/example/lexer/parser.ts
-src/example/toy-language-2/parser-1.ts
+src/example/toy-language-2/parser-*.ts
+src/example/toy-language-3/parser-*.ts
 log.txt
 err.txt
