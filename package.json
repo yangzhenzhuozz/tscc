@@ -17,5 +17,8 @@
     "url": "https://github.com/yangzhenzhuozz/tscc/issues"
   },
   "homepage": "https://github.com/yangzhenzhuozz/tscc#readme",
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "@types/node": "^16.11.24"
+  }
 }
