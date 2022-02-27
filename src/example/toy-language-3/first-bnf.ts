@@ -1,6 +1,7 @@
 import fs from "fs";
 import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
+import { Type, Address, ProgramScope } from "./lib.js"
 /**
  * 这是第一次扫描用的BNF，和第二次扫描几乎没有多大区别
  * 因为解析器是从左往右扫描的，在解析某个片段时可能会依赖后续输入，所以第一次扫描有两个任务
@@ -28,6 +29,7 @@ import { Grammar } from "../../tscc/tscc.js";
  * 因为在解析到a=a*2的时候，还不知道变量a是需要被closure捕获，所以无法生成正确的代码
  */
 let grammar: Grammar = {
+    userCode: `import { Type, Address, ProgramScope } from "./lib.js"`,
     tokens: ['var', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'sealed', 'this', 'return', 'get', 'set', 'constructor'],
     association: [
         { 'right': ['='] },
@@ -49,15 +51,29 @@ let grammar: Grammar = {
         { 'nonassoc': ['else'] },
     ],
     BNF: [
-        { "program:import_stmts program_units": {} },
+        { "program:create_program_scope import_stmts W2_0 program_units": {} },
+        {
+            "W2_0:": {
+                action: function ($, s) {
+                    return s.slice(-2)[0];
+                }
+            }
+        },
+        {
+            "create_program_scope:": {
+                action: function ($, s): ProgramScope {
+                    return new ProgramScope();
+                }
+            }
+        },
         { "import_stmts:": {} },
         { "import_stmts:import_stmts import_stmt": {} },
         { "import_stmt:import id as id ;": {} },
-        { "program_units:program_units program_unit": {} },
+        { "program_units:program_units W2_0 program_unit": {} },
         { "program_units:": {} },
         { "program_unit:statement": {} },
-        { "program_unit:cLass_definition": {} },
-        { "cLass_definition:modifier class id extends_declare { class_units }": {} },
+        { "program_unit:class_definition": {} },
+        { "class_definition:modifier class id extends_declare { class_units }": {} },
         { "modifier:": {} },
         { "modifier:valuetype": {} },
         { "modifier:sealed": {} },

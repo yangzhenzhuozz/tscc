@@ -56,6 +56,37 @@ class Type {
         return ret;
     }
 }
+class ArrayType extends Type {
+    public innerType: Type;//数组的基本类型
+    constructor(inner_type: Type) {
+        super(`Array<${inner_type.name}>`, "referentialType");
+        this.innerType = inner_type;
+    }
+}
+class FunctionType extends Type {
+    public parameters: Map<string, Type> = new Map();//参数名和类型列表,反射的时候可以直接得到参数的名字
+    public returnType: Type;//返回值类型
+    constructor(ret_type: Type) {
+        super(`function`, "referentialType");
+        this.returnType = ret_type;
+    }
+    public registerParameter(name: string, type: Type) {
+        if (this.parameters.has(name)) {
+            throw new SemanticException(`变量重复定义:${name}`);
+        }
+        this.parameters.set(name, type);
+    }
+    public toString() {
+        let parametersSign: string;//参数签名
+        if (this.parameters.size != 0) {
+            parametersSign = `${[...this.parameters.values()].map((value) => `${value}`).reduce((previous, current) => `${previous},${current}`)}`;
+        } else {
+            parametersSign = '';
+        }
+        let ret = `${this.name}(${parametersSign})`;
+        return ret;
+    }
+}
 class Address {
     public location: "immediate" | "program" | "class" | "function" | "text";//值存放的位置，分别为立即数、全局空间、class空间、函数空间、代码段
     public type: Type;
@@ -71,4 +102,16 @@ class SemanticException extends Error {
         super(msg);
     }
 }
-export { Type, Address }
+class ProgramScope {
+
+}
+class ClassScope {
+
+}
+class FunctionScope {
+
+}
+class BlockScope {
+
+}
+export { Type, Address, ProgramScope }

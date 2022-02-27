@@ -30,8 +30,8 @@ let grammar: Grammar = {
         { "program_units:program_units program_unit": {} },
         { "program_units:": {} },
         { "program_unit:statement": {} },
-        { "program_unit:cLass_definition": {} },
-        { "cLass_definition:modifier class id extends_declare { class_units }": {} },
+        { "program_unit:class_definition": {} },
+        { "class_definition:modifier class id extends_declare { class_units }": {} },
         { "modifier:": {} },
         { "modifier:valuetype": {} },
         { "modifier:sealed": {} },
@@ -145,7 +145,7 @@ let tscc = new TSCC(grammar, { language: "zh-cn", debug: false });
 let str = tscc.generate();//构造编译器代码
 if (str != null) {//如果构造成功则生成编编译器代码
     console.log(`成功`);
-    fs.writeFileSync('./src/example/toy-language-2/parser-2.ts', str);
+    fs.writeFileSync('./src/example/toy-language-3/parser-base.ts', str);
 } else {
     console.log(`失败`);
 }
