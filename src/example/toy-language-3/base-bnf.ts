@@ -29,7 +29,7 @@ let grammar: Grammar = {
         { "import_stmt:import id as id ;": {} },
         { "program_units:program_units program_unit": {} },
         { "program_units:": {} },
-        { "program_unit:statement": {} },
+        { "program_unit:declare ;": {} },
         { "program_unit:class_definition": {} },
         { "class_definition:modifier class id extends_declare { class_units }": {} },
         { "modifier:": {} },

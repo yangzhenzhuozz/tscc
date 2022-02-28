@@ -2,7 +2,7 @@ import Parser from "./parser-1.js";
 import lexer from './lexrule.js';
 import fs from 'fs';
 let parser = new Parser();
-lexer.setSource(fs.readFileSync("./src/example/toy-language-2/test.ty", 'utf-8').toString());
+lexer.setSource(fs.readFileSync("./src/example/toy-language-3/test.ty", 'utf-8').toString());
 try {
     let oldT = new Date().getTime();
     parser.parse(lexer)

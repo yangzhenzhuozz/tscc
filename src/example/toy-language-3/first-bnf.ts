@@ -1,7 +1,7 @@
 import fs from "fs";
 import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
-import { Type, Address, ProgramScope } from "./lib.js"
+import { Type, ArrayType, FunctionType, Address, ProgramScope, ClassScope, FunctionScope, BlockScope } from "./lib.js"
 /**
  * 这是第一次扫描用的BNF，和第二次扫描几乎没有多大区别
  * 因为解析器是从左往右扫描的，在解析某个片段时可能会依赖后续输入，所以第一次扫描有两个任务
@@ -29,7 +29,7 @@ import { Type, Address, ProgramScope } from "./lib.js"
  * 因为在解析到a=a*2的时候，还不知道变量a是需要被closure捕获，所以无法生成正确的代码
  */
 let grammar: Grammar = {
-    userCode: `import { Type, Address, ProgramScope } from "./lib.js"`,
+    userCode: `import { Type, ArrayType, FunctionType, Address, ProgramScope, ClassScope, FunctionScope, BlockScope } from "./lib.js"`,
     tokens: ['var', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'sealed', 'this', 'return', 'get', 'set', 'constructor'],
     association: [
         { 'right': ['='] },
@@ -53,13 +53,6 @@ let grammar: Grammar = {
     BNF: [
         { "program:create_program_scope import_stmts W2_0 program_units": {} },
         {
-            "W2_0:": {
-                action: function ($, s) {
-                    return s.slice(-2)[0];
-                }
-            }
-        },
-        {
             "create_program_scope:": {
                 action: function ($, s): ProgramScope {
                     return new ProgramScope();
@@ -71,7 +64,7 @@ let grammar: Grammar = {
         { "import_stmt:import id as id ;": {} },
         { "program_units:program_units W2_0 program_unit": {} },
         { "program_units:": {} },
-        { "program_unit:statement": {} },
+        { "program_unit:declare ;": {} },
         { "program_unit:class_definition": {} },
         { "class_definition:modifier class id extends_declare { class_units }": {} },
         { "modifier:": {} },
@@ -92,10 +85,37 @@ let grammar: Grammar = {
         { "declare:var id : type": {} },
         { "declare:function_definition": {} },
         { "type:basic_type arr_definition": {} },
-        { "arr_definition:arr_definition [ ]": {} },
-        { "arr_definition:": {} },
-        { "basic_type:id": {} },
         { "type:( function_parameter_types ) => type": {} },
+        { "arr_definition:arr_definition [ ]": {} },
+        {
+            "arr_definition:": {
+                action: function ($, s): Type {
+                    let basic_type = s.slice(-1)[0] as Type;//从basic_type中得到继承属性
+                    return basic_type;
+                }
+            }
+        },
+        {
+            "basic_type:id": {
+                action: function ($, s): Type {
+                    let id = $[0] as string;
+                    let head = s.slice(-1)[0] as ProgramScope | ClassScope | FunctionScope | BlockScope;
+                    if (head instanceof ProgramScope) {
+                        return head.getRegisteredType(id);
+                    } else if (head instanceof ClassScope) {
+                        return head.programScope.getRegisteredType(id);
+                    } else if (head instanceof FunctionScope) {
+                        return head.programScope.getRegisteredType(id);
+                    } else {
+                        if (head.parentScope instanceof ProgramScope) {
+                            return head.parentScope.getRegisteredType(id);
+                        } else {
+                            return head.parentScope.programScope.getRegisteredType(id);
+                        }
+                    }
+                }
+            }
+        },
         { "function_parameter_types:": {} },
         { "function_parameter_types:function_parameter_type_list": {} },
         { "function_parameter_type_list:function_parameter_type_list , type": {} },
@@ -181,6 +201,13 @@ let grammar: Grammar = {
         { "lambda_arguments:lambda_argument_list": {} },
         { "lambda_argument_list:lambda_argument_list , id : type": {} },
         { "lambda_argument_list:id : type": {} },
+        {
+            "W2_0:": {
+                action: function ($, s) {
+                    return s.slice(-2)[0];
+                }
+            }
+        },
     ]
 }
 let tscc = new TSCC(grammar, { language: "zh-cn", debug: false });

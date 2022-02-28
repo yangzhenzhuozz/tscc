@@ -103,15 +103,31 @@ class SemanticException extends Error {
     }
 }
 class ProgramScope {
-
+    private registeredType: Map<string, Type> = new Map();
+    public getRegisteredType(name: string): Type {
+        if (this.registeredType.has(name)) {
+            return this.registeredType.get(name)!;
+        } else {
+            throw new SemanticException(`未知类型:${name}`);
+        }
+    }
 }
 class ClassScope {
-
+    public programScope: ProgramScope;
+    constructor(programScope: ProgramScope) {
+        this.programScope = programScope;
+    }
 }
 class FunctionScope {
-
+    public programScope: ProgramScope;
+    constructor(programScope: ProgramScope) {
+        this.programScope = programScope;
+    }
 }
 class BlockScope {
-
+    public parentScope: ProgramScope | FunctionScope;
+    constructor(parentScope: ProgramScope | FunctionScope) {
+        this.parentScope = parentScope;
+    }
 }
-export { Type, Address, ProgramScope }
+export { Type, ArrayType, FunctionType, Address, ProgramScope, ClassScope, FunctionScope, BlockScope }

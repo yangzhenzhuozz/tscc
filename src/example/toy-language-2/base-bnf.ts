@@ -157,7 +157,7 @@ let tscc = new TSCC(grammar, { language: "zh-cn", debug: false });
 let str = tscc.generate();//构造编译器代码
 if (str != null) {//如果构造成功则生成编编译器代码
     console.log(`成功`);
-    fs.writeFileSync('./src/example/toy-language-2/parser-2.ts', str);
+    fs.writeFileSync('./src/example/toy-language-2/parser-base.ts', str);
 } else {
     console.log(`失败`);
 }
