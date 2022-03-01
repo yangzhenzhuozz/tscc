@@ -19,6 +19,6 @@
   "homepage": "https://github.com/yangzhenzhuozz/tscc#readme",
   "type": "module",
   "dependencies": {
-    "@types/node": "^16.11.24"
+    "@types/node": "^16.11.26"
   }
 }
