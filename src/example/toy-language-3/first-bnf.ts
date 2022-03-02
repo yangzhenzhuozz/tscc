@@ -30,7 +30,7 @@ import { Type, ArrayType, FunctionType, Address, ProgramScope, ClassScope, Funct
  */
 let grammar: Grammar = {
     userCode: `import { Type, ArrayType, FunctionType, Address, ProgramScope, ClassScope, FunctionScope, BlockScope } from "./lib.js"`,
-    tokens: ['var', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'sealed', 'this', 'return', 'get', 'set', 'constructor'],
+    tokens: ['var', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch'],
     association: [
         { 'right': ['='] },
         { 'right': ['?'] },
@@ -62,11 +62,15 @@ let grammar: Grammar = {
         { "import_stmts:": {} },
         { "import_stmts:import_stmts import_stmt": {} },
         { "import_stmt:import id as id ;": {} },
-        { "program_units:program_units W2_0 program_unit": {} },
+        { "program_units:program_units program_unit": {} },
         { "program_units:": {} },
         { "program_unit:declare ;": {} },
         { "program_unit:class_definition": {} },
-        { "class_definition:modifier class id extends_declare { class_units }": {} },
+        { "class_definition:modifier class id template extends_declare { class_units }": {} },
+        { "template:": {} },
+        { "template:< template_list >": {} },
+        { "template_list:template_list , id": {} },
+        { "template_list:id": {} },
         { "modifier:": {} },
         { "modifier:valuetype": {} },
         { "modifier:sealed": {} },
@@ -75,7 +79,8 @@ let grammar: Grammar = {
         { "class_units:class_units class_unit": {} },
         { "class_units:": {} },
         { "class_unit:declare ;": {} },
-        { "class_unit:_constructor": {} },
+        { "class_unit:constructor": {} },
+        { "constructor:id ( parameters ) { statements } ;": {} },
         { "class_unit:operator_overload": {} },
         { "class_unit:get id ( ) : type { statements }": {} },
         { "class_unit:set id ( id : type ) { statements }": {} },
@@ -85,16 +90,8 @@ let grammar: Grammar = {
         { "declare:var id : type": {} },
         { "declare:function_definition": {} },
         { "type:basic_type arr_definition": {} },
-        { "type:( function_parameter_types ) => type": {} },
         { "arr_definition:arr_definition [ ]": {} },
-        {
-            "arr_definition:": {
-                action: function ($, s): Type {
-                    let basic_type = s.slice(-1)[0] as Type;//从basic_type中得到继承属性
-                    return basic_type;
-                }
-            }
-        },
+        { "arr_definition:": {} },
         {
             "basic_type:id": {
                 action: function ($, s): Type {
@@ -116,12 +113,12 @@ let grammar: Grammar = {
                 }
             }
         },
+        { "type:( function_parameter_types ) => type": {} },
         { "function_parameter_types:": {} },
         { "function_parameter_types:function_parameter_type_list": {} },
         { "function_parameter_type_list:function_parameter_type_list , type": {} },
         { "function_parameter_type_list:type": {} },
-        { "function_definition:function id ( parameters ) : type { statements }": {} },
-        { "_constructor:constructor ( parameters ) { statements }": {} },
+        { "function_definition:function id template ( parameters ) : type { statements }": {} },
         { "parameters:parameter_list": {} },
         { "parameters:varible_argument": {} },
         { "parameters:parameter_list , varible_argument": {} },
@@ -131,6 +128,7 @@ let grammar: Grammar = {
         { "parameter:id : type": {} },
         { "varible_argument: ... id : type": {} },
         { "statement:declare ;": {} },
+        { "statement:try { statement } catch ( id : type ) { statement }": {} },
         { "statement:return object ;": {} },
         { "statement:return ;": {} },
         { "statement:if ( object ) statement": { priority: "low_priority_for_if_stmt" } },
@@ -208,7 +206,7 @@ let grammar: Grammar = {
                 }
             }
         },
-    ]
+    ],
 }
 let tscc = new TSCC(grammar, { language: "zh-cn", debug: false });
 let str = tscc.generate();//构造编译器代码
