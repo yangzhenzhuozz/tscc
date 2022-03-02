@@ -103,7 +103,12 @@ class SemanticException extends Error {
     }
 }
 class ProgramScope {
-    private registeredType: Map<string, Type> = new Map();
+    private registeredType: Map<string, Type>;
+    constructor() {
+        this.registeredType = new Map();
+        this.registeredType.set('int', new Type('int', 'valuetype'));
+        this.registeredType.set('bool', new Type('bool', 'valuetype'));
+    }
     public getRegisteredType(name: string): Type {
         if (this.registeredType.has(name)) {
             return this.registeredType.get(name)!;
@@ -130,4 +135,4 @@ class BlockScope {
         this.parentScope = parentScope;
     }
 }
-export { Type, ArrayType, FunctionType, Address, ProgramScope, ClassScope, FunctionScope, BlockScope }
+export { Type, ArrayType, FunctionType, Address, ProgramScope, ClassScope, FunctionScope, BlockScope, SemanticException }

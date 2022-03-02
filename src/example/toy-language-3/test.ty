@@ -1,20 +1,3 @@
-var a=5;
-var a=()=>{return a;};//recursive value
-var a=(a:int)=>{return a;};//recursive value
-var a=(a:int,a:int)=>{return a;};//recursive value
-var a=(a:int,a:int,a:int)=>{return a;};//recursive value
 class A{
-    constructor(){
-        var a=(a:int)=>{return a;};//recursive value
-    }
-    var a:B;
-}
-valuetype class B{
-    var b:int;
-}
-
-
-var a=new A().v;
-class A{
-    var v=a;//recursive value
+    var a:int;
 }
