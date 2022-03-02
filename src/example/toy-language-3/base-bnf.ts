@@ -126,7 +126,7 @@ let grammar: Grammar = {
         { "object:this": {} },
         { "object:id": {} },
         { "object:immediate_val": {} },
-        { "object:new basic_type ( arguments )": {} },
+        { "object:new basic_type template ( arguments )": {} },
         { "object:new basic_type array_init_list": {} },
         { "object:( lambda_arguments ) => { statements }": {} },//lambda
         { "array_init_list:array_inits array_placeholder": {} },
