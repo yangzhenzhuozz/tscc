@@ -124,7 +124,13 @@ let grammar: Grammar = {
             "declare:var id : W4_0 type = object": {
                 action: function ($, s): void {
                     let head = s.slice(-1)[0] as ProgramScope | ClassScope | FunctionScope | BlockScope;
-                    console.log('');
+                    let id=$[1] as string;
+                    let type=$[4] as Type;
+                    if(head instanceof ClassScope){
+                        head.registerField(id,type);
+                    }else{
+                        throw new SemanticException("还未实现的Scope定义变量")
+                    }
                 }
             }
         },
@@ -132,7 +138,13 @@ let grammar: Grammar = {
             "declare:var id : W4_0 type": {
                 action: function ($, s): void {
                     let head = s.slice(-1)[0] as ProgramScope | ClassScope | FunctionScope | BlockScope;
-                    console.log('');
+                    let id=$[1] as string;
+                    let type=$[4] as Type;
+                    if(head instanceof ClassScope){
+                        head.registerField(id,type);
+                    }else{
+                        throw new SemanticException("还未实现的Scope定义变量")
+                    }
                 }
             }
         },
@@ -143,6 +155,7 @@ let grammar: Grammar = {
         {
             "basic_type:id": {
                 action: function ($, s): Type {
+                    debugger
                     let id = $[0] as string;
                     let head = s.slice(-1)[0] as ProgramScope | ClassScope | FunctionScope | BlockScope;
                     if (head instanceof ProgramScope) {
