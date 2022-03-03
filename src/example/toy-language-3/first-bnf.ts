@@ -30,7 +30,7 @@ import { Type, ArrayType, FunctionType, Address, ProgramScope, ClassScope, Funct
  */
 let grammar: Grammar = {
     userCode: `import { Type, ArrayType, FunctionType, Address, ProgramScope, ClassScope, FunctionScope, BlockScope, SemanticException } from "./lib.js"`,
-    tokens: ['var', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch'],
+    tokens: ['var', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch','template_name'],
     association: [
         { 'right': ['='] },
         { 'right': ['?'] },
@@ -207,7 +207,8 @@ let grammar: Grammar = {
         { "block:{ statements }": {} },
         { "statements:": {} },
         { "statements:statements statement": {} },
-        { "object:object ( arguments )": {} },//函数调用
+        { "object:object ( arguments )": {} },//普通函数调用
+        { "object:template_name template ( arguments )": {} },//模板函数调用,检测到模板定义之后,lexer会自动将id换成终结符template_name
         { "object:( object )": {} },
         { "object:object . id": {} },
         { "object:object = object": {} },

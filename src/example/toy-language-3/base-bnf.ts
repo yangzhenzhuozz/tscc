@@ -2,7 +2,7 @@ import fs from "fs";
 import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
 let grammar: Grammar = {
-    tokens: ['var', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch'],
+    tokens: ['var', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch','template_name'],
     association: [
         { 'right': ['='] },
         { 'right': ['?'] },
@@ -104,7 +104,8 @@ let grammar: Grammar = {
         { "block:{ statements }": {} },
         { "statements:": {} },
         { "statements:statements statement": {} },
-        { "object:object ( arguments )": {} },//函数调用
+        { "object:object ( arguments )": {} },//普通函数调用
+        { "object:template_name template ( arguments )": {} },//模板函数调用,检测到模板定义之后,lexer会自动将id换成终结符template_name
         { "object:( object )": {} },
         { "object:object . id": {} },
         { "object:object = object": {} },
