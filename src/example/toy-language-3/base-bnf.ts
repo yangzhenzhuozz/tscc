@@ -2,7 +2,7 @@ import fs from "fs";
 import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
 let grammar: Grammar = {
-    tokens: ['var', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch'],
+    tokens: ['var', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'basic_type'],
     association: [
         { 'right': ['='] },
         { 'right': ['?'] },
@@ -31,11 +31,11 @@ let grammar: Grammar = {
         { "program_units:": {} },
         { "program_unit:declare ;": {} },
         { "program_unit:class_definition": {} },
-        { "class_definition:modifier class id template extends_declare { class_units }": {} },
-        { "template:": {} },
-        { "template:< template_list >": {} },
-        { "template_list:template_list , id": {} },
-        { "template_list:id": {} },
+        { "class_definition:modifier class id template_declare extends_declare { class_units }": {} },
+        { "template_declare:": {} },
+        { "template_declare:< template_declare_list >": {} },
+        { "template_declare_list:template_declare_list , id": {} },
+        { "template_declare_list:id": {} },
         { "modifier:": {} },
         { "modifier:valuetype": {} },
         { "modifier:sealed": {} },
@@ -55,15 +55,20 @@ let grammar: Grammar = {
         { "declare:var id : type": {} },
         { "declare:function_definition": {} },
         { "type:basic_type arr_definition": {} },
+        { "type:template_type": {} },
+        { "type:( function_parameter_types ) => type": {} },
+        { "type:( empty_parameters_or_lambda_arguments ) => type": {} },
+        { "empty_parameters_or_lambda_arguments:": {} },
+        { "template_type:basic_type template_instance": {} },
+        { "template_instance:< template_instanc_list >": {} },
+        { "template_instanc_list:type": {} },
+        { "template_instanc_list:template_instanc_list , type": {} },
         { "arr_definition:arr_definition [ ]": {} },
         { "arr_definition:": {} },
-        { "basic_type:id": {} },
-        { "type:( function_parameter_types ) => type": {} },
-        { "function_parameter_types:": {} },
         { "function_parameter_types:function_parameter_type_list": {} },
         { "function_parameter_type_list:function_parameter_type_list , type": {} },
         { "function_parameter_type_list:type": {} },
-        { "function_definition:function id template ( parameters ) : type { statements }": {} },
+        { "function_definition:function id template_declare ( parameters ) : type { statements }": {} },
         { "parameters:parameter_list": {} },
         { "parameters:varible_argument": {} },
         { "parameters:parameter_list , varible_argument": {} },
@@ -105,6 +110,7 @@ let grammar: Grammar = {
         { "statements:": {} },
         { "statements:statements statement": {} },
         { "object:object ( arguments )": {} },//函数调用
+        { "object:object template_instance ( arguments )": {} },//函数调用
         { "object:( object )": {} },
         { "object:object . id": {} },
         { "object:object = object": {} },
@@ -126,9 +132,12 @@ let grammar: Grammar = {
         { "object:this": {} },
         { "object:id": {} },
         { "object:immediate_val": {} },
-        { "object:new basic_type ( arguments )": {} },
-        { "object:new basic_type array_init_list": {} },
+        { "object:new basic_type ( arguments )": {} },//new 对象，调用构造函数
+        { "object:new basic_type array_init_list": {} },//new 数组
+        { "object:new basic_type template_instance ( arguments )": {} },//new 对象，调用构造函数
+        { "object:new basic_type template_instance array_init_list": {} },//new 数组
         { "object:( lambda_arguments ) => { statements }": {} },//lambda
+        { "object:( empty_parameters_or_lambda_arguments ) => { statements }": {} },//lambda
         { "array_init_list:array_inits array_placeholder": {} },
         { "array_inits:array_inits [ object ]": {} },
         { "array_inits:[ object ]": {} },
@@ -140,7 +149,6 @@ let grammar: Grammar = {
         { "arguments:": {} },
         { "argument_list:object": {} },
         { "argument_list:argument_list , object": {} },
-        { "lambda_arguments:": {} },
         { "lambda_arguments:lambda_argument_list": {} },
         { "lambda_argument_list:lambda_argument_list , id : type": {} },
         { "lambda_argument_list:id : type": {} },
