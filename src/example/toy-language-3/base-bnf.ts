@@ -16,6 +16,7 @@ let grammar: Grammar = {
         { 'left': ['++', '--'] },
         { 'right': ['=>'] },
         { 'nonassoc': ['low_priority_for_array_placeholder'] },
+        { 'nonassoc': ['cast_priority'] },//强制转型比"("、"["、"."优先级低,比+ - * /优先级高,如(int)f()表示先执行函数调用再转型 (int) a+b表示先把a转型成int，然后+b
         { 'right': ['['] },
         { 'nonassoc': ['('] },
         { 'left': ['.'] },
@@ -57,6 +58,7 @@ let grammar: Grammar = {
         { "type:basic_type arr_definition": {} },
         { "type:template_type": {} },
         { "type:( function_parameter_types ) => type": {} },
+        { "type:( function_parameter_type_or_cast_type ) => type": {} },
         { "type:( empty_parameters_or_lambda_arguments ) => type": {} },
         { "empty_parameters_or_lambda_arguments:": {} },
         { "template_type:basic_type template_instance": {} },
@@ -67,7 +69,8 @@ let grammar: Grammar = {
         { "arr_definition:": {} },
         { "function_parameter_types:function_parameter_type_list": {} },
         { "function_parameter_type_list:function_parameter_type_list , type": {} },
-        { "function_parameter_type_list:type": {} },
+        { "function_parameter_type_list:type , type": {} },
+        { "function_parameter_type_or_cast_type:type": {} },
         { "function_definition:function id template_declare ( parameters ) : type { statements }": {} },
         { "parameters:parameter_list": {} },
         { "parameters:varible_argument": {} },
@@ -112,6 +115,7 @@ let grammar: Grammar = {
         { "object:object ( arguments )": {} },//函数调用
         { "object:object template_instance ( arguments )": {} },//函数调用
         { "object:( object )": {} },
+        { "object:( function_parameter_type_or_cast_type ) object": { priority: "cast_priority" } },//强制转型
         { "object:object . id": {} },
         { "object:object = object": {} },
         { "object:object + object": {} },
