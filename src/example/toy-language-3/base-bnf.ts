@@ -2,7 +2,11 @@ import fs from "fs";
 import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
 let grammar: Grammar = {
+<<<<<<< HEAD
     tokens: ['var', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'basic_type'],
+=======
+    tokens: ['var', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch','template_name'],
+>>>>>>> 045cd2891a9c0e1d322e23c35449253e690a86c9
     association: [
         { 'right': ['='] },
         { 'right': ['?'] },
@@ -109,8 +113,13 @@ let grammar: Grammar = {
         { "block:{ statements }": {} },
         { "statements:": {} },
         { "statements:statements statement": {} },
+<<<<<<< HEAD
         { "object:object ( arguments )": {} },//函数调用
         { "object:object template_instance ( arguments )": {} },//函数调用
+=======
+        { "object:object ( arguments )": {} },//普通函数调用
+        { "object:template_name template ( arguments )": {} },//模板函数调用,检测到模板定义之后,lexer会自动将id换成终结符template_name
+>>>>>>> 045cd2891a9c0e1d322e23c35449253e690a86c9
         { "object:( object )": {} },
         { "object:object . id": {} },
         { "object:object = object": {} },
@@ -132,10 +141,15 @@ let grammar: Grammar = {
         { "object:this": {} },
         { "object:id": {} },
         { "object:immediate_val": {} },
+<<<<<<< HEAD
         { "object:new basic_type ( arguments )": {} },//new 对象，调用构造函数
         { "object:new basic_type array_init_list": {} },//new 数组
         { "object:new basic_type template_instance ( arguments )": {} },//new 对象，调用构造函数
         { "object:new basic_type template_instance array_init_list": {} },//new 数组
+=======
+        { "object:new basic_type template ( arguments )": {} },
+        { "object:new basic_type array_init_list": {} },
+>>>>>>> 045cd2891a9c0e1d322e23c35449253e690a86c9
         { "object:( lambda_arguments ) => { statements }": {} },//lambda
         { "object:( empty_parameters_or_lambda_arguments ) => { statements }": {} },//lambda
         { "array_init_list:array_inits array_placeholder": {} },

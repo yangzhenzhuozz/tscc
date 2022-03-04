@@ -88,10 +88,10 @@ class FunctionType extends Type {
     }
 }
 class Address {
-    public location: "immediate" | "program" | "class" | "function" | "text";//值存放的位置，分别为立即数、全局空间、class空间、函数空间、代码段
+    public location: "immediate" | "program" | "class" | "stack" | "text";//值存放的位置，分别为立即数、全局空间、class空间、函数空间、代码段
     public type: Type;
     public value: number;//地址
-    constructor(loc: "immediate" | "program" | "class" | "function" | "text", type: Type, value: number) {
+    constructor(loc: "immediate" | "program" | "class" | "stack" | "text", type: Type, value: number) {
         this.location = loc;
         this.type = type;
         this.value = value;
@@ -103,7 +103,12 @@ class SemanticException extends Error {
     }
 }
 class ProgramScope {
-    private registeredType: Map<string, Type> = new Map();
+    private registeredType: Map<string, Type>;
+    constructor() {
+        this.registeredType = new Map();
+        this.registeredType.set('int', new Type('int', 'valuetype'));
+        this.registeredType.set('bool', new Type('bool', 'valuetype'));
+    }
     public getRegisteredType(name: string): Type {
         if (this.registeredType.has(name)) {
             return this.registeredType.get(name)!;
@@ -114,8 +119,17 @@ class ProgramScope {
 }
 class ClassScope {
     public programScope: ProgramScope;
+    private Field: Map<string, Address> = new Map();
+    private allocatedAddress = 0;
     constructor(programScope: ProgramScope) {
         this.programScope = programScope;
+    }
+    public registerField(name: string, type: Type) {
+        if (this.Field.has(name)) {
+            throw new SemanticException(`重复定义Filed:${name}`);
+        } else {
+            this.Field.set(name, new Address("class", type, this.allocatedAddress++));
+        }
     }
 }
 class FunctionScope {
@@ -130,4 +144,4 @@ class BlockScope {
         this.parentScope = parentScope;
     }
 }
-export { Type, ArrayType, FunctionType, Address, ProgramScope, ClassScope, FunctionScope, BlockScope }
+export { Type, ArrayType, FunctionType, Address, ProgramScope, ClassScope, FunctionScope, BlockScope, SemanticException }
