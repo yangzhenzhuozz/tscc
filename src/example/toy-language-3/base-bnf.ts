@@ -17,145 +17,57 @@ let grammar: Grammar = {
         { 'right': ['=>'] },
         { 'nonassoc': ['low_priority_for_array_placeholder'] },
         { 'nonassoc': ['cast_priority'] },//强制转型比"("、"["、"."优先级低,比+ - * /优先级高,如(int)f()表示先执行函数调用再转型 (int) a+b表示先把a转型成int，然后+b
-        { 'right': ['['] },
+        { 'nonassoc': ['['] },
         { 'nonassoc': ['('] },
-        { 'left': ['.'] },
+        { 'nonassoc': ['.'] },
         { 'nonassoc': ['low_priority_for_if_stmt'] },//这个符号的优先级小于else
         { 'nonassoc': ['else'] },
     ],
     BNF: [
-        { "program:import_stmts program_units": {} },
-        { "import_stmts:": {} },
-        { "import_stmts:import_stmts import_stmt": {} },
-        { "import_stmt:import id as id ;": {} },
-        { "program_units:program_units program_unit": {} },
-        { "program_units:": {} },
-        { "program_unit:declare ;": {} },
-        { "program_unit:class_definition": {} },
-        { "class_definition:modifier class id template_declare extends_declare { class_units }": {} },
-        { "template_declare:": {} },
-        { "template_declare:< template_declare_list >": {} },
-        { "template_declare_list:template_declare_list , id": {} },
-        { "template_declare_list:id": {} },
-        { "modifier:": {} },
-        { "modifier:valuetype": {} },
-        { "modifier:sealed": {} },
-        { "extends_declare:extends basic_type": {} },
-        { "extends_declare:": {} },
-        { "class_units:class_units class_unit": {} },
-        { "class_units:": {} },
-        { "class_unit:declare ;": {} },
-        { "class_unit:constructor": {} },
-        { "constructor:id ( parameters ) { statements } ;": {} },
-        { "class_unit:operator_overload": {} },
-        { "class_unit:get id ( ) : type { statements }": {} },
-        { "class_unit:set id ( id : type ) { statements }": {} },
-        { "operator_overload:operator + ( parameter ) : type { statements }": {} },
-        { "declare:var id = object": {} },
-        { "declare:var id : type = object": {} },
-        { "declare:var id : type": {} },
-        { "declare:function_definition": {} },
-        { "type:basic_type arr_definition": {} },
-        { "type:template_type": {} },
-        { "type:( function_parameter_types ) => type": {} },
-        { "type:( function_parameter_type_or_cast_type ) => type": {} },
-        { "type:( empty_parameters_or_lambda_arguments ) => type": {} },
-        { "empty_parameters_or_lambda_arguments:": {} },
-        { "template_type:basic_type template_instance": {} },
-        { "template_instance:< template_instanc_list >": {} },
-        { "template_instanc_list:type": {} },
-        { "template_instanc_list:template_instanc_list , type": {} },
-        { "arr_definition:arr_definition [ ]": {} },
-        { "arr_definition:": {} },
-        { "function_parameter_types:function_parameter_type_list": {} },
-        { "function_parameter_type_list:function_parameter_type_list , type": {} },
-        { "function_parameter_type_list:type , type": {} },
-        { "function_parameter_type_or_cast_type:type": {} },
-        { "function_definition:function id template_declare ( parameters ) : type { statements }": {} },
-        { "parameters:parameter_list": {} },
-        { "parameters:varible_argument": {} },
-        { "parameters:parameter_list , varible_argument": {} },
-        { "parameters:": {} },
-        { "parameter_list:parameter_list , parameter": {} },
-        { "parameter_list:parameter": {} },
-        { "parameter:id : type": {} },
-        { "varible_argument: ... id : type": {} },
-        { "statement:declare ;": {} },
-        { "statement:try { statement } catch ( id : type ) { statement }": {} },
-        { "statement:return object ;": {} },
-        { "statement:return ;": {} },
-        { "statement:if ( object ) statement": { priority: "low_priority_for_if_stmt" } },
-        { "statement:if ( object ) statement else statement": {} },
-        { "statement:lable_def do statement while ( object ) ;": {} },
-        { "statement:lable_def while ( object ) statement": {} },
-        { "statement:lable_def for ( for_init ; for_condition ; for_step ) statement": {} },
-        { "for_init:": {} },
-        { "for_init:declare": {} },
-        { "for_init:object": {} },
-        { "for_condition:": {} },
-        { "for_condition:object": {} },
-        { "for_step:": {} },
-        { "for_step:object": {} },
-        { "statement:block": { action: ($, s) => $[0] } },
-        { "statement:break lable_use ;": {} },
-        { "statement:continue lable_use ;": {} },
-        { "statement:switch ( object ) { switch_bodys }": {} },
-        { "statement:object ;": {} },
-        { "lable_use:": {} },
-        { "lable_use:id": {} },
-        { "lable_def:": {} },
-        { "lable_def:id :": {} },
-        { "switch_bodys:": {} },
-        { "switch_bodys:switch_bodys switch_body": {} },
-        { "switch_body:case immediate_val : statement": {} },
-        { "switch_body:default : statement": {} },
-        { "block:{ statements }": {} },
-        { "statements:": {} },
-        { "statements:statements statement": {} },
-        { "object:object ( arguments )": {} },//函数调用
-        { "object:object template_instance ( arguments )": {} },//函数调用
+        { "program:import_stmts program_units": {} },//整个程序由导入语句组和程序单元组构成
+        { "import_stmts:": {} },//导入语句组可以为空
+        { "import_stmts:import_stmts import_stmt": {} },//导入语句组由一条或者多条导入语句组成
+        { "import_stmt:import id ;": {} },//导入语句语法
+        { "program_units:": {} },//程序单元组可以为空
+        { "program_units:program_units program_unit": {} },//程序单元组由一个或者多个程序单元组成
+        { "program_unit:declare ;": {} },//程序单元可以是一条声明语句
+        { "program_unit:class_definition": {} },//程序单元可以是一个类定义语句
+        { "declare:var id : type": {} },//声明语句_1，声明一个变量id，其类型为type
+        { "declare:var id : type = object": {} },//声明语句_2，声明一个变量id，并且将object设置为id的初始值，object的类型要和声明的类型一致
+        { "declare:var id = object": {} },//声明语句_3，声明一个变量id，并且将object设置为id的初始值，类型自动推导
+        { "declare:function_definition": {} },//声明语句_4，可以是一个函数定义语句
+        { "class_definition:modifier class id template_declare extends_declare { class_units }": {} },//class定义语句由修饰符等组成(太长了我就不一一列举)
+        { "extends_declare:extends basic_type template_declare": {} },//继承模板类
+        { "function_definition:function id template_declare ( parameter_declare ) : type { statements }": {} },//函数定义语句，同样太长，不列表
+        { "modifier:valuetype": {} },//modifier可以是"valuetype"
+        { "modifier:sealed": {} },//modifier可以是"sealed"
+        { "modifier:empty": {} },//modifier可以为空
+        { "template_declare:empty": {} },//模板声明可以为空
+        { "template_declare:template_definition": {} },//模板声明可以是一个模板定义
+        { "template_definition:< template_definition_list >": {} },//模板定义由一对尖括号<>和内部的template_definition_list组成
+        { "template_definition_list:id": {} },//template_definition_list可以是一个id
+        { "template_definition_list:template_definition_list , id": {} },//template_definition_list可以是一个template_definition_list后面接上 , id
+        { "type:( type )": {} },//type可以用圆括号包裹
+        { "type:basic_type": {} },//type可以是一个base_type
+        { "type:function_type": {} },//type可以是一个function_type
+        { "type:array_type": {} },//type可以是一个array_type
+        { "function_type:( parameter_declare ) => type": {} },//function_type的结构
+        { "array_type:basic_type array_type_list": {} },//array_type由basic_type后面接上一堆方括号组成
+        { "array_type_list:[ ]": {} },//array_type_list可以是一对方括号
+        { "array_type_list:array_type_list [ ]": {} },//array_type_list可以是array_type_list后面再接一对方括号
+        { "parameter_declare:parameter_list": {} },//parameter_declare可以由parameter_list组成
+        { "parameter_declare:empty": {} },//parameter_declare可以为空
+        { "parameter_list:id : type": {} },//parameter_list可以是一个 id : type
+        { "parameter_list:parameter_list , id : type": {} },//parameter_list可以是一个parameter_list接上 , id : type
+        { "class_units:class_units class_unit": {} },//class_units可以由多个class_unit组成
+        { "class_units:empty": {} },//class_units可以为空
+        { "class_unit:object": {} },//测试用产生式
+        { "statements:statements statement": {} },//statements可以由多个statement组成
+        { "statements:empty": {} },//statements可以为空
+        { "statement:object": {} },//测试用产生式
         { "object:( object )": {} },
-        { "object:( function_parameter_type_or_cast_type ) object": { priority: "cast_priority" } },//强制转型
-        { "object:object . id": {} },
-        { "object:object = object": {} },
-        { "object:object + object": {} },
-        { "object:object - object": {} },
-        { "object:object * object": {} },
-        { "object:object / object": {} },
-        { "object:object < object": {} },
-        { "object:object <= object": {} },
-        { "object:object > object": {} },
-        { "object:object >= object": {} },
-        { "object:object == object": {} },
-        { "object:object || object": {} },
-        { "object:object && object": {} },
-        { "object:object ? object : object": { priority: "?" } },
-        { "object:object ++": {} },
-        { "object:object --": {} },
-        { "object:object [ object ]": {} },
-        { "object:this": {} },
         { "object:id": {} },
-        { "object:immediate_val": {} },
-        { "object:new basic_type ( arguments )": {} },//new 对象，调用构造函数
-        { "object:new basic_type array_init_list": {} },//new 数组
-        { "object:new basic_type template_instance ( arguments )": {} },//new 对象，调用构造函数
-        { "object:new basic_type template_instance array_init_list": {} },//new 数组
-        { "object:( lambda_arguments ) => { statements }": {} },//lambda
-        { "object:( empty_parameters_or_lambda_arguments ) => { statements }": {} },//lambda
-        { "array_init_list:array_inits array_placeholder": {} },
-        { "array_inits:array_inits [ object ]": {} },
-        { "array_inits:[ object ]": {} },
-        { "array_placeholder:array_placeholder_list": { priority: "low_priority_for_array_placeholder" } },//遇到方括号一律选择移入,array_placeholder用于占位，如new int[1][][][],后面悬空的就是占位
-        { "array_placeholder:": { priority: "low_priority_for_array_placeholder" } },
-        { "array_placeholder_list:array_placeholder_list [ ]": {} },
-        { "array_placeholder_list:[ ]": { priority: "low_priority_for_array_placeholder" } },
-        { "arguments:argument_list": {} },
-        { "arguments:": {} },
-        { "argument_list:object": {} },
-        { "argument_list:argument_list , object": {} },
-        { "lambda_arguments:lambda_argument_list": {} },
-        { "lambda_argument_list:lambda_argument_list , id : type": {} },
-        { "lambda_argument_list:id : type": {} },
+        { "empty:": {} },//空白非终结符
     ]
 }
 let tscc = new TSCC(grammar, { language: "zh-cn", debug: false });
