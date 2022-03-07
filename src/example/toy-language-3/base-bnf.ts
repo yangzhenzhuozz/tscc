@@ -53,6 +53,7 @@ let grammar: Grammar = {
         { "type:array_type": {} },//type可以是一个array_type
         { "function_type:( parameter_declare ) => type": {} },//function_type的结构
         { "array_type:basic_type array_type_list": {} },//array_type由basic_type后面接上一堆方括号组成
+        { "array_type:function_type array_type_list": {} },//array_type由basic_type后面接上一堆方括号组成
         { "array_type_list:[ ]": {} },//array_type_list可以是一对方括号
         { "array_type_list:array_type_list [ ]": {} },//array_type_list可以是array_type_list后面再接一对方括号
         { "parameter_declare:parameter_list": {} },//parameter_declare可以由parameter_list组成
