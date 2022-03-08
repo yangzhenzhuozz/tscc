@@ -61,6 +61,7 @@ lexer.addRule(['get', () => 'get']);
 lexer.addRule(['set', () => 'set']);
 lexer.addRule(['try', () => 'try']);
 lexer.addRule(['catch', () => 'catch']);
+lexer.addRule(['throw', () => 'throw']);
 lexer.compile();
 let newT = new Date().getTime();
 console.log(`编译默认词法规则耗时:${newT - oldT}ms`);
