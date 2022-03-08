@@ -16,6 +16,7 @@ let grammar: Grammar = {
         { 'left': ['++', '--'] },
         { 'right': ['=>'] },
         { 'nonassoc': ['low_priority_for_array_placeholder'] },
+        { 'nonassoc': ['low_priority_for_function_type'] },//见array_type:function_type array_type_list 这条产生式的解释
         { 'nonassoc': ['cast_priority'] },//强制转型比"("、"["、"."优先级低,比+ - * /优先级高,如(int)f()表示先执行函数调用再转型 (int) a+b表示先把a转型成int，然后+b
         { 'nonassoc': ['['] },
         { 'nonassoc': ['('] },
@@ -48,12 +49,23 @@ let grammar: Grammar = {
         { "template_definition_list:id": {} },//template_definition_list可以是一个id
         { "template_definition_list:template_definition_list , id": {} },//template_definition_list可以是一个template_definition_list后面接上 , id
         { "type:( type )": {} },//type可以用圆括号包裹
-        { "type:basic_type": {} },//type可以是一个base_type
-        { "type:function_type": {} },//type可以是一个function_type
+        { "type:basic_type": { priority: "low_priority_for_function_type" } },//type可以是一个base_type
+        { "type:function_type": { priority: "low_priority_for_function_type" } },//type可以是一个function_type
         { "type:array_type": {} },//type可以是一个array_type
         { "function_type:( parameter_declare ) => type": {} },//function_type的结构
-        { "array_type:basic_type array_type_list": {} },//array_type由basic_type后面接上一堆方括号组成
-        { "array_type:function_type array_type_list": {} },//array_type由basic_type后面接上一堆方括号组成
+        { "array_type:basic_type array_type_list": { priority: "low_priority_for_function_type" } },//array_type由basic_type后面接上一堆方括号组成
+        /**
+         * 本规则会有如下二义性:
+         * 1. (a:int)=>int [] 可以解释为 ((a:int)=>int)[]或者(a:int)=>(int[])
+         * 2. (a:int)=>int [][] 可以解释为 ((a:int)=>int[])[]或者(a:int)=>(int[][])
+         * 以上两种情况，遇到方括号[]时通通选择移入，即采取二义性的后面一种解释
+         * 使以下四条产生式的优先级低于'['即可解决冲突,因为冲突的原因都是因为follow(function_type)集合包含了符号'['
+         * type:basic_type
+         * type:function_type
+         * array_type:basic_type array_type_list
+         * array_type:function_type array_type_list
+         */
+        { "array_type:function_type array_type_list": { priority: "low_priority_for_function_type" } },//array_type由function_type后面接上一堆方括号组成
         { "array_type_list:[ ]": {} },//array_type_list可以是一对方括号
         { "array_type_list:array_type_list [ ]": {} },//array_type_list可以是array_type_list后面再接一对方括号
         { "parameter_declare:parameter_list": {} },//parameter_declare可以由parameter_list组成
