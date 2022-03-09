@@ -79,10 +79,10 @@ let grammar: Grammar = {
         { "class_units:class_units class_unit": {} },//class_units可以由多个class_unit组成
         { "class_units:empty": {} },//class_units可以为空
         { "class_unit:declare ;": {} },//class_unit可以是一个声明语句
-        { "class_unit:operator_overload": {} },//class_unit可以是一个操作符重载
+        { "class_unit:operator_overload": {} },//class_unit可以是一个运算符重载
         { "class_unit:get id ( ) : type { statements }": {} },//get
         { "class_unit:set id ( id : type ) { statements }": {} },//set
-        { "operator_overload:operator + ( parameter_declare ) : type { statements }": {} },//操作符重载
+        { "operator_overload:operator + ( parameter_declare ) : type { statements }": {} },//运算符重载
         { "statements:statements statement": {} },//statements可以由多个statement组成
         { "statements:empty": {} },//statements可以为空
         { "statement:declare ;": {} },//statement可以是一条声明语句
@@ -156,16 +156,35 @@ let grammar: Grammar = {
          */
         { "object:object template_instance ( arguments )": {} },//函数调用
         /**
-         * 一系列的双目操作符
+         * 一系列的双目运算符
          */
-        { "object:object < object": {} },
-        /**双目操作符结束 */
-        { "object:object ? object : object": {} },//导致的移入规约冲突还没有研究，明天继续
+        { "object:object + object": {} },
+        { "object:object - object": {} },
+        { "object:object * object": {} },
+        { "object:object / object": {} },
+        { "object:object && object": {} },
+        { "object:object || object": {} },
+        /**双目运算符结束 */
+        { "object:! object": {} },//单目运算符-非
+        /**
+         * 三目运算符会导致如下文法二义性
+         * 情况1:a+b?c:d
+         * 1.1 a+(b?c:d)
+         * 1.2 (a+b)?c:d
+         * 情况2:a?b:c?d:e
+         * 2.1 (a?b:c)?d:e
+         * 2.2 a?b:(c?d:e)
+         * 根据tscc的解析规则，产生object:object ? object : object 的优先级为未定义，因为优先级取决于产生式的最后一个终结符或者强制指定的符号,该产生式的最后一个终结符':'并没有定义优先级
+         * 为了解决上述两种冲突,我们将产生式的优先级符号强制指定为?,并且令?的优先级低于双目运算符,结合性为right,则针对上述两种冲突最终解决方案如下:
+         * 1.因为?的优先级低于所有双目运算符所对应的产生式,所以情况1会选择1.2这种语法树进行解析
+         * 2.因为?为右结合,所以情况2会选择2.2这种语法树进行解析
+         */
+        { "object:object ? object : object": { priority: "?" } },//三目运算
         { "object:id": {} },
         /**
          * template_instance: 这条产生式会导致如下二义性
          * 当没有产生式 template_instance: ,且输入符号如下格局的时候:
-         * obj_1 + obj_2  ( obj_3 )  ,中间的+可以换成 - * / < > || 等等双目操作符
+         * obj_1 + obj_2  ( obj_3 )  ,中间的+可以换成 - * / < > || 等等双目运算符
          * 会出现如下二义性:
          * 1、 (obj_1 + obj_2)  ( object_3 ) ,先将obj_1和obj_2进行双目运算，然后再使用双目运算符的结果作为函数对象进行函数调用
          * 2、 obj_1 + ( obj_2  ( object_3 ) ) ,先将obj_2作为一个函数对象调用，然后再将obj_1 和函数调用的结果进行双目运算
@@ -179,7 +198,7 @@ let grammar: Grammar = {
          * 这也就是规约-规约冲突的来源
          * 我们当然希望采取第二种，所以让"template_instance:"这条产生式的优先级高于所有的双目运算符对应产生式的优先级即可
          * 
-         * 测试如下两种输入是否能正确解析即可，其中'+'可以换成任意双目操作符
+         * 测试如下两种输入是否能正确解析即可，其中'+'可以换成任意双目运算符
          * a+b<int>()
          * a+b()
          */
@@ -194,7 +213,7 @@ let grammar: Grammar = {
         { "empty:": {} },//空白非终结符
     ]
 }
-let tscc = new TSCC(grammar, { language: "zh-cn", debug: true });
+let tscc = new TSCC(grammar, { language: "zh-cn", debug: false });
 let str = tscc.generate();//构造编译器代码
 if (str != null) {//如果构造成功则生成编编译器代码
     console.log(`成功`);
