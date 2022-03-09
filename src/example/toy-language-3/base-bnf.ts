@@ -30,10 +30,10 @@ let grammar: Grammar = {
      */
     BNF: [
         { "program:import_stmts program_units": {} },//整个程序由导入语句组和程序单元组构成
-        { "import_stmts:empty": {} },//导入语句组可以为空
+        { "import_stmts:": {} },//导入语句组可以为空
         { "import_stmts:import_stmts import_stmt": {} },//导入语句组由一条或者多条导入语句组成
         { "import_stmt:import id ;": {} },//导入语句语法
-        { "program_units:empty": {} },//程序单元组可以为空
+        { "program_units:": {} },//程序单元组可以为空
         { "program_units:program_units program_unit": {} },//程序单元组由一个或者多个程序单元组成
         { "program_unit:declare ;": {} },//程序单元可以是一条声明语句
         { "program_unit:class_definition": {} },//程序单元可以是一个类定义语句
@@ -46,14 +46,20 @@ let grammar: Grammar = {
         { "function_definition:function id template_declare ( parameter_declare ) : type { statements }": {} },//函数定义语句，同样太长，不列表
         { "modifier:valuetype": {} },//modifier可以是"valuetype"
         { "modifier:sealed": {} },//modifier可以是"sealed"
-        { "modifier:empty": {} },//modifier可以为空
-        { "template_declare:empty": {} },//模板声明可以为空
+        { "modifier:": {} },//modifier可以为空
+        { "template_declare:": {} },//模板声明可以为空
         { "template_declare:template_definition": {} },//模板声明可以是一个模板定义
         { "template_definition:< template_definition_list >": {} },//模板定义由一对尖括号<>和内部的template_definition_list组成
         { "template_definition_list:id": {} },//template_definition_list可以是一个id
         { "template_definition_list:template_definition_list , id": {} },//template_definition_list可以是一个template_definition_list后面接上 , id
         { "type:( type )": {} },//type可以用圆括号包裹
-        { "type:basic_type": { priority: "low_priority_for_function_type" } },//type可以是一个base_type
+        /**
+         * 下面这条产生中template_instance_list可以为空，即允许下面这样的输入
+         * Map<int,Map<int,int>>
+         * 在定义class Map<K,V>之后,Map会被词法分析器解析为basic_type
+         * 终于能接近C++的模板了，对得起template这个名字
+         */
+        { "type:basic_type template_instance_list": { priority: "low_priority_for_function_type" } },//type可以是一个base_type template_instance_list 
         { "type:function_type": { priority: "low_priority_for_function_type" } },//type可以是一个function_type
         { "type:array_type": {} },//type可以是一个array_type
         { "function_type:( parameter_declare ) => type": {} },//function_type的结构
@@ -73,18 +79,18 @@ let grammar: Grammar = {
         { "array_type_list:[ ]": {} },//array_type_list可以是一对方括号
         { "array_type_list:array_type_list [ ]": {} },//array_type_list可以是array_type_list后面再接一对方括号
         { "parameter_declare:parameter_list": {} },//parameter_declare可以由parameter_list组成
-        { "parameter_declare:empty": {} },//parameter_declare可以为空
+        { "parameter_declare:": {} },//parameter_declare可以为空
         { "parameter_list:id : type": {} },//parameter_list可以是一个 id : type
         { "parameter_list:parameter_list , id : type": {} },//parameter_list可以是一个parameter_list接上 , id : type
         { "class_units:class_units class_unit": {} },//class_units可以由多个class_unit组成
-        { "class_units:empty": {} },//class_units可以为空
+        { "class_units:": {} },//class_units可以为空
         { "class_unit:declare ;": {} },//class_unit可以是一个声明语句
         { "class_unit:operator_overload": {} },//class_unit可以是一个运算符重载
         { "class_unit:get id ( ) : type { statements }": {} },//get
         { "class_unit:set id ( id : type ) { statements }": {} },//set
         { "operator_overload:operator + ( parameter_declare ) : type { statements }": {} },//运算符重载
         { "statements:statements statement": {} },//statements可以由多个statement组成
-        { "statements:empty": {} },//statements可以为空
+        { "statements:": {} },//statements可以为空
         { "statement:declare ;": {} },//statement可以是一条声明语句
         { "statement:try { statement } catch ( id : type ) { statement }": {} },//try catch语句，允许捕获任意类型的异常
         { "statement:throw object ;": {} },//抛异常语句
@@ -134,19 +140,19 @@ let grammar: Grammar = {
         { "statement:continue lable_use ;": {} },//continue语句
         { "statement:switch ( object ) { switch_bodys }": {} },//switch语句,因为switch在C/C++等语言中可以用跳转表处理,gcc在处理switch语句时,如果各个case的值连续,也会生成一个jum_table,所以我也考虑过移除switch语句,还是为了让其他语言的使用者感觉没那么怪
         { "statement:object ;": {} },//类似C/C++中的   1; 这种语句,java好像不支持这种写法
-        { "lable_def:empty": {} },//lable_def可以为空
+        { "lable_def:": {} },//lable_def可以为空
         { "lable_def:id :": {} },//label_def为 id : 组成
-        { "for_init:empty": {} },//for_loop的init可以为空
+        { "for_init:": {} },//for_loop的init可以为空
         { "for_init:declare": {} },//init可以是一个声明
         { "for_init:object": {} },//也可以是一个对象
-        { "for_condition:empty": {} },//condition可以为空
+        { "for_condition:": {} },//condition可以为空
         { "for_condition:object": {} },//condition可以是一个对象(必须是bool对象)
-        { "for_step:empty": {} },//step可以为空
+        { "for_step:": {} },//step可以为空
         { "for_step:object": {} },//step可以是一个对象
         { "block:{ statements }": {} },//代码块是一对花括号中间包裹着statements
-        { "lable_use:empty": {} },//在break和continue中被使用
+        { "lable_use:": {} },//在break和continue中被使用
         { "lable_use:id": {} },//在break和continue中被使用
-        { "switch_bodys:empty": {} },//switch_bodys可为空
+        { "switch_bodys:": {} },//switch_bodys可为空
         { "switch_bodys:switch_bodys switch_body": {} },//switch_bodys可以由多个switch_body组成
         { "switch_body:case immediate_val : statement": {} },//case 语句
         { "switch_body:default : statement": {} },//default语句
@@ -158,14 +164,25 @@ let grammar: Grammar = {
         /**
          * 一系列的双目运算符
          */
-        { "object:object + object": {} },
-        { "object:object - object": {} },
-        { "object:object * object": {} },
-        { "object:object / object": {} },
-        { "object:object && object": {} },
-        { "object:object || object": {} },
+         { "object:object = object": {} },
+         { "object:object + object": {} },
+         { "object:object - object": {} },
+         { "object:object * object": {} },
+         { "object:object / object": {} },
+         { "object:object < object": {} },
+         { "object:object <= object": {} },
+         { "object:object > object": {} },
+         { "object:object >= object": {} },
+         { "object:object == object": {} },
+         { "object:object || object": {} },
+         { "object:object && object": {} },
         /**双目运算符结束 */
+        /**单目运算符 */
         { "object:! object": {} },//单目运算符-非
+        { "object:object ++": {} },//单目运算符++
+        { "object:object --": {} },//单目运算符--
+        /**单目运算符结束 */
+        { "object:object [ object ]": {} },//[]运算符
         /**
          * 三目运算符会导致如下文法二义性
          * 情况1:a+b?c:d
@@ -181,6 +198,10 @@ let grammar: Grammar = {
          */
         { "object:object ? object : object": { priority: "?" } },//三目运算
         { "object:id": {} },
+        { "object:immediate_val": {} },
+        { "object:this": {} },//this是一个object
+        { "object:new type array_init_list": {} },//new一个数组
+        { "object:( lambda_arguments ) => { statements }": {} },//lambda
         /**
          * template_instance: 这条产生式会导致如下二义性
          * 当没有产生式 template_instance: ,且输入符号如下格局的时候:
@@ -206,11 +227,14 @@ let grammar: Grammar = {
         { "template_instance:< template_instance_list >": {} },//模板实例化可以实例化为一个<template_instance_list>
         { "template_instance_list:type": {} },//template_instance_list可以为一个type
         { "template_instance_list:template_instance_list , type": {} },//template_instance_list可以为多个type
-        { "arguments:empty": {} },//实参可以为空
+        { "arguments:": {} },//实参可以为空
         { "arguments:argument_list": {} },//实参可以是argument_list
         { "argument_list:object": {} },//参数列表可以是一个object
         { "argument_list:argument_list , object": {} },//参数列表可以是多个object
-        { "empty:": {} },//空白非终结符
+        { "lambda_arguments:lambda_argument_list": {} },//lambda参数可以是一个lambda_argument_list
+        { "lambda_arguments:": {} },//lambda参数可以为空
+        { "lambda_argument_list:id : type": {} },//lambda_argument_list可以是 id : type 这种形式
+        { "lambda_argument_list:lambda_argument_list , id : type": {} },//lambda_argument_list可以是lambda_argument_list后面接一个 , id : type
     ]
 }
 let tscc = new TSCC(grammar, { language: "zh-cn", debug: false });
