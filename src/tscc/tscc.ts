@@ -45,7 +45,7 @@ let MultipleLanguage: MultiLanguage = {
     "en-us": {
         tips1: "redefinition association of symbol:%s",
         tips2: "head of syntax can not be terminal-symbol:%s",
-        tips3: "symbol error,the symbol need matching \"[^(->)\s$]+\":%s",
+        tips3: "symbol error,the symbol need matching \"[^(->)\\s$]+\":%s",
         tips4: "grammar is empty",
         tips5: "──────────state %d──────────\n",
         tips6: "\nsignature:%s\n",
@@ -76,7 +76,7 @@ let MultipleLanguage: MultiLanguage = {
     "zh-cn": {
         tips1: "th:%s",
         tips2: "不能使用终结符作为产生式头:%s",
-        tips3: "产生式%s符号错误,符号只能为\"[^(->)\s$]+\"",
+        tips3: "产生式%s符号错误,符号只能为\"[^(->)\\s$]+\"",
         tips4: "文法中没有任何产生式",
         tips5: "──────────状态%d──────────\n",
         tips6: "\n签名:%s\n",
