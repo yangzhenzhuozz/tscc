@@ -10,7 +10,7 @@ let grammar: Grammar = {
         { 'left': ['||'] },
         { 'left': ['&&'] },
         { 'left': ['!'] },
-        { 'nonassoc': ['>', '<', '<=', '>='] },
+        { 'left': ['>', '<', '<=', '>='] },
         { 'left': ['+', '-'] },
         { 'left': ['*', '/'] },
         { 'left': ['++', '--'] },
@@ -217,7 +217,7 @@ let grammar: Grammar = {
          * 情况3 (int)arr[0]
          * 3.1 ((int)arr) [0]
          * 3.2 (int)(arr[0])
-         * 参照java优先级,强制转型优先级高于+ - / * ++ 这些运算符，低于() [] .这三个运算符
+         * 参照java优先级,强制转型优先级高于+ - / * ++ 这些运算符，低于() [] .这三个运算符,因为template_instance后面的'('表示一个函数调用,所以强制转型优先级低于priority_for_template_instance
          * 为其指定优先级为cast_priority
          */
         { "object:( type ) object": {priority:"cast_priority"} },//强制转型
