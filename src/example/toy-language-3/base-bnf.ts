@@ -2,7 +2,7 @@ import fs from "fs";
 import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
 let grammar: Grammar = {
-    tokens: ['var', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'basic_type', 'throw'],
+    tokens: ['var','val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'basic_type', 'throw'],
     association: [
         { 'right': ['='] },
         { 'right': ['?'] },
@@ -37,10 +37,16 @@ let grammar: Grammar = {
         { "program_units:program_units program_unit": {} },//程序单元组由一个或者多个程序单元组成
         { "program_unit:declare ;": {} },//程序单元可以是一条声明语句
         { "program_unit:class_definition": {} },//程序单元可以是一个类定义语句
+        /**
+         * var和val的区别就是一个可修改，一个不可修改,val类似于其他语言的const
+         */
         { "declare:var id : type": {} },//声明语句_1，声明一个变量id，其类型为type
         { "declare:var id : type = object": {} },//声明语句_2，声明一个变量id，并且将object设置为id的初始值，object的类型要和声明的类型一致
         { "declare:var id = object": {} },//声明语句_3，声明一个变量id，并且将object设置为id的初始值，类型自动推导
-        { "declare:function_definition": {} },//声明语句_4，可以是一个函数定义语句
+        { "declare:val id : type": {} },//声明语句_4，声明一个变量id，其类型为type
+        { "declare:val id : type = object": {} },//声明语句_5，声明一个变量id，并且将object设置为id的初始值，object的类型要和声明的类型一致
+        { "declare:val id = object": {} },//声明语句_6，声明一个变量id，并且将object设置为id的初始值，类型自动推导
+        { "declare:function_definition": {} },//声明语句_7，可以是一个函数定义语句
         { "class_definition:modifier class id template_declare extends_declare { class_units }": {} },//class定义语句由修饰符等组成(太长了我就不一一列举)
         { "extends_declare:": {} },//继承可以为空
         { "extends_declare:extends basic_type": {} },//继承
