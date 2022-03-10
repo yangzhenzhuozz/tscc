@@ -2,7 +2,7 @@ import fs from "fs";
 import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
 let grammar: Grammar = {
-    tokens: ['var','val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'basic_type', 'throw'],
+    tokens: ['var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'basic_type', 'throw', 'super'],
     association: [
         { 'right': ['='] },
         { 'right': ['?'] },
@@ -50,7 +50,9 @@ let grammar: Grammar = {
         { "class_definition:modifier class id template_declare extends_declare { class_units }": {} },//class定义语句由修饰符等组成(太长了我就不一一列举)
         { "extends_declare:": {} },//继承可以为空
         { "extends_declare:extends basic_type": {} },//继承
-        { "function_definition:function id template_declare ( parameter_declare ) : type { statements }": {} },//函数定义语句，同样太长，不列表
+        { "function_definition:function id template_declare ( parameter_declare ) : ret_type { statements }": {} },//函数定义语句，同样太长，不列表
+        { "ret_type:": {} },//返回值类型可以不声明，自动推导,lambda就不用写返回值声明
+        { "ret_type:type": {} },//可以声明返回值类型
         { "modifier:valuetype": {} },//modifier可以是"valuetype"
         { "modifier:sealed": {} },//modifier可以是"sealed"
         { "modifier:": {} },//modifier可以为空
@@ -208,8 +210,9 @@ let grammar: Grammar = {
          * 2.因为?为右结合,所以情况2会选择2.2这种语法树进行解析
          */
         { "object:object ? object : object": { priority: "?" } },//三目运算
-        { "object:id": {} },
-        { "object:immediate_val": {} },
+        { "object:id": {} },//id是一个对象
+        { "object:super": {} },//super是一个对象
+        { "object:immediate_val": {} },//立即数是一个object
         { "object:this": {} },//this是一个object
         { "object:( parameter_declare ) => { statements }": {} },//lambda
         /**
@@ -226,7 +229,7 @@ let grammar: Grammar = {
          * 参照java优先级,强制转型优先级高于+ - / * ++ 这些运算符，低于() [] .这三个运算符,因为template_instance后面的'('表示一个函数调用,所以强制转型优先级低于priority_for_template_instance
          * 为其指定优先级为cast_priority
          */
-        { "object:( type ) object": {priority:"cast_priority"} },//强制转型
+        { "object:( type ) object": { priority: "cast_priority" } },//强制转型
         /**
          * 假设只针对产生式array_init_list:array_inits array_placeholder 会出现如下二义性
          * new int [10][3]可以有如下两种解释:(把array_placeholder规约成ε)

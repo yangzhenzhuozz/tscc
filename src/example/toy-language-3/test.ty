@@ -1,4 +1,10 @@
 var abc:int;
-class A{
+class A extends int{
     var abc:int;
+    var a=b;
+    var b=c;
+    var c=d+e;
+    var d=fun1();
+    var e=fun2();
 }
+//对于自动类型，采用链式推导

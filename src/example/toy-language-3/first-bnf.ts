@@ -1,10 +1,10 @@
 import fs from "fs";
 import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
-import { Type, ArrayType, FunctionType, Address, ProgramScope, ClassScope, FunctionScope, BlockScope, SemanticException } from "./lib.js"
+import { Type, ArrayType, FunctionType, Address, ProgramScope, ClassScope, FunctionScope, BlockScope, SemanticException, Scope } from "./lib.js"
 let grammar: Grammar = {
-    userCode: `import { Type, ArrayType, FunctionType, Address, ProgramScope, ClassScope, FunctionScope, BlockScope, SemanticException } from "./lib.js"`,
-    tokens: ['var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'basic_type', 'throw'],
+    userCode: `import { Type, ArrayType, FunctionType, Address, ProgramScope, ClassScope, FunctionScope, BlockScope, SemanticException, Scope } from "./lib.js"`,
+    tokens: ['var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'basic_type', 'throw', 'super'],
     association: [
         { 'right': ['='] },
         { 'right': ['?'] },
@@ -46,22 +46,79 @@ let grammar: Grammar = {
         {
             "declare:var id : type": {
                 action: function ($, s) {
-                    let head = s.slice(-1);
-                    debugger;
-                    console.log(head);
+                    let head = s.slice(-1)[0] as Scope;
+                    let id = $[1] as string;
+                    let type = $[3] as Type
+                    head.registerField(id, type, 'var');
                 }
             }
         },
-        { "declare:var id : type = object": {} },
+        {
+            "declare:var id : type = object": {
+                action: function ($, s) {
+                    let head = s.slice(-1)[0] as Scope;
+                    let id = $[1] as string;
+                    let type = $[3] as Type
+                    head.registerField(id, type, 'var');
+                }
+            }
+        },
         { "declare:var id = object": {} },
-        { "declare:val id : type": {} },
-        { "declare:val id : type = object": {} },
+        {
+            "declare:val id : type": {
+                action: function ($, s) {
+                    let head = s.slice(-1)[0] as Scope;
+                    let id = $[1] as string;
+                    let type = $[3] as Type
+                    head.registerField(id, type, 'val');
+                }
+            }
+        },
+        {
+            "declare:val id : type = object": {
+                action: function ($, s) {
+                    let head = s.slice(-1)[0] as Scope;
+                    let id = $[1] as string;
+                    let type = $[3] as Type
+                    head.registerField(id, type, 'val');
+                }
+            }
+        },
         { "declare:val id = object": {} },
         { "declare:function_definition": {} },
-        { "class_definition:modifier class id template_declare extends_declare { class_units }": {} },
+        { "class_definition:modifier class id template_declare extends_declare { create_class_scope class_units }": {} },
+        {
+            "create_class_scope:": {
+                action: function ($, s): ClassScope {
+                    let stack = s.slice(-7);
+                    let head = stack[0] as ProgramScope;
+                    let template_declare = stack[4] as string[] | undefined;
+                    let extends_declare = stack[5] as string | undefined;
+                    return new ClassScope(head, template_declare == undefined, extends_declare);
+                }
+            }
+        },
         { "extends_declare:": {} },
-        { "extends_declare:extends basic_type": {} },
-        { "function_definition:function id template_declare ( parameter_declare ) : type { statements }": {} },
+        {
+            "extends_declare:extends basic_type": {
+                action: function ($, s): string {
+                    return $[1] as string;
+                }
+            }
+        },
+        {
+            "function_definition:function id template_declare ( parameter_declare ) : ret_type { statements }": {
+                action: function ($, s) {
+                    let ret_type = '';
+                    //如果声明了返回类型则记录，否则这轮先不管
+                    if (ret_type != undefined) {
+                        //xxx
+                    }
+                }
+            }
+        },
+        { "ret_type:": {} },
+        { "ret_type:type": {} },
         { "modifier:valuetype": {} },
         { "modifier:sealed": {} },
         { "modifier:": {} },
@@ -143,6 +200,7 @@ let grammar: Grammar = {
         { "object:object [ object ]": {} },
         { "object:object ? object : object": { priority: "?" } },
         { "object:id": {} },
+        { "object:super": {} },
         { "object:immediate_val": {} },
         { "object:this": {} },
         { "object:( parameter_declare ) => { statements }": {} },

@@ -89,12 +89,14 @@ class FunctionType extends Type {
 }
 class Address {
     public location: "immediate" | "program" | "class" | "stack" | "text";//值存放的位置，分别为立即数、全局空间、class空间、函数空间、代码段
+    public variable: 'var' | 'val';
     public type: Type;
     public value: number;//地址
-    constructor(loc: "immediate" | "program" | "class" | "stack" | "text", type: Type, value: number) {
+    constructor(loc: "immediate" | "program" | "class" | "stack" | "text", type: Type, value: number, vari: 'var' | 'val') {
         this.location = loc;
         this.type = type;
         this.value = value;
+        this.variable = vari;
     }
 }
 class SemanticException extends Error {
@@ -102,9 +104,25 @@ class SemanticException extends Error {
         super(msg);
     }
 }
-class ProgramScope {
+class Scope {
+    private Field: Map<string, Address> = new Map();
+    private location: "immediate" | "program" | "class" | "stack" | "text";
+    private allocated = 0;
+    constructor(loc: "immediate" | "program" | "class" | "stack" | "text") {
+        this.location = loc;
+    }
+    public registerField(name: string, type: Type, variable: 'var' | 'val') {
+        if (this.Field.has(name)) {
+            throw new SemanticException(`变量 ${name} 重复定义`);
+        } else {
+            this.Field.set(name, new Address(this.location, type, this.allocated++, variable));
+        }
+    }
+}
+class ProgramScope extends Scope {
     private registeredType: Map<string, Type>;
     constructor() {
+        super('program');
         this.registeredType = new Map();
         this.registeredType.set('int', new Type('int', 'valuetype'));
         this.registeredType.set('bool', new Type('bool', 'valuetype'));
@@ -117,31 +135,25 @@ class ProgramScope {
         }
     }
 }
-class ClassScope {
+class ClassScope extends Scope {
     public programScope: ProgramScope;
-    private Field: Map<string, Address> = new Map();
-    private allocatedAddress = 0;
-    constructor(programScope: ProgramScope) {
-        this.programScope = programScope;
-    }
-    public registerField(name: string, type: Type) {
-        if (this.Field.has(name)) {
-            throw new SemanticException(`重复定义Filed:${name}`);
-        } else {
-            this.Field.set(name, new Address("class", type, this.allocatedAddress++));
-        }
-    }
-}
-class FunctionScope {
-    public programScope: ProgramScope;
-    constructor(programScope: ProgramScope) {
+    constructor(programScope: ProgramScope, isGenericParadigm: boolean, superClass: string | undefined) {
+        super('class');
         this.programScope = programScope;
     }
 }
-class BlockScope {
+class FunctionScope extends Scope {
+    public programScope: ProgramScope;
+    constructor(programScope: ProgramScope, isGenericParadigm: boolean) {
+        super('stack');
+        this.programScope = programScope;
+    }
+}
+class BlockScope extends Scope {
     public parentScope: ProgramScope | FunctionScope;
     constructor(parentScope: ProgramScope | FunctionScope) {
+        super('stack');
         this.parentScope = parentScope;
     }
 }
-export { Type, ArrayType, FunctionType, Address, ProgramScope, ClassScope, FunctionScope, BlockScope, SemanticException }
+export { Type, ArrayType, FunctionType, Address, Scope, ProgramScope, ClassScope, FunctionScope, BlockScope, SemanticException }
