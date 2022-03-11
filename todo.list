@@ -1,7 +1,7 @@
 recursive value 即 var a=xxx,如果在推导a的类型的时候又出现了对a的使用，则表示这是一个recursive value,拒绝执行
 函数有个标志表示是否需要this
 
-
+第零遍扫描把所有的class定义转换成base_type
 第一遍扫描得到基础类型
 第二遍得到推导类型
 第三遍扫描闭包捕获

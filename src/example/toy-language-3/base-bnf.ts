@@ -2,7 +2,7 @@ import fs from "fs";
 import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
 let grammar: Grammar = {
-    tokens: ['var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'basic_type', 'throw', 'super'],
+    tokens: ['var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'throw', 'super', 'build_type', 'user_type'],
     association: [
         { 'right': ['='] },
         { 'right': ['?'] },
@@ -15,10 +15,9 @@ let grammar: Grammar = {
         { 'left': ['*', '/'] },
         { 'left': ['++', '--'] },
         { 'right': ['=>'] },
-        { 'nonassoc': ['low_priority_for_array_placeholder'] },
-        { 'nonassoc': ['low_priority_for_function_type'] },//见array_type:function_type array_type_list 这条产生式的解释
+        { 'nonassoc': ['low_priority_for_array_placeholder'] },//见array_placeholder注释
+        { 'nonassoc': ['low_priority_for_['] },//见type注释
         { 'nonassoc': ['cast_priority'] },//强制转型比"("、"["、"."优先级低,比+ - * /优先级高,如(int)f()表示先执行函数调用再转型 (int) a+b表示先把a转型成int，然后+b
-        { 'nonassoc': ["priority_for_template_instance"] },
         { 'nonassoc': ['['] },
         { 'nonassoc': ['('] },
         { 'nonassoc': ['.'] },
@@ -63,30 +62,28 @@ let grammar: Grammar = {
         { "template_definition_list:template_definition_list , id": {} },//template_definition_list可以是一个template_definition_list后面接上 , id
         { "type:( type )": {} },//type可以用圆括号包裹
         /**
-         * 下面这条产生中template_instance_list可以为空，即允许下面这样的输入
-         * Map<int,Map<int,int>>
-         * 在定义class Map<K,V>之后,Map会被词法分析器解析为basic_type
-         * 终于能接近C++的模板了，对得起template这个名字
+         * type后面的'['会导致如下二义性:
+         * 所有type都有这种情况，用int作为一个type举例
+         * 情况1. new int [3]
+         * 1.1 (new int)[3]  先new一个int对象,然后执行下标操作符[3]
+         * 1.2 new (int[3]) new一个长度为3的int数组
+         * 情况2. function fun():int []
+         * 2.1 (function fun():int)[] 是一个函数数组
+         * 2.2 function fun():(int[]) 是一个返回数组的函数
+         * 上述两种情况我们都希望取第二种语法树，所以type相关的几个产生式优先级都设置为低于'[',凡是遇到符号'['一律移入
+         * 研究为什么是type，上面的解释说不通
          */
-        { "type:basic_type template_instance": { priority: "low_priority_for_function_type" } },//type可以是一个base_type template_instance 
-        { "type:function_type": { priority: "low_priority_for_function_type" } },//type可以是一个function_type
-        { "type:array_type": {} },//type可以是一个array_type
-        { "function_type:( parameter_declare ) => type": {} },//function_type的结构
-        { "array_type:basic_type array_type_list": { priority: "low_priority_for_function_type" } },//array_type由basic_type后面接上一堆方括号组成
-        /**
-         * 本规则会导致如下二义性:
-         * 1. (a:int)=>int [] 可以解释为 ((a:int)=>int)[]或者(a:int)=>(int[])
-         * 2. (a:int)=>int [][] 可以解释为 ((a:int)=>int[])[]或者(a:int)=>(int[][])
-         * 以上两种情况，遇到方括号[]时通通选择移入，即采取二义性的后面一种解释
-         * 使以下四条产生式的优先级低于'['即可解决冲突,因为冲突的原因都是因为follow(function_type)集合包含了符号'['
-         * type:basic_type
-         * type:function_type
-         * array_type:basic_type array_type_list
-         * array_type:function_type array_type_list
-         */
-        { "array_type:function_type array_type_list": { priority: "low_priority_for_function_type" } },//array_type由function_type后面接上一堆方括号组成
+        { "type:not_array_type": {} },//非数组类型
+        { "type:array_type": {} },//数组类型
+        { "not_array_type:basic_type": { priority: "low_priority_for_[" } },//type可以是一个base_type
+        { "not_array_type:basic_type template_instance": { priority: "low_priority_for_[" } },//type可以是一个base_type template_instance 
+        { "not_array_type:( parameter_declare ) => type": { priority: "low_priority_for_[" } },//函数类型
+        { "array_type:basic_type array_type_list": { priority: "low_priority_for_[" } },//array_type由basic_type后面接上一堆方括号组成(基本数组)
+        { "array_type:( parameter_declare ) => type array_type_list": { priority: "low_priority_for_[" } },//array_type由函数类型后面接上一堆方括号组成(函数数组)
         { "array_type_list:[ ]": {} },//array_type_list可以是一对方括号
         { "array_type_list:array_type_list [ ]": {} },//array_type_list可以是array_type_list后面再接一对方括号
+        { "basic_type:build_type": {} },//提前内置的类型,如int、double、bool等
+        { "basic_type:user_type": {} },//用户自定义的class
         { "parameter_declare:parameter_list": {} },//parameter_declare可以由parameter_list组成
         { "parameter_declare:": {} },//parameter_declare可以为空
         { "parameter_list:id : type": {} },//parameter_list可以是一个 id : type
@@ -167,9 +164,18 @@ let grammar: Grammar = {
         { "switch_body:default : statement": {} },//default语句
         { "object:( object )": {} },//括号括住的object还是一个object
         /**
-         * 函数调用二义性见template_instance:一条的说明
-         */
-        { "object:object template_instance ( arguments )": {} },//函数调用
+        * obj_1 + obj_2  ( obj_3 )  ,中间的+可以换成 - * / < > || 等等双目运算符
+        * 会出现如下二义性:
+        * 1、 (obj_1 + obj_2)  ( object_3 ) ,先将obj_1和obj_2进行双目运算，然后再使用双目运算符的结果作为函数对象进行函数调用
+        * 2、 obj_1 + ( obj_2  ( object_3 ) ) ,先将obj_2作为一个函数对象调用，然后再将obj_1 和函数调用的结果进行双目运算
+        * 因为我们希望采取二义性的第二种解释进行语法分析,所以设置了'('优先级高于双目运算符,这些双目运算符是所在产生式的最后一个终结符，直接修改了对应产生式的优先级和结核性
+        * 同样的,对于输入"(int)obj_1(obj_2)"有如下二义性:
+        * 1. ((int)obj_1) (obj_2)
+        * 2. (int) (obj_1(obj_2))
+        * 也采用方案2，令函数调用优先级高于强制转型
+        */
+        { "object:object  ( arguments )": {} },//函数调用
+        { "object:object template_instance ( arguments )": {} },//模板函数调用
         /**
          * 一系列的双目运算符,二义性如下:
          * a+b*c
@@ -226,7 +232,7 @@ let grammar: Grammar = {
          * 情况3 (int)arr[0]
          * 3.1 ((int)arr) [0]
          * 3.2 (int)(arr[0])
-         * 参照java优先级,强制转型优先级高于+ - / * ++ 这些运算符，低于() [] .这三个运算符,因为template_instance后面的'('表示一个函数调用,所以强制转型优先级低于priority_for_template_instance
+         * 参照java优先级,强制转型优先级高于+ - / * ++ 这些运算符，低于() [] .这三个运算符
          * 为其指定优先级为cast_priority
          */
         { "object:( type ) object": { priority: "cast_priority" } },//强制转型
@@ -238,7 +244,7 @@ let grammar: Grammar = {
          * 我当然希望采取第二种语法树,所以需要设置产生式优先级,即在new一个对象的时候,如果后面跟有方括号[,优先选择移入而不是规约,那么只需要把冲突的产生式优先级设置为比'['低即可
          * 设置array_placeholder作为产生式头的两个产生式优先级低于'['
          */
-        { "object:new type array_init_list": {} },//new一个数组
+        { "object:new not_array_type array_init_list": {} },//new一个数组
         { "array_init_list:array_inits array_placeholder": {} },//new 数组的时候是可以这样写的 new int [2][3][][],其中[2][3]对应了array_inits,后面的[][]对应了array_placeholder(数组占位符)
         { "array_inits:array_inits [ object ]": {} },//见array_init_list一条的解释
         { "array_inits:[ object ]": {} },//见array_init_list一条的解释
@@ -246,32 +252,6 @@ let grammar: Grammar = {
         { "array_placeholder:": { priority: "low_priority_for_array_placeholder" } },//array_placeholder可以为空
         { "array_placeholder_list:array_placeholder_list [ ]": {} },//见array_init_list一条的解释
         { "array_placeholder_list:[ ]": {} },//见array_init_list一条的解释
-        /**
-         * template_instance: 这条产生式会导致如下二义性
-         * 当没有产生式 template_instance: ,且输入符号如下格局的时候:
-         * obj_1 + obj_2  ( obj_3 )  ,中间的+可以换成 - * / < > || 等等双目运算符
-         * 会出现如下二义性:
-         * 1、 (obj_1 + obj_2)  ( object_3 ) ,先将obj_1和obj_2进行双目运算，然后再使用双目运算符的结果作为函数对象进行函数调用
-         * 2、 obj_1 + ( obj_2  ( object_3 ) ) ,先将obj_2作为一个函数对象调用，然后再将obj_1 和函数调用的结果进行双目运算
-         * 因为我们希望采取二义性的第二种解释进行语法分析,所以设置了 ( 优先级高于双目运算符(这些双目运算符是所在产生式的最后一个终结符，直接修改了对应产生式的优先级和结核性)
-         * 通过这种设置本来是没问题的，但是现在加上 template_instance: 这条产生式之后，这种输入格局会导致二义性变成如下两种AST
-         * 1、 (obj_1 + obj_2) template_instance<空>  ( object_3 ) ,先将obj_1和obj_2进行双目运算，然后再使用双目运算符的结果作为函数对象进行函数调用
-         * 2、 obj_1 + ( obj_2 template_instance<空>  ( object_3 ) ) ,先将obj_2作为一个函数对象调用，然后再将obj_1 和函数调用的结果进行双目运算
-         * 即二义性出现在如下情况
-         * 1、先将 obj_1 + obj_2 规约成object再进行函数调用
-         * 2、先使用template_instance<空>规约，然后进行函数调用之后再进行双目操作
-         * 
-         * 同样的,对于输入"(int)obj_1(obj_2)"有如下二义性:
-         * 1. ((int)obj_1) (obj_2)
-         * 2. (int) (obj_1(obj_2))
-         * 这也就是符号'('会导致产生式"template_instance:ε"发生规约-规约冲突的原因
-         * 上述两种情况我们都希望得到第二种语法分析树，所以让"template_instance:"这条产生式的优先级高于所有的双目运算符和强制转型操作符对应产生式的优先级
-         * 
-         * 测试如下两种输入是否能正确解析即可，其中'+'可以换成任意双目运算符
-         * a+b<int>()
-         * a+b()
-         */
-        { "template_instance:": { priority: "priority_for_template_instance" } },//模板实例化可以为空
         { "template_instance:< template_instance_list >": {} },//模板实例化可以实例化为一个<template_instance_list>
         { "template_instance_list:type": {} },//template_instance_list可以为一个type
         { "template_instance_list:template_instance_list , type": {} },//template_instance_list可以为多个type
