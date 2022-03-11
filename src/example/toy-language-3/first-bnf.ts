@@ -93,7 +93,7 @@ let grammar: Grammar = {
                     let stack = s.slice(-7);
                     let head = stack[0] as ProgramScope;
                     let template_declare = stack[4] as string[] | undefined;
-                    let extends_declare = stack[5] as string | undefined;
+                    let extends_declare = stack[5] as Type | undefined;
                     return new ClassScope(head, template_declare == undefined, extends_declare);
                 }
             }
@@ -101,18 +101,22 @@ let grammar: Grammar = {
         { "extends_declare:": {} },
         {
             "extends_declare:extends basic_type": {
-                action: function ($, s): string {
-                    return $[1] as string;
+                action: function ($, s): Type {
+                    return $[1] as Type;
                 }
             }
         },
         {
             "function_definition:function id template_declare ( parameter_declare ) : ret_type { statements }": {
                 action: function ($, s) {
-                    let ret_type = '';
-                    //如果声明了返回类型则记录，否则这轮先不管
+                    let ret_type = $[7] as Type | undefined;
+                    let parameter_declare = $[4] as { id: string, type: Type }[];
+                    
+                    debugger;
                     if (ret_type != undefined) {
-                        //xxx
+                        //如果声明了返回类型则记录，否则这轮先不管
+                    } else {
+
                     }
                 }
             }
@@ -136,11 +140,35 @@ let grammar: Grammar = {
         { "array_type:function_type array_type_list": { priority: "low_priority_for_function_type" } },
         { "array_type_list:[ ]": {} },
         { "array_type_list:array_type_list [ ]": {} },
-        { "parameter_declare:parameter_list": {} },
+        {
+            "parameter_declare:parameter_list": {
+                action: function ($, s): { id: string, type: Type }[] {
+                    return $[0] as { id: string, type: Type }[];
+                }
+            }
+        },
         { "parameter_declare:": {} },
-        { "parameter_list:id : type": {} },
-        { "parameter_list:parameter_list , id : type": {} },
-        { "class_units:class_units class_unit": {} },
+        {
+            "parameter_list:id : type": {
+                action: function ($, s): { id: string, type: Type }[] {
+                    let id = $[0] as string;
+                    let type = $[2] as Type;
+                    return [{ id: id, type: type }];
+                }
+            }
+        },
+        {
+            "parameter_list:parameter_list , id : type": {
+                action: function ($, s): { id: string, type: Type }[] {
+                    let parameter_list = $[0] as { id: string, type: Type }[];
+                    let id = $[2] as string;
+                    let type = $[4] as Type;
+                    parameter_list.push({ id: id, type: type });
+                    return parameter_list;
+                }
+            }
+        },
+        { "class_units:class_units W2_0 class_unit": {} },
         { "class_units:": {} },
         { "class_unit:declare ;": {} },
         { "class_unit:operator_overload": {} },

@@ -137,7 +137,7 @@ class ProgramScope extends Scope {
 }
 class ClassScope extends Scope {
     public programScope: ProgramScope;
-    constructor(programScope: ProgramScope, isGenericParadigm: boolean, superClass: string | undefined) {
+    constructor(programScope: ProgramScope, isGenericParadigm: boolean, superClass: Type | undefined) {
         super('class');
         this.programScope = programScope;
     }

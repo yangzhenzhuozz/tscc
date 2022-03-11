@@ -64,7 +64,7 @@ lexer.addRule(['try', () => 'try']);
 lexer.addRule(['catch', () => 'catch']);
 lexer.addRule(['throw', () => 'throw']);
 lexer.addRule(['super', () => 'super']);
-lexer.addRule(['int', (arg) => { arg.value = 'int'; return "basic_type"; }]);
+lexer.addRule(['int', (arg) => { arg.value = new Type("int", "valuetype"); return "basic_type"; }]);
 lexer.compile();
 let newT = new Date().getTime();
 console.log(`编译默认词法规则耗时:${newT - oldT}ms`);

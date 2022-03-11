@@ -11,3 +11,15 @@ recursive value 即 var a=xxx,如果在推导a的类型的时候又出现了对a
 这样就能在编译期间报出所有错误
 
 在使用反射实例化泛型的时候(使用runtime的magic)，如果实例化失败,由runtime抛出异常
+
+
+var abc:int;
+class A extends int{
+    var abc:int;
+    var a=b;
+    var b=c;
+    var c=d+e;
+    var d=fun1();
+    var e=fun2();
+}
+//对于自动类型，采用链式推导
