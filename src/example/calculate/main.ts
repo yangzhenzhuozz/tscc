@@ -10,7 +10,6 @@ lexer.addRule(['\\*', () => '*']);
 lexer.addRule(['/', () => '/']);
 lexer.addRule([';', () => ';']);
 lexer.addRule(['( |\s|\t|\r|\n)( |\s|\t|\r|\n)*', undefined]);
-lexer.compile();
 //source第二行测试错误恢复
 let source = `
 11/2+2-3*4/5;

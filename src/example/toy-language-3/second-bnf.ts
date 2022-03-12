@@ -4,12 +4,11 @@
 import fs from "fs";
 import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
-import globalLexer from './lexrule.js';
-import { Type, ArrayType, FunctionType, Address, programScope, ClassScope, FunctionScope, BlockScope, SemanticException, Scope } from "./lib.js"
+import { Type, ArrayType, FunctionType, Address, ProgramScope, programScope, ClassScope, FunctionScope, BlockScope, SemanticException, Scope } from "./lib.js"
 let grammar: Grammar = {
     userCode: `
     import globalLexer from './lexrule.js';
-    import { Type, ArrayType, FunctionType, Address, programScope, ClassScope, FunctionScope, BlockScope, SemanticException, Scope } from "./lib.js";`,
+    import { Type, ArrayType, FunctionType, Address, ProgramScope, programScope, ClassScope, FunctionScope, BlockScope, SemanticException, Scope } from "./lib.js";`,
     tokens: ['var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'throw', 'super', 'build_in_type', 'user_type'],
     association: [
         { 'right': ['='] },
@@ -32,47 +31,145 @@ let grammar: Grammar = {
         { 'nonassoc': ['low_priority_for_if_stmt'] },
         { 'nonassoc': ['else'] },
     ],
-    accept: function ($, s) {
-        console.log('收集用户自定义class完成');
-    },
     BNF: [
-        { "program:import_stmts program_units": {} },
+        { "program:import_stmts create_program_scope program_units": {} },
+        {
+            "create_program_scope:": {
+                action: function ($, s): ProgramScope {
+                    return programScope;
+                }
+            }
+        },
         { "import_stmts:": {} },
         { "import_stmts:import_stmts import_stmt": {} },
         { "import_stmt:import id ;": {} },
         { "program_units:": {} },
-        { "program_units:program_units program_unit": {} },
+        { "program_units:program_units W2_0 program_unit": {} },
         { "program_unit:declare ;": {} },
         { "program_unit:class_definition": {} },
-        { "declare:var id : type": {} },
-        { "declare:var id : type = object": {} },
+        {
+            "declare:var id : type": {
+                action: function ($, s) {
+                    let head = s.slice(-1)[0] as Scope;
+                    let id = $[1] as string;
+                    let type = $[3] as Type;
+                    head.registerField(id, type, 'var');
+                }
+            }
+        },
+        {
+            "declare:var id : type = object": {
+                action: function ($, s) {
+                    let head = s.slice(-1)[0] as Scope;
+                    let id = $[1] as string;
+                    let type = $[3] as Type;
+                    head.registerField(id, type, 'var');
+                }
+            }
+        },
         { "declare:var id = object": {} },
-        { "declare:val id : type": {} },
-        { "declare:val id : type = object": {} },
+        {
+            "declare:val id : type": {
+                action: function ($, s) {
+                    let head = s.slice(-1)[0] as Scope;
+                    let id = $[1] as string;
+                    let type = $[3] as Type;
+                    head.registerField(id, type, 'val');
+                }
+            }
+        },
+        {
+            "declare:val id : type = object": {
+                action: function ($, s) {
+                    let head = s.slice(-1)[0] as Scope;
+                    let id = $[1] as string;
+                    let type = $[3] as Type;
+                    head.registerField(id, type, 'val');
+                }
+            }
+        },
         { "declare:val id = object": {} },
         { "declare:function_definition": {} },
         {
-            "class_definition:modifier class id template_declare extends_declare { class_units }": {
-                action: function ($, s): void {
-                    let id = $[2] as string;
-                    console.log(`注册用户类型:${id}`);
-                    globalLexer.addRule([id, (arg) => { arg.value = id; return "user_type"; }]);
+            "class_definition:modifier class user_type template_declare extends_declare { create_class_scope class_units }": {
+                action: function ($, s) {
+                    let class_scope = $[6] as ClassScope;
+                    console.error('在program中注册类');
+                }
+            }
+        },
+        {
+            "create_class_scope:": {
+                action: function ($, s): ClassScope {
+                    let stack = s.slice(-7);
+                    let head = stack[0] as ProgramScope;
+                    let template_declare = stack[4] as string[] | undefined;
+                    let extends_declare = stack[5] as Type | undefined;
+                    return new ClassScope(head, template_declare, extends_declare);
                 }
             }
         },
         { "extends_declare:": {} },
-        { "extends_declare:extends type": {} },
-        { "function_definition:function id template_declare ( parameter_declare ) ret_type { statements }": {} },
+        {
+            "extends_declare:extends type": {
+                action: function ($, s): Type {
+                    let type = $[1] as Type;
+                    return type;
+                }
+            }
+        },
+        {
+            "function_definition:function id template_declare ( parameter_declare ) ret_type { statements }": {
+                action: function ($, s) {
+                    let ret_type = $[6] as Type;
+                    let id = $[1] as string;
+                    let head = s.slice(-1)[0] as ProgramScope | ClassScope;
+                    if (ret_type != undefined) {
+                        console.error('函数已经确定了返回值类型,需要注册变量');
+                    }
+                }
+            }
+        },
         { "ret_type:": {} },
-        { "ret_type: : type": {} },
+        {
+            "ret_type: : type": {
+                action: function ($, s): Type {
+                    let type = $[1] as Type;
+                    return type;
+                }
+            }
+        },
         { "modifier:valuetype": {} },
         { "modifier:sealed": {} },
         { "modifier:": {} },
         { "template_declare:": {} },
         { "template_declare:template_definition": {} },
-        { "template_definition:< template_definition_list >": {} },
-        { "template_definition_list:id": {} },
-        { "template_definition_list:template_definition_list , id": {} },
+        {
+            "template_definition:< template_definition_list >": {
+                action: function ($, s): string[] {
+                    let template_definition_list = $[1] as string[];
+                    return template_definition_list;
+                }
+            }
+        },
+        {
+            "template_definition_list:id": {
+                action: function ($, s): string[] {
+                    let id = $[0] as string;
+                    return [id];
+                }
+            }
+        },
+        {
+            "template_definition_list:template_definition_list , id": {
+                action: function ($, s): string[] {
+                    let template_definition_list = $[0] as string[];
+                    let id = $[2] as string;
+                    template_definition_list.push(id);
+                    return template_definition_list;
+                }
+            }
+        },
         { "type:( type )": {} },
         { "type:not_array_type": {} },
         { "type:array_type": {} },
@@ -171,13 +268,20 @@ let grammar: Grammar = {
         { "arguments:argument_list": {} },
         { "argument_list:object": {} },
         { "argument_list:argument_list , object": {} },
+        {
+            "W2_0:": {
+                action: function ($, s) {
+                    return s.slice(-2)[0];
+                }
+            }
+        },
     ]
 }
 let tscc = new TSCC(grammar, { language: "zh-cn", debug: false });
 let str = tscc.generate();
 if (str != null) {
     console.log(`成功`);
-    fs.writeFileSync('./src/example/toy-language-3/parser-1.ts', str);
+    fs.writeFileSync('./src/example/toy-language-3/parser-2.ts', str);
 } else {
     console.log(`失败`);
 }

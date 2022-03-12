@@ -1,12 +1,18 @@
-var abc:int;
-class A extends int{
+var a:int;
+var b:int=1;
+val c:int;
+val d:int=1;
+class myClass<T1,T2> extends int{
     function a():int{
-
+        
     };
-    var variable:int;
-    var a=b;
-    var b=c;
-    var c=d+e;
-    var d=fun1();
-    var e=fun2();
+    function b(){
+        
+    };
 }
+class myClass{
+    
+}
+function a():int{
+
+};

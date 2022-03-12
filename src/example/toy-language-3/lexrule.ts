@@ -64,8 +64,8 @@ lexer.addRule(['try', () => 'try']);
 lexer.addRule(['catch', () => 'catch']);
 lexer.addRule(['throw', () => 'throw']);
 lexer.addRule(['super', () => 'super']);
-lexer.addRule(['int', (arg) => { arg.value = new Type("int", "valuetype"); return "build_type"; }]);
-lexer.compile();
+lexer.addRule(['int', (arg) => { arg.value = 'int'; return "build_in_type"; }]);
+lexer.addRule(['double', (arg) => { arg.value = 'double'; return "build_in_type"; }]);
+lexer.addRule(['bool', (arg) => { arg.value = 'bool'; return "build_in_type"; }]);
 let newT = new Date().getTime();
-console.log(`编译默认词法规则耗时:${newT - oldT}ms`);
 export default lexer

@@ -137,9 +137,13 @@ class ProgramScope extends Scope {
 }
 class ClassScope extends Scope {
     public programScope: ProgramScope;
-    constructor(programScope: ProgramScope, isGenericParadigm: boolean, superClass: Type | undefined) {
+    public genericParadigm: string[] | undefined;
+    public superClass:Type|undefined;
+    constructor(programScope: ProgramScope, genericParadigm: string[] | undefined, superClass: Type | undefined) {
         super('class');
         this.programScope = programScope;
+        this.genericParadigm = genericParadigm;
+        this.superClass=superClass;
     }
 }
 class FunctionScope extends Scope {
@@ -156,4 +160,5 @@ class BlockScope extends Scope {
         this.parentScope = parentScope;
     }
 }
-export { Type, ArrayType, FunctionType, Address, Scope, ProgramScope, ClassScope, FunctionScope, BlockScope, SemanticException }
+const programScope = new ProgramScope();
+export { Type, ArrayType, FunctionType, Address, Scope, ClassScope, FunctionScope, BlockScope, SemanticException, ProgramScope, programScope }

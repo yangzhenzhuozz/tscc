@@ -2,7 +2,7 @@ import fs from "fs";
 import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
 let grammar: Grammar = {
-    tokens: ['var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'throw', 'super', 'build_type', 'user_type'],
+    tokens: ['var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'throw', 'super', 'build_in_type', 'user_type'],
     association: [
         { 'right': ['='] },
         { 'right': ['?'] },
@@ -24,9 +24,6 @@ let grammar: Grammar = {
         { 'nonassoc': ['low_priority_for_if_stmt'] },//这个符号的优先级小于else
         { 'nonassoc': ['else'] },
     ],
-    /**
-     * 在编写过程中要处理所有的移入-规约冲突和规约-规约冲突
-     */
     BNF: [
         { "program:import_stmts program_units": {} },//整个程序由导入语句组和程序单元组构成
         { "import_stmts:": {} },//导入语句组可以为空
@@ -46,12 +43,16 @@ let grammar: Grammar = {
         { "declare:val id : type = object": {} },//声明语句_5，声明一个变量id，并且将object设置为id的初始值，object的类型要和声明的类型一致
         { "declare:val id = object": {} },//声明语句_6，声明一个变量id，并且将object设置为id的初始值，类型自动推导
         { "declare:function_definition": {} },//声明语句_7，可以是一个函数定义语句
+        /**
+         * 下面两个产生式,一个用于第一次解析，一个用于后续解析
+         */
         { "class_definition:modifier class id template_declare extends_declare { class_units }": {} },//class定义语句由修饰符等组成(太长了我就不一一列举)
+        { "class_definition:modifier class user_type template_declare extends_declare { class_units }": {} },//当第一轮解析完成之后,词法分析器会把所有的"class myclass"这类语句中的myclass(id)解析成user_type
         { "extends_declare:": {} },//继承可以为空
-        { "extends_declare:extends basic_type": {} },//继承
-        { "function_definition:function id template_declare ( parameter_declare ) : ret_type { statements }": {} },//函数定义语句，同样太长，不列表
+        { "extends_declare:extends type": {} },//继承
+        { "function_definition:function id template_declare ( parameter_declare ) ret_type { statements }": {} },//函数定义语句，同样太长，不列表
         { "ret_type:": {} },//返回值类型可以不声明，自动推导,lambda就不用写返回值声明
-        { "ret_type:type": {} },//可以声明返回值类型
+        { "ret_type: : type": {} },//可以声明返回值类型,function fun() : int {codes}
         { "modifier:valuetype": {} },//modifier可以是"valuetype"
         { "modifier:sealed": {} },//modifier可以是"sealed"
         { "modifier:": {} },//modifier可以为空
@@ -82,7 +83,7 @@ let grammar: Grammar = {
         { "array_type:( parameter_declare ) => type array_type_list": { priority: "low_priority_for_[" } },//array_type由函数类型后面接上一堆方括号组成(函数数组)
         { "array_type_list:[ ]": {} },//array_type_list可以是一对方括号
         { "array_type_list:array_type_list [ ]": {} },//array_type_list可以是array_type_list后面再接一对方括号
-        { "basic_type:build_type": {} },//提前内置的类型,如int、double、bool等
+        { "basic_type:build_in_type": {} },//提前内置的类型,如int、double、bool等
         { "basic_type:user_type": {} },//用户自定义的class
         { "parameter_declare:parameter_list": {} },//parameter_declare可以由parameter_list组成
         { "parameter_declare:": {} },//parameter_declare可以为空
@@ -236,6 +237,7 @@ let grammar: Grammar = {
          * 为其指定优先级为cast_priority
          */
         { "object:( type ) object": { priority: "cast_priority" } },//强制转型
+        { "object:new type  ( arguments )": {} },//new 对象
         /**
          * 假设只针对产生式array_init_list:array_inits array_placeholder 会出现如下二义性
          * new int [10][3]可以有如下两种解释:(把array_placeholder规约成ε)

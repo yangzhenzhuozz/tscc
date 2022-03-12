@@ -86,14 +86,14 @@ class Lexer {
         };
         do {
             if (this.DFAStartState == undefined) {
-                throw `请在编译后再进行正则解析`;
+                throw '词法分析器还未编译';
             }
 
             if (this.charIndex >= this.source.length) {
                 result.type = "$";
                 break;
             }
-            let nowState = this.DFAStartState;
+            let nowState = this.DFAStartState!;//编译之后就不是undefined了
             let ch = '';
             let buffer = '';
             this.lastWordIndex = this.charIndex;
@@ -136,12 +136,23 @@ class Lexer {
         automaton.end.resolver = rule[1];
         this.rules.set(rule[0], automaton);
     }
+    //重置词法分析器之前保留的所有状态
+    public reset() {
+        this.charIndex = 0;
+        this.lastWord = '';
+        this.lastWordIndex = 0;
+        this.errorTipsWidth = 50;
+    }
     public compile() {
+        let oldT = new Date().getTime();
         this.NFAStartState = new State();//创建一个开始状态，然后将该状态连接到所有规则生成的自动机
         for (let rule of this.rules) {
             this.NFAStartState.addEdge("", rule[1].start);
         }
-        this.DFAStartState = this.generateDFA(this.NFAStartState);//构造DFA
+        this.DFAStartState = this.generateDFA(this.NFAStartState);//构造DFA        
+        let newT = new Date().getTime();
+        console.log(`编译词法分析器耗时:${newT - oldT}ms`);
+
     }
     private epsilon_closure(set: State[]) {
         //因为不知道js的容器怎么实现comparable,所以这些容器都使用cache判断重复
