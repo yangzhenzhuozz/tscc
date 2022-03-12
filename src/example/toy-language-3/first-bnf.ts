@@ -54,9 +54,10 @@ let grammar: Grammar = {
         {
             "class_definition:modifier class id template_declare extends_declare { class_units }": {
                 action: function ($, s): void {
+                    let modifier = $[0] as 'valuetype' | 'sealed' | undefined
                     let id = $[2] as string;
-                    console.log(`注册用户类型:${id}`);
                     globalLexer.addRule([id, (arg) => { arg.value = id; return "user_type"; }]);
+
                 }
             }
         },
@@ -65,8 +66,20 @@ let grammar: Grammar = {
         { "function_definition:function id template_declare ( parameter_declare ) ret_type { statements }": {} },
         { "ret_type:": {} },
         { "ret_type: : type": {} },
-        { "modifier:valuetype": {} },
-        { "modifier:sealed": {} },
+        {
+            "modifier:valuetype": {
+                action: function ($, s): string {
+                    return 'valuetype';
+                }
+            }
+        },
+        {
+            "modifier:sealed": {
+                action: function ($, s): string {
+                    return 'sealed';
+                }
+            }
+        },
         { "modifier:": {} },
         { "template_declare:": {} },
         { "template_declare:template_definition": {} },

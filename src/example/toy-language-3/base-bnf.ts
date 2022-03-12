@@ -49,7 +49,7 @@ let grammar: Grammar = {
         { "class_definition:modifier class id template_declare extends_declare { class_units }": {} },//class定义语句由修饰符等组成(太长了我就不一一列举)
         { "class_definition:modifier class user_type template_declare extends_declare { class_units }": {} },//当第一轮解析完成之后,词法分析器会把所有的"class myclass"这类语句中的myclass(id)解析成user_type
         { "extends_declare:": {} },//继承可以为空
-        { "extends_declare:extends type": {} },//继承
+        { "extends_declare:extends type": {} },//继承,虽然文法是允许继承任意类型,但是在语义分析的时候再具体决定该class能不能被继承
         { "function_definition:function id template_declare ( parameter_declare ) ret_type { statements }": {} },//函数定义语句，同样太长，不列表
         { "ret_type:": {} },//返回值类型可以不声明，自动推导,lambda就不用写返回值声明
         { "ret_type: : type": {} },//可以声明返回值类型,function fun() : int {codes}

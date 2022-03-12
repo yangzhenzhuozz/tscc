@@ -125,6 +125,7 @@ class Lexer {
     }
     public setSource(src: string) {
         this.source = src;
+        this.reset();
     }
     /**
      * 后面添加的规则优先级更高，见this.epsilon_closure()
@@ -135,6 +136,10 @@ class Lexer {
         automaton.end.isFinal = true;
         automaton.end.resolver = rule[1];
         this.rules.set(rule[0], automaton);
+    }
+    //移除规则
+    public removeRule(rule: string) {
+        this.rules.delete(rule);
     }
     //重置词法分析器之前保留的所有状态
     public reset() {

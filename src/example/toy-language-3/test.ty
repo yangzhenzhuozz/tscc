@@ -2,6 +2,9 @@ var a:int;
 var b:int=1;
 val c:int;
 val d:int=1;
+function a<T1,T2>():int{
+
+};
 class myClass<T1,T2> extends int{
     function a():int{
         
@@ -13,6 +16,3 @@ class myClass<T1,T2> extends int{
 class myClass{
     
 }
-function a():int{
-
-};

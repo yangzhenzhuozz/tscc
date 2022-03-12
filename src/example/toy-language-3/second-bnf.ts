@@ -124,8 +124,11 @@ let grammar: Grammar = {
                     let ret_type = $[6] as Type;
                     let id = $[1] as string;
                     let head = s.slice(-1)[0] as ProgramScope | ClassScope;
+                    let template_declare = $[2] as string[] | undefined;
+                    let parameter_declare = $[4] as { name: string, type: Type }[] | undefined;
+                    debugger;
                     if (ret_type != undefined) {
-                        console.error('函数已经确定了返回值类型,需要注册变量');
+                        throw '函数已经确定了返回值类型,需要注册函数变量';
                     }
                 }
             }
@@ -139,11 +142,30 @@ let grammar: Grammar = {
                 }
             }
         },
-        { "modifier:valuetype": {} },
-        { "modifier:sealed": {} },
+        {
+            "modifier:valuetype": {
+                action: function ($, s): string {
+                    return 'valuetype';
+                }
+            }
+        },
+        {
+            "modifier:sealed": {
+                action: function ($, s): string {
+                    return 'sealed';
+                }
+            }
+        },
         { "modifier:": {} },
         { "template_declare:": {} },
-        { "template_declare:template_definition": {} },
+        {
+            "template_declare:template_definition": {
+                action: function ($, s): string[] {
+                    let template_definition_list = $[0] as string[];
+                    return template_definition_list;
+                }
+            }
+        },
         {
             "template_definition:< template_definition_list >": {
                 action: function ($, s): string[] {
@@ -182,10 +204,35 @@ let grammar: Grammar = {
         { "array_type_list:array_type_list [ ]": {} },
         { "basic_type:build_in_type": {} },
         { "basic_type:user_type": {} },
-        { "parameter_declare:parameter_list": {} },
+        {
+            "parameter_declare:parameter_list": {
+                action: function ($, s): { name: string, type: Type }[] {
+                    let parameter_list = $[0] as { name: string, type: Type }[];
+                    return parameter_list;
+                }
+            }
+        },
         { "parameter_declare:": {} },
-        { "parameter_list:id : type": {} },
-        { "parameter_list:parameter_list , id : type": {} },
+        {
+            "parameter_list:id : type": {
+                action: function ($, s): { name: string, type: Type }[] {
+                    let id = $[0] as string;
+                    let type = $[2] as Type;
+                    return [{ name: id, type: type }];
+                }
+            }
+        },
+        {
+            "parameter_list:parameter_list , id : type": {
+                action: function ($, s): { name: string, type: Type }[] {
+                    let parameter_list = $[0] as { name: string, type: Type }[];
+                    let id = $[2] as string;
+                    let type = $[4] as Type;
+                    parameter_list.push({ name: id, type: type });
+                    return parameter_list;
+                }
+            }
+        },
         { "class_units:class_units class_unit": {} },
         { "class_units:": {} },
         { "class_unit:declare ;": {} },

@@ -3,10 +3,12 @@ class Type {
     private operatorOverload: Map<string, Function> = new Map();//操作符重载列表
     private modifier: "valuetype" | "sealed" | "referentialType";
     private parentType: Type | undefined;//父对象,为undefined表示这是object
+    public genericParadigm: string[] | undefined;
     public name: string;
-    constructor(name: string, modifier: "valuetype" | "sealed" | "referentialType") {
+    constructor(name: string, modifier: "valuetype" | "sealed" | "referentialType",genericParadigm:string[] | undefined) {
         this.name = name;
         this.modifier = modifier;
+        this.genericParadigm=genericParadigm;
     }
     public setParent(parentType: Type) {
         this.parentType = parentType;
@@ -58,16 +60,16 @@ class Type {
 }
 class ArrayType extends Type {
     public innerType: Type;//数组的基本类型
-    constructor(inner_type: Type) {
-        super(`Array<${inner_type.name}>`, "referentialType");
+    constructor(inner_type: Type,genericParadigm: string[] | undefined) {
+        super(`Array<${inner_type.name}>`, "referentialType",genericParadigm);
         this.innerType = inner_type;
     }
 }
 class FunctionType extends Type {
     public parameters: Map<string, Type> = new Map();//参数名和类型列表,反射的时候可以直接得到参数的名字
     public returnType: Type;//返回值类型
-    constructor(ret_type: Type) {
-        super(`function`, "referentialType");
+    constructor(ret_type: Type,genericParadigm: string[] | undefined) {
+        super(`function`, "referentialType",genericParadigm);
         this.returnType = ret_type;
     }
     public registerParameter(name: string, type: Type) {
@@ -124,8 +126,18 @@ class ProgramScope extends Scope {
     constructor() {
         super('program');
         this.registeredType = new Map();
-        this.registeredType.set('int', new Type('int', 'valuetype'));
-        this.registeredType.set('bool', new Type('bool', 'valuetype'));
+        this.registeredType.set('int', new Type('int', 'valuetype',undefined));
+        this.registeredType.set('bool', new Type('bool', 'valuetype',undefined));
+    }
+    public registerType(name: string, modifier: "valuetype" | "sealed" | "referentialType",genericParadigm: string[] | undefined) {
+        console.log(`注册类型:${name}:${modifier}`);
+        if (this.registeredType.has(name)) {
+            throw new SemanticException(`重复注册类型:${name}`);
+        } else {
+            let type = new Type(name, modifier,genericParadigm);
+            this.registeredType.set(name, type);
+            return type;
+        }
     }
     public getRegisteredType(name: string): Type {
         if (this.registeredType.has(name)) {
@@ -138,12 +150,12 @@ class ProgramScope extends Scope {
 class ClassScope extends Scope {
     public programScope: ProgramScope;
     public genericParadigm: string[] | undefined;
-    public superClass:Type|undefined;
+    public superClass: Type | undefined;
     constructor(programScope: ProgramScope, genericParadigm: string[] | undefined, superClass: Type | undefined) {
         super('class');
         this.programScope = programScope;
         this.genericParadigm = genericParadigm;
-        this.superClass=superClass;
+        this.superClass = superClass;
     }
 }
 class FunctionScope extends Scope {

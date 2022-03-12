@@ -1,11 +1,11 @@
 import Lexer from "../lexer/lexer.js";
-import { Type, Address } from "./lib.js";
+import { Type, ArrayType, FunctionType, Address, programScope, ClassScope, FunctionScope, BlockScope, SemanticException, Scope } from "./lib.js"
 let oldT = new Date().getTime();
 //词法规则
 let lexer = new Lexer();
 lexer.addRule(['( |\t|\r|\n)( |\t|\r|\n)*', undefined]);//忽略空格、制表、回车、换行
 lexer.addRule(['//( |\t|a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z|A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z|1|2|3|4|5|6|7|8|9|0)*\r\n', undefined]);//忽略注释
-lexer.addRule(['(1|2|3|4|5|6|7|8|9|0)(1|2|3|4|5|6|7|8|9|0)*', (arg) => { arg.value = new Address("immediate", new Type("int", "valuetype"), Number(arg.yytext), 'val'); return "immediate_val"; }]);
+lexer.addRule(['(1|2|3|4|5|6|7|8|9|0)(1|2|3|4|5|6|7|8|9|0)*', (arg) => { arg.value = Number(arg.yytext); return "immediate_val"; }]);
 lexer.addRule(['(a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z|A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z)(a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z|A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z|1|2|3|4|5|6|7|8|9|0)*', (arg) => { arg.value = arg.yytext; return 'id'; }]);
 lexer.addRule(['var', () => 'var']);
 lexer.addRule(['val', () => 'val']);
@@ -65,7 +65,6 @@ lexer.addRule(['catch', () => 'catch']);
 lexer.addRule(['throw', () => 'throw']);
 lexer.addRule(['super', () => 'super']);
 lexer.addRule(['int', (arg) => { arg.value = 'int'; return "build_in_type"; }]);
-lexer.addRule(['double', (arg) => { arg.value = 'double'; return "build_in_type"; }]);
 lexer.addRule(['bool', (arg) => { arg.value = 'bool'; return "build_in_type"; }]);
 let newT = new Date().getTime();
 export default lexer
