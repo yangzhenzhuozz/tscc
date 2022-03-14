@@ -4,11 +4,13 @@ class Type {
     private modifier: "valuetype" | "sealed" | "referentialType";
     private parentType: Type | undefined;//父对象,为undefined表示这是object
     public genericParadigm: string[] | undefined;
+    public templateInstances: Type[] | undefined;
     public name: string;
-    constructor(name: string, modifier: "valuetype" | "sealed" | "referentialType",genericParadigm:string[] | undefined) {
+    constructor(name: string, modifier: "valuetype" | "sealed" | "referentialType", genericParadigm: string[] | undefined, templateInstances: Type[] | undefined) {
+        this.templateInstances = templateInstances;
         this.name = name;
         this.modifier = modifier;
-        this.genericParadigm=genericParadigm;
+        this.genericParadigm = genericParadigm;
     }
     public setParent(parentType: Type) {
         this.parentType = parentType;
@@ -60,16 +62,25 @@ class Type {
 }
 class ArrayType extends Type {
     public innerType: Type;//数组的基本类型
-    constructor(inner_type: Type,genericParadigm: string[] | undefined) {
-        super(`Array<${inner_type.name}>`, "referentialType",genericParadigm);
+    constructor(inner_type: Type) {
+        super(`Array<${inner_type.name}>`, "referentialType", undefined, undefined);
         this.innerType = inner_type;
     }
 }
 class FunctionType extends Type {
     public parameters: Map<string, Type> = new Map();//参数名和类型列表,反射的时候可以直接得到参数的名字
     public returnType: Type;//返回值类型
-    constructor(ret_type: Type,genericParadigm: string[] | undefined) {
-        super(`function`, "referentialType",genericParadigm);
+    constructor(parameters: { name: string, type: Type }[] | undefined, ret_type: Type, genericParadigm: string[] | undefined, templateInstances: Type[] | undefined) {
+        super(`function`, "referentialType", genericParadigm, templateInstances);
+        if (parameters != undefined) {
+            for (let parameter of parameters) {
+                if (this.parameters.has(parameter.name)) {
+                    throw new SemanticException(`参数${parameter.name}重复定义`);
+                } else {
+                    this.parameters.set(parameter.name, parameter.type);
+                }
+            }
+        }
         this.returnType = ret_type;
     }
     public registerParameter(name: string, type: Type) {
@@ -126,15 +137,15 @@ class ProgramScope extends Scope {
     constructor() {
         super('program');
         this.registeredType = new Map();
-        this.registeredType.set('int', new Type('int', 'valuetype',undefined));
-        this.registeredType.set('bool', new Type('bool', 'valuetype',undefined));
+        this.registeredType.set('int', new Type('int', 'valuetype', undefined, undefined));
+        this.registeredType.set('bool', new Type('bool', 'valuetype', undefined, undefined));
     }
-    public registerType(name: string, modifier: "valuetype" | "sealed" | "referentialType",genericParadigm: string[] | undefined) {
+    public registerType(name: string, modifier: "valuetype" | "sealed" | "referentialType", genericParadigm: string[] | undefined, templateInstances: Type[] | undefined) {
         console.log(`注册类型:${name}:${modifier}`);
         if (this.registeredType.has(name)) {
             throw new SemanticException(`重复注册类型:${name}`);
         } else {
-            let type = new Type(name, modifier,genericParadigm);
+            let type = new Type(name, modifier, genericParadigm, templateInstances);
             this.registeredType.set(name, type);
             return type;
         }
@@ -143,7 +154,8 @@ class ProgramScope extends Scope {
         if (this.registeredType.has(name)) {
             return this.registeredType.get(name)!;
         } else {
-            throw new SemanticException(`未知类型:${name}`);
+            console.log(`使用了还未完成的类型:${name}`);
+            return new Type(name, 'valuetype', undefined, undefined);
         }
     }
 }

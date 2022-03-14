@@ -2,7 +2,7 @@ import fs from "fs";
 import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
 let grammar: Grammar = {
-    tokens: ['var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'throw', 'super', 'build_in_type', 'user_type'],
+    tokens: ['var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'throw', 'super', 'built_in_type', 'user_type'],
     association: [
         { 'right': ['='] },
         { 'right': ['?'] },
@@ -43,11 +43,7 @@ let grammar: Grammar = {
         { "declare:val id : type = object": {} },//声明语句_5，声明一个变量id，并且将object设置为id的初始值，object的类型要和声明的类型一致
         { "declare:val id = object": {} },//声明语句_6，声明一个变量id，并且将object设置为id的初始值，类型自动推导
         { "declare:function_definition": {} },//声明语句_7，可以是一个函数定义语句
-        /**
-         * 下面两个产生式,一个用于第一次解析，一个用于后续解析
-         */
-        { "class_definition:modifier class id template_declare extends_declare { class_units }": {} },//class定义语句由修饰符等组成(太长了我就不一一列举)
-        { "class_definition:modifier class user_type template_declare extends_declare { class_units }": {} },//当第一轮解析完成之后,词法分析器会把所有的"class myclass"这类语句中的myclass(id)解析成user_type
+        { "class_definition:modifier class user_type template_declare extends_declare { class_units }": {} },//class定义语句由修饰符等组成(太长了我就不一一列举)
         { "extends_declare:": {} },//继承可以为空
         { "extends_declare:extends type": {} },//继承,虽然文法是允许继承任意类型,但是在语义分析的时候再具体决定该class能不能被继承
         { "function_definition:function id template_declare ( parameter_declare ) ret_type { statements }": {} },//函数定义语句，同样太长，不列表
@@ -77,13 +73,16 @@ let grammar: Grammar = {
         { "type:not_array_type": {} },//非数组类型
         { "type:array_type": {} },//数组类型
         { "not_array_type:basic_type": { priority: "low_priority_for_[" } },//type可以是一个base_type
-        { "not_array_type:basic_type template_instance": { priority: "low_priority_for_[" } },//type可以是一个base_type template_instance 
+        { "not_array_type:basic_type template_instances": { priority: "low_priority_for_[" } },//type可以是一个base_type template_instances
+        { "not_array_type:template_instances ( parameter_declare ) => type": { priority: "low_priority_for_[" } },//泛型函数类型
         { "not_array_type:( parameter_declare ) => type": { priority: "low_priority_for_[" } },//函数类型
         { "array_type:basic_type array_type_list": { priority: "low_priority_for_[" } },//array_type由basic_type后面接上一堆方括号组成(基本数组)
+        { "array_type:basic_type template_instances array_type_list": { priority: "low_priority_for_[" } },//模板实例化对象的数组(基本数组)
         { "array_type:( parameter_declare ) => type array_type_list": { priority: "low_priority_for_[" } },//array_type由函数类型后面接上一堆方括号组成(函数数组)
+        { "array_type:template_instances ( parameter_declare ) => type array_type_list": { priority: "low_priority_for_[" } },//泛型函数实例化之后的数组
         { "array_type_list:[ ]": {} },//array_type_list可以是一对方括号
         { "array_type_list:array_type_list [ ]": {} },//array_type_list可以是array_type_list后面再接一对方括号
-        { "basic_type:build_in_type": {} },//提前内置的类型,如int、double、bool等
+        { "basic_type:built_in_type": {} },//提前内置的类型,如int、double、bool等
         { "basic_type:user_type": {} },//用户自定义的class
         { "parameter_declare:parameter_list": {} },//parameter_declare可以由parameter_list组成
         { "parameter_declare:": {} },//parameter_declare可以为空
@@ -176,7 +175,7 @@ let grammar: Grammar = {
         * 也采用方案2，令函数调用优先级高于强制转型
         */
         { "object:object  ( arguments )": {} },//函数调用
-        { "object:object template_instance ( arguments )": {} },//模板函数调用
+        { "object:object template_instances ( arguments )": {} },//模板函数调用
         /**
          * 一系列的双目运算符,二义性如下:
          * a+b*c
@@ -254,7 +253,7 @@ let grammar: Grammar = {
         { "array_placeholder:": { priority: "low_priority_for_array_placeholder" } },//array_placeholder可以为空
         { "array_placeholder_list:array_placeholder_list [ ]": {} },//见array_init_list一条的解释
         { "array_placeholder_list:[ ]": {} },//见array_init_list一条的解释
-        { "template_instance:< template_instance_list >": {} },//模板实例化可以实例化为一个<template_instance_list>
+        { "template_instances:< template_instance_list >": {} },//模板实例化可以实例化为一个<template_instance_list>
         { "template_instance_list:type": {} },//template_instance_list可以为一个type
         { "template_instance_list:template_instance_list , type": {} },//template_instance_list可以为多个type
         { "arguments:": {} },//实参可以为空

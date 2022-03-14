@@ -1,10 +1,18 @@
-var a:int;
+var a:Set<int>;
 var b:int=1;
-val c:int;
-val d:int=1;
-function a<T1,T2>():int{
+val c:int[][][][];
+val d:Map<int,int>[][][]=1;
+function e<T1,T2>(a:Set<Map<int,int>>,b:int):int{
 
 };
+class Set<V>{
+    function getVal():V{
+        return new V();
+    }
+}
+class Map<K,V>{
+
+}
 class myClass<T1,T2> extends int{
     function a():int{
         
