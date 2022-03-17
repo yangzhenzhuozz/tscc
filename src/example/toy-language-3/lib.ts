@@ -132,57 +132,24 @@ class Scope {
         }
     }
 }
-class ProgramScope extends Scope {
-    private registeredType: Map<string, Type>;
-    constructor() {
-        super('program');
-        this.registeredType = new Map();
-        this.registeredType.set('int', new Type('int', 'valuetype', undefined, undefined));
-        this.registeredType.set('bool', new Type('bool', 'valuetype', undefined, undefined));
-    }
-    public registerType(name: string, modifier: "valuetype" | "sealed" | "referentialType", genericParadigm: string[] | undefined, templateInstances: Type[] | undefined) {
-        console.log(`注册类型:${name}:${modifier}`);
-        if (this.registeredType.has(name)) {
-            throw new SemanticException(`重复注册类型:${name}`);
-        } else {
-            let type = new Type(name, modifier, genericParadigm, templateInstances);
-            this.registeredType.set(name, type);
-            return type;
-        }
-    }
-    public getRegisteredType(name: string): Type {
-        if (this.registeredType.has(name)) {
-            return this.registeredType.get(name)!;
-        } else {
-            console.log(`使用了还未完成的类型:${name}`);
-            return new Type(name, 'valuetype', undefined, undefined);
-        }
-    }
-}
-class ClassScope extends Scope {
-    public programScope: ProgramScope;
-    public genericParadigm: string[] | undefined;
-    public superClass: Type | undefined;
-    constructor(programScope: ProgramScope, genericParadigm: string[] | undefined, superClass: Type | undefined) {
-        super('class');
-        this.programScope = programScope;
-        this.genericParadigm = genericParadigm;
-        this.superClass = superClass;
-    }
-}
+
 class FunctionScope extends Scope {
-    public programScope: ProgramScope;
-    constructor(programScope: ProgramScope, isGenericParadigm: boolean) {
+    public programWraper: Type;//函数所在的program空间
+    public classWraper: Type | undefined;
+    constructor(programWraper: Type, classWraper: Type | undefined, isGenericParadigm: boolean) {
         super('stack');
-        this.programScope = programScope;
+        this.programWraper = programWraper;
+        this.classWraper = classWraper;
     }
 }
 class BlockScope extends Scope {
-    public parentScope: ProgramScope | FunctionScope;
-    constructor(parentScope: ProgramScope | FunctionScope) {
+    public parentFunction: FunctionScope;
+    public parent: FunctionScope | BlockScope;//是一个函数或者block
+    constructor(parentFunction: FunctionScope, parent: FunctionScope | BlockScope) {
         super('stack');
-        this.parentScope = parentScope;
+        this.parentFunction = parentFunction;
+        this.parent = parent;
     }
 }
-const programScope = new ProgramScope();
-export { Type, ArrayType, FunctionType, Address, Scope, ClassScope, FunctionScope, BlockScope, SemanticException, ProgramScope, programScope }
+const program = new Type('Program', 'referentialType', undefined, undefined);
+export { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScope, SemanticException, program }
