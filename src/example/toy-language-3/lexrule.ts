@@ -1,5 +1,5 @@
 import Lexer from "../lexer/lexer.js";
-import { Type, ArrayType, FunctionType, Address, programScope, ClassScope, FunctionScope, BlockScope, SemanticException, Scope } from "./lib.js"
+import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScope, SemanticException, program } from "./lib.js"
 let oldT = new Date().getTime();
 //词法规则
 let lexer = new Lexer();
