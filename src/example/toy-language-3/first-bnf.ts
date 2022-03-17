@@ -4,11 +4,11 @@
 import fs from "fs";
 import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
-import { Type, ArrayType, FunctionType, Address, ProgramScope, programScope, ClassScope, FunctionScope, BlockScope, SemanticException, Scope } from "./lib.js"
+import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScope, SemanticException, program } from "./lib.js"
 let grammar: Grammar = {
     userCode: `
     import globalLexer from './lexrule.js';
-    import { Type, ArrayType, FunctionType, Address, ProgramScope, programScope, ClassScope, FunctionScope, BlockScope, SemanticException, Scope } from "./lib.js";`,
+    import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScope, SemanticException, program } from "./lib.js";`,
     tokens: ['var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'throw', 'super', 'built_in_type', 'user_type'],
     association: [
         { 'right': ['='] },
@@ -32,376 +32,164 @@ let grammar: Grammar = {
         { 'nonassoc': ['else'] },
     ],
     BNF: [
-        { "program:import_stmts create_program_scope program_units": {} },
-        {
-            "create_program_scope:": {
-                action: function ($, s): ProgramScope {
-                    return programScope;
-                }
-            }
-        },
-        { "import_stmts:": {} },
-        { "import_stmts:import_stmts import_stmt": {} },
-        { "import_stmt:import id ;": {} },
-        { "program_units:": {} },
-        { "program_units:program_units W2_0 program_unit": {} },
-        { "program_unit:declare ;": {} },
-        { "program_unit:class_definition": {} },
-        {
-            "declare:var id : type": {
-                action: function ($, s) {
-                    let head = s.slice(-1)[0] as Scope;
-                    let id = $[1] as string;
-                    let type = $[3] as Type;
-                    head.registerField(id, type, 'var');
-                }
-            }
-        },
-        {
-            "declare:var id : type = object": {
-                action: function ($, s) {
-                    let head = s.slice(-1)[0] as Scope;
-                    let id = $[1] as string;
-                    let type = $[3] as Type;
-                    head.registerField(id, type, 'var');
-                }
-            }
-        },
-        { "declare:var id = object": {} },
-        {
-            "declare:val id : type": {
-                action: function ($, s) {
-                    let head = s.slice(-1)[0] as Scope;
-                    let id = $[1] as string;
-                    let type = $[3] as Type;
-                    head.registerField(id, type, 'val');
-                }
-            }
-        },
-        {
-            "declare:val id : type = object": {
-                action: function ($, s) {
-                    let head = s.slice(-1)[0] as Scope;
-                    let id = $[1] as string;
-                    let type = $[3] as Type;
-                    head.registerField(id, type, 'val');
-                }
-            }
-        },
-        { "declare:val id = object": {} },
-        { "declare:function_definition": {} },
-        {
-            "class_definition:modifier class user_type template_declare extends_declare { create_class_scope class_units }": {
-                action: function ($, s) {
-                    let class_scope = $[6] as ClassScope;
-                    console.error('在program中注册类');
-                }
-            }
-        },
-        {
-            "create_class_scope:": {
-                action: function ($, s): ClassScope {
-                    let stack = s.slice(-7);
-                    let head = stack[0] as ProgramScope;
-                    let template_declare = stack[4] as string[] | undefined;
-                    let extends_declare = stack[5] as Type | undefined;
-                    return new ClassScope(head, template_declare, extends_declare);
-                }
-            }
-        },
-        { "extends_declare:": {} },
-        {
-            "extends_declare:extends type": {
-                action: function ($, s): Type {
-                    let type = $[1] as Type;
-                    return type;
-                }
-            }
-        },
-        {
-            "function_definition:function id template_declare ( parameter_declare ) ret_type { statements }": {
-                action: function ($, s) {
-                    let ret_type = $[6] as Type;
-                    let id = $[1] as string;
-                    let head = s.slice(-1)[0] as ProgramScope | ClassScope;
-                    let template_declare = $[2] as string[] | undefined;
-                    let parameter_declare = $[4] as { name: string, type: Type }[] | undefined;
-                    if (ret_type != undefined) {
-                        head.registerField(id, new FunctionType(parameter_declare, ret_type, template_declare, undefined), 'var');
-                    }
-                }
-            }
-        },
-        { "ret_type:": {} },
-        {
-            "ret_type: : type": {
-                action: function ($, s): Type {
-                    let type = $[1] as Type;
-                    return type;
-                }
-            }
-        },
-        {
-            "modifier:valuetype": {
-                action: function ($, s): string {
-                    return 'valuetype';
-                }
-            }
-        },
-        {
-            "modifier:sealed": {
-                action: function ($, s): string {
-                    return 'sealed';
-                }
-            }
-        },
-        { "modifier:": {} },
-        { "template_declare:": {} },
-        {
-            "template_declare:template_definition": {
-                action: function ($, s): string[] {
-                    let template_definition_list = $[0] as string[];
-                    return template_definition_list;
-                }
-            }
-        },
-        {
-            "template_definition:< template_definition_list >": {
-                action: function ($, s): string[] {
-                    let template_definition_list = $[1] as string[];
-                    return template_definition_list;
-                }
-            }
-        },
-        {
-            "template_definition_list:id": {
-                action: function ($, s): string[] {
-                    let id = $[0] as string;
-                    return [id];
-                }
-            }
-        },
-        {
-            "template_definition_list:template_definition_list , id": {
-                action: function ($, s): string[] {
-                    let template_definition_list = $[0] as string[];
-                    let id = $[2] as string;
-                    template_definition_list.push(id);
-                    return template_definition_list;
-                }
-            }
-        },
-        {
-            "type:( type )": {
-                action: function ($, s): Type {
-                    let type = $[1] as Type;
-                    return type;
-                }
-            }
-        },
-        {
-            "type:not_array_type": {
-                action: function ($, s): Type {
-                    let not_array_type = $[0] as Type;
-                    return not_array_type;
-                }
-            }
-        },
-        {
-            "type:array_type": {
-                action: function ($, s): Type {
-                    let array_type = $[0] as Type;
-                    return array_type;
-                }
-            }
-        },
-        {
-            "not_array_type:basic_type": {
-                priority: "low_priority_for_[",
-                action: function ($, s): Type {
-                    let basic_type = $[0] as Type;
-                    return basic_type;
-                }
-            }
-        },
-        {
-            /**
-             * 这里加create_template_type是为了不和下面的
-             * array_type:basic_type template_instances create_template_type array_type_list
-             * 这条规则产生规约-规约冲突
-             */
-            "not_array_type:basic_type template_instances create_template_type": {
-                priority: "low_priority_for_[",
-                action: function ($, s): Type {
-                    let create_template_type = $[2] as Type;
-                    return create_template_type;
-                }
-            },
-        },
-        {
-            "create_template_type:": {
-                action: function ($, s): Type {
-                    let stack = s.slice(-2);
-                    let basic_type = stack[0] as Type;
-                    let template_instances = stack[1] as Type[];
-                    basic_type.templateInstances = template_instances;
-                    return basic_type;
-                }
-            }
-        },
-        {
-            "not_array_type:( parameter_declare ) => type": {
-                priority: "low_priority_for_[",
-                action: function ($, s): Type {
-                    let parameter_declare = $[1] as { name: string, type: Type }[] | undefined;
-                    let ret_type = $[4] as Type;
-                    return new FunctionType(parameter_declare, ret_type, undefined, undefined);
-                }
-            }
-        },
-        {
-            "not_array_type:template_instances ( parameter_declare ) => type": {
-                priority: "low_priority_for_[",
-                action: function ($, s): Type {
-                    let parameter_declare = $[2] as { name: string, type: Type }[] | undefined;
-                    let ret_type = $[5] as Type;
-                    let template_instances = $[0] as Type[];
-                    return new FunctionType(parameter_declare, ret_type, undefined, template_instances);
-                }
-            }
-        },
-        {
-            "array_type:basic_type array_type_list": {
-                priority: "low_priority_for_[",
-                action: function ($, s): Type {
-                    let array_type_list = $[1] as Type;
-                    return array_type_list;
-                }
-            }
-        },
-        {
-            "array_type:basic_type template_instances create_template_type array_type_list": {
-                priority: "low_priority_for_[",
-                action: function ($, s): Type {
-                    let array_type_list = $[3] as Type;
-                    return array_type_list;
-                }
-            }
-        },
-        {
-            "array_type:( parameter_declare ) => type create_function_type array_type_list": {
-                priority: "low_priority_for_[",
-                action: function ($, s) {
-
-                }
-            }
-        },
-        { "array_type:template_instances ( parameter_declare ) => type array_type_list": { priority: "low_priority_for_[" } },
-        { "create_function_type:": {} },
-        {
-            "array_type_list:[ ]": {
-                action: function ($, s): Type {
-                    let head = s.slice(-1)[0] as Type;
-                    return new ArrayType(head)
-                }
-            }
-        },
-        {
-            "array_type_list:array_type_list [ ]": {
-                action: function ($, s): Type {
-                    let head = $[0] as Type;
-                    return new ArrayType(head)
-                }
-            }
-        },
-        {
-            "basic_type:built_in_type": {
-                action: function ($, s): Type {
-                    let built_in_type = $[0] as string;
-                    return programScope.getRegisteredType(built_in_type);
-                }
-            }
-        },
-        {
-            "basic_type:user_type": {
-                action: function ($, s): Type {
-                    let user_type = $[0] as string;
-                    return programScope.getRegisteredType(user_type);
-                }
-            }
-        },
-        {
-            "parameter_declare:parameter_list": {
-                action: function ($, s): { name: string, type: Type }[] {
-                    let parameter_list = $[0] as { name: string, type: Type }[];
-                    return parameter_list;
-                }
-            }
-        },
-        { "parameter_declare:": {} },
-        {
-            "parameter_list:id : type": {
-                action: function ($, s): { name: string, type: Type }[] {
-                    let id = $[0] as string;
-                    let type = $[2] as Type;
-                    return [{ name: id, type: type }];
-                }
-            }
-        },
-        {
-            "parameter_list:parameter_list , id : type": {
-                action: function ($, s): { name: string, type: Type }[] {
-                    let parameter_list = $[0] as { name: string, type: Type }[];
-                    let id = $[2] as string;
-                    let type = $[4] as Type;
-                    parameter_list.push({ name: id, type: type });
-                    return parameter_list;
-                }
-            }
-        },
-        { "class_units:class_units class_unit": {} },
-        { "class_units:": {} },
-        { "class_unit:declare ;": {} },
-        { "class_unit:operator_overload": {} },
-        { "class_unit:get id ( ) : type { statements }": {} },
-        { "class_unit:set id ( id : type ) { statements }": {} },
-        { "operator_overload:operator + ( parameter_declare ) : type { statements }": {} },
-        { "statements:statements statement": {} },
-        { "statements:": {} },
-        { "statement:declare ;": {} },
-        { "statement:try { statement } catch ( id : type ) { statement }": {} },
-        { "statement:throw object ;": {} },
-        { "statement:return object ;": {} },
-        { "statement:return ;": {} },
-        { "statement:if ( object ) statement": { priority: "low_priority_for_if_stmt" } },
-        { "statement:if ( object ) statement else statement": {} },
-        { "statement:lable_def do statement while ( object ) ;": {} },
-        { "statement:lable_def while ( object ) statement": {} },
-        { "statement:lable_def for ( for_init ; for_condition ; for_step ) statement": {} },
-        { "statement:block": { action: ($, s) => $[0] } },
-        { "statement:break lable_use ;": {} },
-        { "statement:continue lable_use ;": {} },
-        { "statement:switch ( object ) { switch_bodys }": {} },
-        { "statement:object ;": {} },
-        { "lable_def:": {} },
-        { "lable_def:id :": {} },
-        { "for_init:": {} },
-        { "for_init:declare": {} },
-        { "for_init:object": {} },
-        { "for_condition:": {} },
-        { "for_condition:object": {} },
-        { "for_step:": {} },
-        { "for_step:object": {} },
-        { "block:{ statements }": {} },
-        { "lable_use:": {} },
-        { "lable_use:id": {} },
-        { "switch_bodys:": {} },
-        { "switch_bodys:switch_bodys switch_body": {} },
-        { "switch_body:case immediate_val : statement": {} },
-        { "switch_body:default : statement": {} },
-        { "object:( object )": {} },
-        { "object:object  ( arguments )": {} },
-        { "object:object template_instances ( arguments )": {} },
+        { "program:import_stmts program_units": {} },//整个程序由导入语句组和程序单元组构成
+        { "import_stmts:": {} },//导入语句组可以为空
+        { "import_stmts:import_stmts import_stmt": {} },//导入语句组由一条或者多条导入语句组成
+        { "import_stmt:import id ;": {} },//导入语句语法
+        { "program_units:": {} },//程序单元组可以为空
+        { "program_units:program_units program_unit": {} },//程序单元组由一个或者多个程序单元组成
+        { "program_unit:declare ;": {} },//程序单元可以是一条声明语句
+        { "program_unit:class_definition": {} },//程序单元可以是一个类定义语句
+        /**
+         * var和val的区别就是一个可修改，一个不可修改,val类似于其他语言的const
+         */
+        { "declare:var id : type": {} },//声明语句_1，声明一个变量id，其类型为type
+        { "declare:var id : type = object": {} },//声明语句_2，声明一个变量id，并且将object设置为id的初始值，object的类型要和声明的类型一致
+        { "declare:var id = object": {} },//声明语句_3，声明一个变量id，并且将object设置为id的初始值，类型自动推导
+        { "declare:val id : type": {} },//声明语句_4，声明一个变量id，其类型为type
+        { "declare:val id : type = object": {} },//声明语句_5，声明一个变量id，并且将object设置为id的初始值，object的类型要和声明的类型一致
+        { "declare:val id = object": {} },//声明语句_6，声明一个变量id，并且将object设置为id的初始值，类型自动推导
+        { "declare:function_definition": {} },//声明语句_7，可以是一个函数定义语句
+        { "class_definition:modifier class user_type template_declare extends_declare { class_units }": {} },//class定义语句由修饰符等组成(太长了我就不一一列举)
+        { "extends_declare:": {} },//继承可以为空
+        { "extends_declare:extends type": {} },//继承,虽然文法是允许继承任意类型,但是在语义分析的时候再具体决定该class能不能被继承
+        { "function_definition:function id template_declare ( parameter_declare ) ret_type { statements }": {} },//函数定义语句，同样太长，不列表
+        { "ret_type:": {} },//返回值类型可以不声明，自动推导,lambda就不用写返回值声明
+        { "ret_type: : type": {} },//可以声明返回值类型,function fun() : int {codes}
+        { "modifier:valuetype": {} },//modifier可以是"valuetype"
+        { "modifier:sealed": {} },//modifier可以是"sealed"
+        { "modifier:": {} },//modifier可以为空
+        { "template_declare:": {} },//模板声明可以为空
+        { "template_declare:template_definition": {} },//模板声明可以是一个模板定义
+        { "template_definition:< template_definition_list >": {} },//模板定义由一对尖括号<>和内部的template_definition_list组成
+        { "template_definition_list:id": {} },//template_definition_list可以是一个id
+        { "template_definition_list:template_definition_list , id": {} },//template_definition_list可以是一个template_definition_list后面接上 , id
+        { "type:( type )": {} },//type可以用圆括号包裹
+        /**
+         * type后面的'['会导致如下二义性:
+         * 所有type都有这种情况，用int作为一个type举例
+         * 情况1. new int [3]
+         * 1.1 (new int)[3]  先new一个int对象,然后执行下标操作符[3]
+         * 1.2 new (int[3]) new一个长度为3的int数组
+         * 情况2. function fun():int []
+         * 2.1 (function fun():int)[] 是一个函数数组
+         * 2.2 function fun():(int[]) 是一个返回数组的函数
+         * 上述两种情况我们都希望取第二种语法树，所以type相关的几个产生式优先级都设置为低于'[',凡是遇到符号'['一律移入
+         * 研究为什么是type，上面的解释说不通
+         */
+        { "type:not_array_type": {} },//非数组类型
+        { "type:array_type": {} },//数组类型
+        { "not_array_type:basic_type": { priority: "low_priority_for_[" } },//type可以是一个base_type
+        { "not_array_type:basic_type template_instances": { priority: "low_priority_for_[" } },//type可以是一个base_type template_instances
+        { "not_array_type:template_instances ( parameter_declare ) => type": { priority: "low_priority_for_[" } },//泛型函数类型
+        { "not_array_type:( parameter_declare ) => type": { priority: "low_priority_for_[" } },//函数类型
+        { "array_type:basic_type array_type_list": { priority: "low_priority_for_[" } },//array_type由basic_type后面接上一堆方括号组成(基本数组)
+        { "array_type:basic_type template_instances array_type_list": { priority: "low_priority_for_[" } },//模板实例化对象的数组(基本数组)
+        { "array_type:( parameter_declare ) => type array_type_list": { priority: "low_priority_for_[" } },//array_type由函数类型后面接上一堆方括号组成(函数数组)
+        { "array_type:template_instances ( parameter_declare ) => type array_type_list": { priority: "low_priority_for_[" } },//泛型函数实例化之后的数组
+        { "array_type_list:[ ]": {} },//array_type_list可以是一对方括号
+        { "array_type_list:array_type_list [ ]": {} },//array_type_list可以是array_type_list后面再接一对方括号
+        { "basic_type:built_in_type": {} },//提前内置的类型,如int、double、bool等
+        { "basic_type:user_type": {} },//用户自定义的class
+        { "parameter_declare:parameter_list": {} },//parameter_declare可以由parameter_list组成
+        { "parameter_declare:": {} },//parameter_declare可以为空
+        { "parameter_list:id : type": {} },//parameter_list可以是一个 id : type
+        { "parameter_list:parameter_list , id : type": {} },//parameter_list可以是一个parameter_list接上 , id : type
+        { "class_units:class_units class_unit": {} },//class_units可以由多个class_unit组成
+        { "class_units:": {} },//class_units可以为空
+        { "class_unit:declare ;": {} },//class_unit可以是一个声明语句
+        { "class_unit:operator_overload": {} },//class_unit可以是一个运算符重载
+        { "class_unit:get id ( ) : type { statements }": {} },//get
+        { "class_unit:set id ( id : type ) { statements }": {} },//set
+        { "operator_overload:operator + ( parameter_declare ) : type { statements }": {} },//运算符重载
+        { "statements:statements statement": {} },//statements可以由多个statement组成
+        { "statements:": {} },//statements可以为空
+        { "statement:declare ;": {} },//statement可以是一条声明语句
+        { "statement:try { statement } catch ( id : type ) { statement }": {} },//try catch语句，允许捕获任意类型的异常
+        { "statement:throw object ;": {} },//抛异常语句
+        { "statement:return object ;": {} },//带返回值的返回语句
+        { "statement:return ;": {} },//不带返回值的语句
+        { "statement:if ( object ) statement": { priority: "low_priority_for_if_stmt" } },//if语句
+        /**
+         * 本规则会导致如下二义性:
+         * if(obj)      ---1
+         *   if(obj)    ---2
+         *      stmt
+         *   else
+         *      stmt
+         * 可以得到如下两种abstract syntax tree
+         * if(obj)
+         * {
+         *      if(obj)
+         *      {
+         *          stmt
+         *      }
+         * }
+         * else
+         * {
+         *      stmt
+         * }
+         * 
+         * if(obj)
+         * {
+         *      if(obj)
+         *      {
+         *          stmt
+         *      }
+         *      else
+         *      {
+         *          stmt
+         *      }
+         * }
+         * 为了和大部分的现有编程语言兼容，采用第二种抽象语法树进行规约
+         * 定义两个优先级规则low_priority_for_if_stmt和else,使else的优先级高于low_priority_for_if_stmt,在产生冲突时选择移入
+         */
+        { "statement:if ( object ) statement else statement": {} },//if else语句
+        { "statement:lable_def do statement while ( object ) ;": {} },//do-while语句，其实我是想删除while语句的，我觉得for_loop可以完全替代while,一句话,为了看起来没这么怪
+        { "statement:lable_def while ( object ) statement": {} },//while语句
+        { "statement:lable_def for ( for_init ; for_condition ; for_step ) statement": {} },//for_loop
+        { "statement:block": { action: ($, s) => $[0] } },//代码块
+        { "statement:break lable_use ;": {} },//break语句
+        { "statement:continue lable_use ;": {} },//continue语句
+        { "statement:switch ( object ) { switch_bodys }": {} },//switch语句,因为switch在C/C++等语言中可以用跳转表处理,gcc在处理switch语句时,如果各个case的值连续,也会生成一个jum_table,所以我也考虑过移除switch语句,还是为了让其他语言的使用者感觉没那么怪
+        { "statement:object ;": {} },//类似C/C++中的   1; 这种语句,java好像不支持这种写法
+        { "lable_def:": {} },//lable_def可以为空
+        { "lable_def:id :": {} },//label_def为 id : 组成
+        { "for_init:": {} },//for_loop的init可以为空
+        { "for_init:declare": {} },//init可以是一个声明
+        { "for_init:object": {} },//也可以是一个对象
+        { "for_condition:": {} },//condition可以为空
+        { "for_condition:object": {} },//condition可以是一个对象(必须是bool对象)
+        { "for_step:": {} },//step可以为空
+        { "for_step:object": {} },//step可以是一个对象
+        { "block:{ statements }": {} },//代码块是一对花括号中间包裹着statements
+        { "lable_use:": {} },//在break和continue中被使用
+        { "lable_use:id": {} },//在break和continue中被使用
+        { "switch_bodys:": {} },//switch_bodys可为空
+        { "switch_bodys:switch_bodys switch_body": {} },//switch_bodys可以由多个switch_body组成
+        { "switch_body:case immediate_val : statement": {} },//case 语句
+        { "switch_body:default : statement": {} },//default语句
+        { "object:( object )": {} },//括号括住的object还是一个object
+        /**
+        * obj_1 + obj_2  ( obj_3 )  ,中间的+可以换成 - * / < > || 等等双目运算符
+        * 会出现如下二义性:
+        * 1、 (obj_1 + obj_2)  ( object_3 ) ,先将obj_1和obj_2进行双目运算，然后再使用双目运算符的结果作为函数对象进行函数调用
+        * 2、 obj_1 + ( obj_2  ( object_3 ) ) ,先将obj_2作为一个函数对象调用，然后再将obj_1 和函数调用的结果进行双目运算
+        * 因为我们希望采取二义性的第二种解释进行语法分析,所以设置了'('优先级高于双目运算符,这些双目运算符是所在产生式的最后一个终结符，直接修改了对应产生式的优先级和结核性
+        * 同样的,对于输入"(int)obj_1(obj_2)"有如下二义性:
+        * 1. ((int)obj_1) (obj_2)
+        * 2. (int) (obj_1(obj_2))
+        * 也采用方案2，令函数调用优先级高于强制转型
+        */
+        { "object:object  ( arguments )": {} },//函数调用
+        { "object:object template_instances ( arguments )": {} },//模板函数调用
+        /**
+         * 一系列的双目运算符,二义性如下:
+         * a+b*c
+         * 1. (a+b)*c
+         * 2. a+(b*c)
+         * 已经把各个操作符的优先级和结合性定义的和C/C++一致，见association中定义的各个符号优先级和结合性,双目运算符都是左结合,且+ - 优先级低于 * /
+         */
         { "object:object = object": {} },
         { "object:object + object": {} },
         { "object:object - object": {} },
@@ -414,63 +202,71 @@ let grammar: Grammar = {
         { "object:object == object": {} },
         { "object:object || object": {} },
         { "object:object && object": {} },
-        { "object:! object": {} },
-        { "object:object ++": {} },
-        { "object:object --": {} },
-        { "object:object [ object ]": {} },
-        { "object:object ? object : object": { priority: "?" } },
-        { "object:id": {} },
-        { "object:super": {} },
-        { "object:immediate_val": {} },
-        { "object:this": {} },
-        { "object:( parameter_declare ) => { statements }": {} },
-        { "object:( type ) object": { priority: "cast_priority" } },
-        { "object:new type  ( arguments )": {} },
-        { "object:new not_array_type array_init_list": {} },
-        { "array_init_list:array_inits array_placeholder": {} },
-        { "array_inits:array_inits [ object ]": {} },
-        { "array_inits:[ object ]": {} },
-        { "array_placeholder:array_placeholder_list": { priority: "low_priority_for_array_placeholder" } },
-        { "array_placeholder:": { priority: "low_priority_for_array_placeholder" } },
-        { "array_placeholder_list:array_placeholder_list [ ]": {} },
-        { "array_placeholder_list:[ ]": {} },
-        {
-            "template_instances:< template_instance_list >": {
-                action: function ($, s): Type[] {
-                    let template_instance_list = $[1] as Type[];
-                    return template_instance_list;
-                }
-            }
-        },
-        {
-            "template_instance_list:type": {
-                action: function ($, s): Type[] {
-                    let type = $[0] as Type;
-                    return [type];
-                }
-            }
-        },
-        {
-            "template_instance_list:template_instance_list , type": {
-                action: function ($, s): Type[] {
-                    let template_instance_list = $[0] as Type[];
-                    let type = $[2] as Type;
-                    template_instance_list.push(type);
-                    return template_instance_list;
-                }
-            }
-        },
-        { "arguments:": {} },
-        { "arguments:argument_list": {} },
-        { "argument_list:object": {} },
-        { "argument_list:argument_list , object": {} },
-        {
-            "W2_0:": {
-                action: function ($, s) {
-                    return s.slice(-2)[0];
-                }
-            }
-        }
+        /**双目运算符结束 */
+        /**单目运算符 */
+        { "object:! object": {} },//单目运算符-非
+        { "object:object ++": {} },//单目运算符++
+        { "object:object --": {} },//单目运算符--
+        /**单目运算符结束 */
+        { "object:object [ object ]": {} },//[]运算符
+        /**
+         * 三目运算符会导致如下文法二义性
+         * 情况1:a+b?c:d
+         * 1.1 a+(b?c:d)
+         * 1.2 (a+b)?c:d
+         * 情况2:a?b:c?d:e
+         * 2.1 (a?b:c)?d:e
+         * 2.2 a?b:(c?d:e)
+         * 根据tscc的解析规则，产生object:object ? object : object 的优先级为未定义，因为优先级取决于产生式的最后一个终结符或者强制指定的符号,该产生式的最后一个终结符':'并没有定义优先级
+         * 为了解决上述两种冲突,我们将产生式的优先级符号强制指定为?,并且令?的优先级低于双目运算符,结合性为right,则针对上述两种冲突最终解决方案如下:
+         * 1.因为?的优先级低于所有双目运算符所对应的产生式,所以情况1会选择1.2这种语法树进行解析
+         * 2.因为?为右结合,所以情况2会选择2.2这种语法树进行解析
+         */
+        { "object:object ? object : object": { priority: "?" } },//三目运算
+        { "object:id": {} },//id是一个对象
+        { "object:super": {} },//super是一个对象
+        { "object:immediate_val": {} },//立即数是一个object
+        { "object:this": {} },//this是一个object
+        { "object:( parameter_declare ) => { statements }": {} },//lambda
+        /**
+         * 强制转型会出现如下二义性:
+         * 情况1 (int)a+b;
+         * 1.1 ((int)a)+b;
+         * 1.2 (int)(a+b)
+         * 情况2 (int)fun(b);
+         * 2.1 ((int)fun)(b)
+         * 2.2 (int)(fun(b))
+         * 情况3 (int)arr[0]
+         * 3.1 ((int)arr) [0]
+         * 3.2 (int)(arr[0])
+         * 参照java优先级,强制转型优先级高于+ - / * ++ 这些运算符，低于() [] .这三个运算符
+         * 为其指定优先级为cast_priority
+         */
+        { "object:( type ) object": { priority: "cast_priority" } },//强制转型
+        { "object:new type  ( arguments )": {} },//new 对象
+        /**
+         * 假设只针对产生式array_init_list:array_inits array_placeholder 会出现如下二义性
+         * new int [10][3]可以有如下两种解释:(把array_placeholder规约成ε)
+         * 1. (new int[10])[3],先new 一个一维数组,然后取下标为3的元素
+         * 2. (new int[10][3]),new 一个二维数组
+         * 我当然希望采取第二种语法树,所以需要设置产生式优先级,即在new一个对象的时候,如果后面跟有方括号[,优先选择移入而不是规约,那么只需要把冲突的产生式优先级设置为比'['低即可
+         * 设置array_placeholder作为产生式头的两个产生式优先级低于'['
+         */
+        { "object:new not_array_type array_init_list": {} },//new一个数组
+        { "array_init_list:array_inits array_placeholder": {} },//new 数组的时候是可以这样写的 new int [2][3][][],其中[2][3]对应了array_inits,后面的[][]对应了array_placeholder(数组占位符)
+        { "array_inits:array_inits [ object ]": {} },//见array_init_list一条的解释
+        { "array_inits:[ object ]": {} },//见array_init_list一条的解释
+        { "array_placeholder:array_placeholder_list": { priority: "low_priority_for_array_placeholder" } },//见array_init_list一条的解释
+        { "array_placeholder:": { priority: "low_priority_for_array_placeholder" } },//array_placeholder可以为空
+        { "array_placeholder_list:array_placeholder_list [ ]": {} },//见array_init_list一条的解释
+        { "array_placeholder_list:[ ]": {} },//见array_init_list一条的解释
+        { "template_instances:< template_instance_list >": {} },//模板实例化可以实例化为一个<template_instance_list>
+        { "template_instance_list:type": {} },//template_instance_list可以为一个type
+        { "template_instance_list:template_instance_list , type": {} },//template_instance_list可以为多个type
+        { "arguments:": {} },//实参可以为空
+        { "arguments:argument_list": {} },//实参可以是argument_list
+        { "argument_list:object": {} },//参数列表可以是一个object
+        { "argument_list:argument_list , object": {} },//参数列表可以是多个object
     ]
 }
 let tscc = new TSCC(grammar, { language: "zh-cn", debug: false });
