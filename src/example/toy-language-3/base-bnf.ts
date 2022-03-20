@@ -76,7 +76,7 @@ let grammar: Grammar = {
         { "not_array_type:template_definition ( parameter_declare ) => type": { priority: "low_priority_for_[" } },//泛型函数类型
         { "not_array_type:( parameter_declare ) => type": { priority: "low_priority_for_[" } },//函数类型
         /**
-         * 上面说的不正确，把low_priority_for_全部移除，然后分析出原因所在，再调整优先级
+         * 上面说的不正确，把low_priority_for_[全部移除，然后分析出原因所在，再调整优先级
          */
         { "array_type:type array_type_list": { priority: "low_priority_for_[" } },//需要解决冲突
         // { "array_type:basic_type array_type_list": { priority: "low_priority_for_[" } },//array_type由basic_type后面接上一堆方括号组成(基本数组)
