@@ -1,11 +1,12 @@
 class Type {
-    private fields: Map<string, Address> = new Map();//属性列表
-    private operatorOverload: Map<string, Function> = new Map();//操作符重载列表
-    private modifier: "valuetype" | "sealed" | "referentialType";
-    private parentType: Type | undefined;//父对象,为undefined表示这是object
+    public fields: Map<string, Address> = new Map();//属性列表
+    public operatorOverload: Map<string, Function> = new Map();//操作符重载列表
+    public modifier: "valuetype" | "sealed" | "referentialType";
+    public parentType: Type | undefined;//父对象,为undefined表示这是object
     public genericParadigm: string[] | undefined;
     public templateInstances: Type[] | undefined;
     public name: string;
+    private allocated = 0;//分配的地址位置
     constructor(name: string, modifier: "valuetype" | "sealed" | "referentialType", genericParadigm: string[] | undefined, templateInstances: Type[] | undefined) {
         this.templateInstances = templateInstances;
         this.name = name;
@@ -15,11 +16,11 @@ class Type {
     public setParent(parentType: Type) {
         this.parentType = parentType;
     }
-    public registerField(name: string, address: Address) {
+    public registerField(name: string, type: Type, vari: 'var' | 'val') {
         if (this.fields.has(name)) {
             throw new SemanticException(`属性:${name}重复定义`);
         }
-        this.fields.set(name, address);
+        this.fields.set(name, new Address(type, this.allocated++, vari));
     }
     public registerOperatorOverload(name: string, fun: Function) {
         if (this.operatorOverload.has(name)) {
@@ -63,7 +64,7 @@ class Type {
 class ArrayType extends Type {
     public innerType: Type;//数组的基本类型
     constructor(inner_type: Type) {
-        super(`Array<${inner_type.name}>`, "referentialType", undefined, undefined);
+        super(`$Array<${inner_type.name}>`, "referentialType", undefined, undefined);
         this.innerType = inner_type;
     }
 }
@@ -101,12 +102,10 @@ class FunctionType extends Type {
     }
 }
 class Address {
-    public location: "immediate" | "program" | "class" | "stack" | "text";//值存放的位置，分别为立即数、全局空间、class空间、函数空间、代码段
     public variable: 'var' | 'val';
     public type: Type;
     public value: number;//地址
-    constructor(loc: "immediate" | "program" | "class" | "stack" | "text", type: Type, value: number, vari: 'var' | 'val') {
-        this.location = loc;
+    constructor(type: Type, value: number, vari: 'var' | 'val') {
         this.type = type;
         this.value = value;
         this.variable = vari;
@@ -115,41 +114,77 @@ class Address {
 class SemanticException extends Error {
     constructor(msg: string) {
         super(msg);
+        super.name = 'SemanticException';
     }
 }
 class Scope {
     private Field: Map<string, Address> = new Map();
-    private location: "immediate" | "program" | "class" | "stack" | "text";
     private allocated = 0;
-    constructor(loc: "immediate" | "program" | "class" | "stack" | "text") {
-        this.location = loc;
-    }
     public registerField(name: string, type: Type, variable: 'var' | 'val') {
         if (this.Field.has(name)) {
             throw new SemanticException(`变量 ${name} 重复定义`);
         } else {
-            this.Field.set(name, new Address(this.location, type, this.allocated++, variable));
+            this.Field.set(name, new Address(type, this.allocated++, variable));
         }
     }
 }
 
 class FunctionScope extends Scope {
     public programWraper: Type;//函数所在的program空间
-    public classWraper: Type | undefined;
+    public classWraper: Type | undefined;//class空间
     constructor(programWraper: Type, classWraper: Type | undefined, isGenericParadigm: boolean) {
-        super('stack');
+        super();
         this.programWraper = programWraper;
         this.classWraper = classWraper;
+    }
+    public generateType(): FunctionType {
+        throw '构造函数类型'
     }
 }
 class BlockScope extends Scope {
     public parentFunction: FunctionScope;
     public parent: FunctionScope | BlockScope;//是一个函数或者block
     constructor(parentFunction: FunctionScope, parent: FunctionScope | BlockScope) {
-        super('stack');
+        super();
         this.parentFunction = parentFunction;
         this.parent = parent;
     }
 }
-const program = new Type('Program', 'referentialType', undefined, undefined);
-export { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScope, SemanticException, program }
+class ProgramScope {
+    public userTypes = new Map<string, Type>();
+    public type = new Type('$program', 'referentialType', undefined, undefined);
+    constructor() {
+        this.userTypes.set("int", new Type('int', 'valuetype', undefined, undefined));
+    }
+    public generateType(): Type {
+        throw '构造一个Type'
+    }
+    //注册类型,刚刚注册的类型信息是不准确的，需要后续使用modifyType进行调整
+    public registerType(name: string) {
+        if (this.userTypes.has(name)) {
+            throw new SemanticException(`用户类型${name}已存在`);
+        } else {
+            this.userTypes.set(name, new Type(name, "referentialType", undefined, undefined));
+        }
+    }
+    //调整类型
+    public modifyType(name: string, modifier: "valuetype" | "sealed" | "referentialType", genericParadigm: string[] | undefined, templateInstances: Type[] | undefined) {
+        let type = this.userTypes.get(name);
+        if (type != undefined) {
+            type.modifier = modifier;
+            type.genericParadigm = genericParadigm;
+            type.templateInstances = templateInstances;
+        } else {
+            throw new SemanticException(`试图调整未注册的类型${name}`);
+        }
+    }
+    public getType(name: string): Type {
+        if (this.userTypes.has(name)) {
+            return this.userTypes.get(name)!;
+        } else {
+            throw new SemanticException(`试获取不存在的类型${name}`);
+        }
+    }
+};
+const program = new ProgramScope();
+export { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScope, SemanticException, ProgramScope, program }

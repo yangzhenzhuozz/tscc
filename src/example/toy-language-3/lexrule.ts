@@ -64,7 +64,7 @@ lexer.addRule(['try', () => 'try']);
 lexer.addRule(['catch', () => 'catch']);
 lexer.addRule(['throw', () => 'throw']);
 lexer.addRule(['super', () => 'super']);
-lexer.addRule(['int', (arg) => { arg.value = 'int'; return "built_in_type"; }]);
-lexer.addRule(['bool', (arg) => { arg.value = 'bool'; return "built_in_type"; }]);
+lexer.addRule(['int', (arg) => { arg.value = program.getType('int'); return "basic_type"; }]);
+lexer.addRule(['bool', (arg) => { arg.value = program.getType('bool'); return "basic_type"; }]);
 let newT = new Date().getTime();
 export default lexer
