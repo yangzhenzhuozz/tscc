@@ -57,7 +57,7 @@ let grammar: Grammar = {
                     } else {//在class中声明的变量
                         head.registerField(id, type, 'var');
                     }
-                    debugger
+                    console.log(`var ${id}:${type}`);
                 }
             }
         },//声明语句_1，声明一个变量id，其类型为type
@@ -74,7 +74,7 @@ let grammar: Grammar = {
                     } else {//在class中声明的变量
                         head.registerField(id, type, 'var');
                     }
-                    debugger
+                    console.log(`var ${id}:${type}`);
                 }
             }
         },//声明语句_2，声明一个变量id，并且将object设置为id的初始值，object的类型要和声明的类型一致
@@ -92,7 +92,7 @@ let grammar: Grammar = {
                     } else {//在class中声明的变量
                         head.registerField(id, type, 'val');
                     }
-                    debugger
+                    console.log(`var ${id}:${type}`);
                 }
             }
         },//声明语句_4，声明一个变量id，其类型为type
@@ -109,7 +109,7 @@ let grammar: Grammar = {
                     } else {//在class中声明的变量
                         head.registerField(id, type, 'val');
                     }
-                    debugger
+                    console.log(`var ${id}:${type}`);
                 }
             }
         },//声明语句_5，声明一个变量id，并且将object设置为id的初始值，object的类型要和声明的类型一致
@@ -203,6 +203,7 @@ let grammar: Grammar = {
             "not_array_type:template_definition ( parameter_declare ) => type": {
                 priority: "low_priority_for_[",
                 action: function ($, s): Type {
+                    console.error(`遇到template_definition,则在这条语句中后面的K,V应该被解析成basic_type`);
                     let template_definition = $[0] as string[];
                     let parameter_declare = $[2] as { name: string, type: Type }[];
                     let ret_type = $[5] as Type;
@@ -272,6 +273,7 @@ let grammar: Grammar = {
             "array_type:template_definition ( parameter_declare ) => type array_type_list": {
                 priority: "low_priority_for_[",
                 action: function ($, s): Type {
+                    console.error(`遇到template_definition,则在这条语句中后面的K,V应该被解析成basic_type`);
                     let template_definition = $[0] as string[];
                     let parameter_declare = $[2] as { name: string, type: Type }[];
                     let ret_type = $[5] as Type;

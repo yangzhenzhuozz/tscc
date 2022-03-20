@@ -75,10 +75,14 @@ let grammar: Grammar = {
         { "not_array_type:basic_type template_instances": { priority: "low_priority_for_[" } },//type可以是一个base_type template_instances
         { "not_array_type:template_definition ( parameter_declare ) => type": { priority: "low_priority_for_[" } },//泛型函数类型
         { "not_array_type:( parameter_declare ) => type": { priority: "low_priority_for_[" } },//函数类型
-        { "array_type:basic_type array_type_list": { priority: "low_priority_for_[" } },//array_type由basic_type后面接上一堆方括号组成(基本数组)
-        { "array_type:basic_type template_instances array_type_list": { priority: "low_priority_for_[" } },//模板实例化对象的数组(基本数组)
-        { "array_type:( parameter_declare ) => type array_type_list": { priority: "low_priority_for_[" } },//array_type由函数类型后面接上一堆方括号组成(函数数组)
-        { "array_type:template_definition ( parameter_declare ) => type array_type_list": { priority: "low_priority_for_[" } },//泛型函数实例化之后的数组
+        /**
+         * 上面说的不正确，把low_priority_for_全部移除，然后分析出原因所在，再调整优先级
+         */
+        { "array_type:type array_type_list": { priority: "low_priority_for_[" } },//需要解决冲突
+        // { "array_type:basic_type array_type_list": { priority: "low_priority_for_[" } },//array_type由basic_type后面接上一堆方括号组成(基本数组)
+        // { "array_type:basic_type template_instances array_type_list": { priority: "low_priority_for_[" } },//模板实例化对象的数组(基本数组)
+        // { "array_type:( parameter_declare ) => type array_type_list": { priority: "low_priority_for_[" } },//array_type由函数类型后面接上一堆方括号组成(函数数组)
+        // { "array_type:template_definition ( parameter_declare ) => type array_type_list": { priority: "low_priority_for_[" } },//泛型函数实例化之后的数组
         { "array_type_list:[ ]": {} },//array_type_list可以是一对方括号
         { "array_type_list:array_type_list [ ]": {} },//array_type_list可以是array_type_list后面再接一对方括号
         { "parameter_declare:parameter_list": {} },//parameter_declare可以由parameter_list组成
