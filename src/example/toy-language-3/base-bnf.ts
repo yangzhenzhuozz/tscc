@@ -91,7 +91,7 @@ let grammar: Grammar = {
         { "class_unit:operator_overload": {} },//class_unit可以是一个运算符重载
         { "class_unit:get id ( ) : type { statements }": {} },//get
         { "class_unit:set id ( id : type ) { statements }": {} },//set
-        { "operator_overload:operator + ( parameter_declare ) : type { statements }": {} },//运算符重载
+        { "operator_overload:operator + ( parameter_declare ) : type { statements }": {} },//运算符重载,运算符重载实在是懒得做泛型了,以后要是有需求再讲,比起C#和java的残废泛型，已经很好了
         { "statements:statements statement": {} },//statements可以由多个statement组成
         { "statements:": {} },//statements可以为空
         { "statement:declare ;": {} },//statement可以是一条声明语句

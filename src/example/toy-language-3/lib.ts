@@ -71,8 +71,8 @@ class ArrayType extends Type {
 class FunctionType extends Type {
     public parameters: Map<string, Type> = new Map();//参数名和类型列表,反射的时候可以直接得到参数的名字
     public returnType: Type;//返回值类型
-    constructor(parameters: { name: string, type: Type }[] | undefined, ret_type: Type, genericParadigm: string[] | undefined, templateInstances: Type[] | undefined) {
-        super(`function`, "referentialType", genericParadigm, templateInstances);
+    constructor(parameters: { name: string, type: Type }[] | undefined, ret_type: Type, genericParadigm: string[] | undefined) {
+        super(`function`, "referentialType", genericParadigm, undefined);
         if (parameters != undefined) {
             for (let parameter of parameters) {
                 if (this.parameters.has(parameter.name)) {

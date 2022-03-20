@@ -125,10 +125,40 @@ let grammar: Grammar = {
         { "modifier:sealed": {} },//modifier可以是"sealed"
         { "modifier:": {} },//modifier可以为空
         { "template_declare:": {} },//模板声明可以为空
-        { "template_declare:template_definition": {} },//模板声明可以是一个模板定义
-        { "template_definition:< template_definition_list >": {} },//模板定义由一对尖括号<>和内部的template_definition_list组成
-        { "template_definition_list:id": {} },//template_definition_list可以是一个id
-        { "template_definition_list:template_definition_list , id": {} },//template_definition_list可以是一个template_definition_list后面接上 , id
+        {
+            "template_declare:template_definition": {
+                action: function ($, s): string[] {
+                    return $[0] as string[];
+                }
+            }
+        },//模板声明可以是一个模板定义
+        {
+            "template_definition:< template_definition_list >": {
+                action: function ($, s): string[] {
+                    return $[1] as string[];
+                }
+            }
+        },//模板定义由一对尖括号<>和内部的template_definition_list组成
+        {
+            "template_definition_list:id": {
+                action: function ($, s): string[] {
+                    return [$[0] as string];
+                }
+            }
+        },//template_definition_list可以是一个id
+        {
+            "template_definition_list:template_definition_list , id": {
+                action: function ($, s): string[] {
+                    let template_definition_list = $[0] as string[];
+                    let id = $[2] as string;
+                    if(template_definition_list.indexOf(id)!=-1){
+                        throw new SemanticException(`模板类型${id}已经存在`);
+                    }
+                    template_definition_list.push(id);
+                    return template_definition_list;
+                }
+            }
+        },//template_definition_list可以是一个template_definition_list后面接上 , id
         {
             "type:( type )": {
                 action: function ($, s): Type {
@@ -169,8 +199,29 @@ let grammar: Grammar = {
                 }
             }
         },//type可以是一个base_type template_instances
-        { "not_array_type:template_definition ( parameter_declare ) => type": { priority: "low_priority_for_[" } },//泛型函数类型
-        { "not_array_type:( parameter_declare ) => type": { priority: "low_priority_for_[" } },//函数类型
+        {
+            "not_array_type:template_definition ( parameter_declare ) => type": {
+                priority: "low_priority_for_[",
+                action: function ($, s): Type {
+                    let template_definition = $[0] as string[];
+                    let parameter_declare = $[2] as { name: string, type: Type }[];
+                    let ret_type = $[5] as Type;
+                    let ret = new FunctionType(parameter_declare, ret_type, template_definition);
+                    return ret;
+                }
+            }
+        },//泛型函数类型
+        {
+            "not_array_type:( parameter_declare ) => type": {
+                priority: "low_priority_for_[",
+                action: function ($, s): Type {
+                    let parameter_declare = $[1] as { name: string, type: Type }[];
+                    let ret_type = $[4] as Type;
+                    let ret = new FunctionType(parameter_declare, ret_type, undefined);
+                    return ret;
+                }
+            }
+        },//函数类型
         {
             "array_type:basic_type array_type_list": {
                 priority: "low_priority_for_[",
@@ -185,9 +236,55 @@ let grammar: Grammar = {
                 }
             }
         },//array_type由basic_type后面接上一堆方括号组成(基本数组)
-        { "array_type:basic_type template_instances array_type_list": { priority: "low_priority_for_[" } },//模板实例化对象的数组(基本数组)
-        { "array_type:( parameter_declare ) => type array_type_list": { priority: "low_priority_for_[" } },//array_type由函数类型后面接上一堆方括号组成(函数数组)
-        { "array_type:template_definition ( parameter_declare ) => type array_type_list": { priority: "low_priority_for_[" } },//泛型函数实例化之后的数组
+        {
+            "array_type:basic_type template_instances array_type_list": {
+                priority: "low_priority_for_[",
+                action: function ($, s): Type {
+                    let basic_type = $[0] as Type;
+                    let template_instances = $[1] as Type[];
+                    let array_type_list = $[3] as number;
+                    basic_type.templateInstances = template_instances;
+                    let tmp = basic_type;
+                    for (let i = 0; i < array_type_list; i++) {
+                        tmp = new ArrayType(tmp);
+                    }
+                    return tmp;
+                }
+            }
+        },//模板实例化对象的数组(基本数组)
+        {
+            "array_type:( parameter_declare ) => type array_type_list": {
+                priority: "low_priority_for_[",
+                action: function ($, s): Type {
+                    let parameter_declare = $[1] as { name: string, type: Type }[];
+                    let ret_type = $[4] as Type;
+                    let ret = new FunctionType(parameter_declare, ret_type, undefined);
+                    let array_type_list = $[5] as number;
+                    let tmp = new ArrayType(ret);
+                    for (let i = 1; i < array_type_list; i++) {
+                        tmp = new ArrayType(tmp);
+                    }
+                    return tmp;
+                }
+            }
+        },//array_type由函数类型后面接上一堆方括号组成(函数数组)
+        {
+            "array_type:template_definition ( parameter_declare ) => type array_type_list": {
+                priority: "low_priority_for_[",
+                action: function ($, s): Type {
+                    let template_definition = $[0] as string[];
+                    let parameter_declare = $[2] as { name: string, type: Type }[];
+                    let ret_type = $[5] as Type;
+                    let ret = new FunctionType(parameter_declare, ret_type, template_definition);
+                    let array_type_list = $[6] as number;
+                    let tmp = new ArrayType(ret);
+                    for (let i = 1; i < array_type_list; i++) {
+                        tmp = new ArrayType(tmp);
+                    }
+                    return tmp;
+                }
+            }
+        },//泛型函数实例化之后的数组
         {
             "array_type_list:[ ]": {
                 action: function ($, s): number {
@@ -203,19 +300,43 @@ let grammar: Grammar = {
                 }
             }
         },//array_type_list可以是array_type_list后面再接一对方括号
-
-
-        { "parameter_declare:parameter_list": {} },//parameter_declare可以由parameter_list组成
+        {
+            "parameter_declare:parameter_list": {
+                action: function ($, s) {
+                    return $[0];
+                }
+            }
+        },//parameter_declare可以由parameter_list组成
         { "parameter_declare:": {} },//parameter_declare可以为空
-        { "parameter_list:id : type": {} },//parameter_list可以是一个 id : type
-        { "parameter_list:parameter_list , id : type": {} },//parameter_list可以是一个parameter_list接上 , id : type
+        {
+            "parameter_list:id : type": {
+                action: function ($, s): { name: string, type: Type }[] {
+                    let id = $[0] as string;
+                    let type = $[2] as Type;
+                    return [{ name: id, type: type }];
+                }
+            }
+        },//parameter_list可以是一个 id : type
+        {
+            "parameter_list:parameter_list , id : type": {
+                action: function ($, s): { name: string, type: Type }[] {
+                    let parameter_list = $[0] as { name: string, type: Type }[];
+                    let id = $[2] as string;
+                    let type = $[4] as Type;
+                    parameter_list.push({ name: id, type: type });
+                    return parameter_list;
+                }
+            }
+        },//parameter_list可以是一个parameter_list接上 , id : type
+
+
         { "class_units:class_units class_unit": {} },//class_units可以由多个class_unit组成
         { "class_units:": {} },//class_units可以为空
         { "class_unit:declare ;": {} },//class_unit可以是一个声明语句
         { "class_unit:operator_overload": {} },//class_unit可以是一个运算符重载
         { "class_unit:get id ( ) : type { statements }": {} },//get
         { "class_unit:set id ( id : type ) { statements }": {} },//set
-        { "operator_overload:operator + ( parameter_declare ) : type { statements }": {} },//运算符重载
+        { "operator_overload:operator + ( parameter_declare ) : type { statements }": {} },//运算符重载,运算符重载实在是懒得做泛型了,以后要是有需求再讲,比起C#和java的残废泛型，已经很好了
         { "statements:statements statement": {} },//statements可以由多个statement组成
         { "statements:": {} },//statements可以为空
         { "statement:declare ;": {} },//statement可以是一条声明语句
