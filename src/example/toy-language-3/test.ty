@@ -10,6 +10,7 @@ var i:Map<int,int>[][];
 var t:(int)[];
 var j:((a:int)=>int)[][];
 var k:(<K,V>(a:int)=>int)[][];
+var l=new int[][][][]();
 class Map<K,v>{
 
 }

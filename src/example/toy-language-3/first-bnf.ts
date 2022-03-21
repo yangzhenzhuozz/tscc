@@ -167,21 +167,7 @@ let grammar: Grammar = {
             }
         },//type可以用圆括号包裹
         {
-            "type:not_array_type": {
-                action: function ($, s): Type {
-                    return $[0] as Type;
-                }
-            }
-        },//非数组类型
-        {
-            "type:array_type": {
-                action: function ($, s): Type {
-                    return $[0] as Type;
-                }
-            }
-        },//数组类型
-        {
-            "not_array_type:basic_type": {
+            "type:basic_type": {
                 priority: "low_priority_for_[",
                 action: function ($, s): Type {
                     return $[0] as Type;
@@ -189,7 +175,7 @@ let grammar: Grammar = {
             }
         },//type可以是一个base_type
         {
-            "not_array_type:basic_type template_instances": {
+            "type:basic_type template_instances": {
                 priority: "low_priority_for_[",
                 action: function ($, s): Type {
                     let basic_type = $[0] as Type;
@@ -200,7 +186,7 @@ let grammar: Grammar = {
             }
         },//type可以是一个base_type template_instances
         {
-            "not_array_type:template_definition ( parameter_declare ) => type": {
+            "type:template_definition ( parameter_declare ) => type": {
                 priority: "low_priority_for_[",
                 action: function ($, s): Type {
                     console.error(`遇到template_definition,则在这条语句中后面的K,V应该被解析成basic_type`);
@@ -213,7 +199,7 @@ let grammar: Grammar = {
             }
         },//泛型函数类型
         {
-            "not_array_type:( parameter_declare ) => type": {
+            "type:( parameter_declare ) => type": {
                 priority: "low_priority_for_[",
                 action: function ($, s): Type {
                     let parameter_declare = $[1] as { name: string, type: Type }[];
@@ -224,7 +210,7 @@ let grammar: Grammar = {
             }
         },//函数类型
         {
-            "array_type:basic_type array_type_list": {
+            "type:type array_type_list": {
                 priority: "low_priority_for_[",
                 action: function ($, s): Type {
                     let array_type_list = $[1] as number;
@@ -237,56 +223,6 @@ let grammar: Grammar = {
                 }
             }
         },//array_type由basic_type后面接上一堆方括号组成(基本数组)
-        {
-            "array_type:basic_type template_instances array_type_list": {
-                priority: "low_priority_for_[",
-                action: function ($, s): Type {
-                    let basic_type = $[0] as Type;
-                    let template_instances = $[1] as Type[];
-                    let array_type_list = $[3] as number;
-                    basic_type.templateInstances = template_instances;
-                    let tmp = basic_type;
-                    for (let i = 0; i < array_type_list; i++) {
-                        tmp = new ArrayType(tmp);
-                    }
-                    return tmp;
-                }
-            }
-        },//模板实例化对象的数组(基本数组)
-        {
-            "array_type:( parameter_declare ) => type array_type_list": {
-                priority: "low_priority_for_[",
-                action: function ($, s): Type {
-                    let parameter_declare = $[1] as { name: string, type: Type }[];
-                    let ret_type = $[4] as Type;
-                    let ret = new FunctionType(parameter_declare, ret_type, undefined);
-                    let array_type_list = $[5] as number;
-                    let tmp = new ArrayType(ret);
-                    for (let i = 1; i < array_type_list; i++) {
-                        tmp = new ArrayType(tmp);
-                    }
-                    return tmp;
-                }
-            }
-        },//array_type由函数类型后面接上一堆方括号组成(函数数组)
-        {
-            "array_type:template_definition ( parameter_declare ) => type array_type_list": {
-                priority: "low_priority_for_[",
-                action: function ($, s): Type {
-                    console.error(`遇到template_definition,则在这条语句中后面的K,V应该被解析成basic_type`);
-                    let template_definition = $[0] as string[];
-                    let parameter_declare = $[2] as { name: string, type: Type }[];
-                    let ret_type = $[5] as Type;
-                    let ret = new FunctionType(parameter_declare, ret_type, template_definition);
-                    let array_type_list = $[6] as number;
-                    let tmp = new ArrayType(ret);
-                    for (let i = 1; i < array_type_list; i++) {
-                        tmp = new ArrayType(tmp);
-                    }
-                    return tmp;
-                }
-            }
-        },//泛型函数实例化之后的数组
         {
             "array_type_list:[ ]": {
                 action: function ($, s): number {
@@ -399,7 +335,7 @@ let grammar: Grammar = {
         { "object:( parameter_declare ) => { statements }": {} },//lambda
         { "object:( type ) object": { priority: "cast_priority" } },//强制转型
         { "object:new type  ( arguments )": {} },//new 对象
-        { "object:new not_array_type array_init_list": {} },//new一个数组
+        { "object:new type array_init_list": {} },//new一个数组
         { "array_init_list:array_inits array_placeholder": {} },//new 数组的时候是可以这样写的 new int [2][3][][],其中[2][3]对应了array_inits,后面的[][]对应了array_placeholder(数组占位符)
         { "array_inits:array_inits [ object ]": {} },//见array_init_list一条的解释
         { "array_inits:[ object ]": {} },//见array_init_list一条的解释

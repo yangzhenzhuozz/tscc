@@ -61,28 +61,29 @@ let grammar: Grammar = {
         /**
          * type后面的'['会导致如下二义性:
          * 所有type都有这种情况，用int作为一个type举例
-         * 情况1. new int [3]
-         * 1.1 (new int)[3]  先new一个int对象,然后执行下标操作符[3]
-         * 1.2 new (int[3]) new一个长度为3的int数组
+         * 情况1. new int []
+         * 1.1 new (int)[]  
+         * 1.2 new (int[])
          * 情况2. function fun():int []
          * 2.1 (function fun():int)[] 是一个函数数组
          * 2.2 function fun():(int[]) 是一个返回数组的函数
          * 上述两种情况我们都希望取第二种语法树，所以type相关的几个产生式优先级都设置为低于'[',凡是遇到符号'['一律移入
+         * question: 
+         * 输入:"new int[][][3][];"和"new int[][][][]" 是否合法?
+         * answer:
+         * 不合法,对于输入"new int[][][3][];"来说,也许你会认为这个串会被解析成
+         * new (int[][])[3][];
+         * 其中int[][]会被解析成type,则这个输入对应了产生式 object:new type [3][]
+         * 我们分析一下编译器的格局:
+         * new int[][].[3][],此时遇到了符号'[',因为我们规定这个格局应该选择移入而不是规约,所以编译器还在type产生式还没有规约完成
+         * new int[][][][],并且把(int[][][][])规约成type,则这个串会被规约成new type，然而new type的时候是必须调用构造函数的,所以输入new int[][][][]也是非法的
+         * 合法的输入应该是new int[][][][](),当然这只是符合文法而已,在语义检查的时候我们会进行错误处理,有的type是不允许被new的(说的就是array_type)
          */
-        { "type:not_array_type": {} },//非数组类型
-        { "type:array_type": {} },//数组类型
-        { "not_array_type:basic_type": { priority: "low_priority_for_[" } },//type可以是一个base_type
-        { "not_array_type:basic_type template_instances": { priority: "low_priority_for_[" } },//type可以是一个base_type template_instances
-        { "not_array_type:template_definition ( parameter_declare ) => type": { priority: "low_priority_for_[" } },//泛型函数类型
-        { "not_array_type:( parameter_declare ) => type": { priority: "low_priority_for_[" } },//函数类型
-        /**
-         * 上面说的不正确，把low_priority_for_[全部移除，然后分析出原因所在，再调整优先级
-         */
-        { "array_type:type array_type_list": { priority: "low_priority_for_[" } },//需要解决冲突
-        // { "array_type:basic_type array_type_list": { priority: "low_priority_for_[" } },//array_type由basic_type后面接上一堆方括号组成(基本数组)
-        // { "array_type:basic_type template_instances array_type_list": { priority: "low_priority_for_[" } },//模板实例化对象的数组(基本数组)
-        // { "array_type:( parameter_declare ) => type array_type_list": { priority: "low_priority_for_[" } },//array_type由函数类型后面接上一堆方括号组成(函数数组)
-        // { "array_type:template_definition ( parameter_declare ) => type array_type_list": { priority: "low_priority_for_[" } },//泛型函数实例化之后的数组
+        { "type:basic_type": { priority: "low_priority_for_[" } },//type可以是一个base_type
+        { "type:basic_type template_instances": { priority: "low_priority_for_[" } },//type可以是一个base_type template_instances
+        { "type:template_definition ( parameter_declare ) => type": { priority: "low_priority_for_[" } },//泛型函数类型
+        { "type:( parameter_declare ) => type": { priority: "low_priority_for_[" } },//函数类型
+        { "type:type array_type_list": { priority: "low_priority_for_[" } },//数组类型
         { "array_type_list:[ ]": {} },//array_type_list可以是一对方括号
         { "array_type_list:array_type_list [ ]": {} },//array_type_list可以是array_type_list后面再接一对方括号
         { "parameter_declare:parameter_list": {} },//parameter_declare可以由parameter_list组成
@@ -246,7 +247,7 @@ let grammar: Grammar = {
          * 我当然希望采取第二种语法树,所以需要设置产生式优先级,即在new一个对象的时候,如果后面跟有方括号[,优先选择移入而不是规约,那么只需要把冲突的产生式优先级设置为比'['低即可
          * 设置array_placeholder作为产生式头的两个产生式优先级低于'['
          */
-        { "object:new not_array_type array_init_list": {} },//new一个数组
+        { "object:new type array_init_list": {} },//new一个数组
         { "array_init_list:array_inits array_placeholder": {} },//new 数组的时候是可以这样写的 new int [2][3][][],其中[2][3]对应了array_inits,后面的[][]对应了array_placeholder(数组占位符)
         { "array_inits:array_inits [ object ]": {} },//见array_init_list一条的解释
         { "array_inits:[ object ]": {} },//见array_init_list一条的解释
