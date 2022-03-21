@@ -2,10 +2,11 @@ import fs from "fs";
 import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
 let grammar: Grammar = {
-    tokens: ['var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'throw', 'super', 'basic_type'],
+    tokens: ['var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'throw', 'super', 'basic_type','instanceof'],
     association: [
         { 'right': ['='] },
         { 'right': ['?'] },
+        { 'nonassoc': ['instanceof'] },
         { 'left': ['==', '!='] },
         { 'left': ['||'] },
         { 'left': ['&&'] },
@@ -197,6 +198,17 @@ let grammar: Grammar = {
         { "object:object == object": {} },
         { "object:object || object": {} },
         { "object:object && object": {} },
+        /**
+         * instanceof会导致如下冲突:
+         * 情况1: ! a instanceof int
+         * 1.1 !(a instanceof int)
+         * 1.2 (!a) instanceof int
+         * 情况2: a+b instanceof int
+         * 2.1 a+(b instanceof int)
+         * 2.2 (a+b) instanceof int
+         * 我希望instanceof的优先级低于所有的其他运算符,对于上述情况都选择第二种AST进行规约,所以定义了instanceof的优先级低于所有的其他运算符(除了赋值符号)
+         */
+        { "object:object instanceof type": {} },
         /**双目运算符结束 */
         /**单目运算符 */
         { "object:! object": {} },//单目运算符-非

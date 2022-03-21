@@ -2,6 +2,10 @@ import Parser1 from "./parser-1.js";
 import lexer from './lexrule.js';
 import pre_process from './pre-process.js'
 import fs from 'fs';
+import { Buffer } from 'buffer';
+let buffer=Buffer.alloc(1024);
+fs.readSync(0,buffer);
+console.log(buffer);
 let parser1 = new Parser1();
 let source = fs.readFileSync("./src/example/toy-language-3/test.ty", 'utf-8').toString();
 lexer.setSource(source);

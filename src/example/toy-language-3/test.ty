@@ -4,13 +4,34 @@ var c:Map<int,int>;
 var d:()=>int;
 var e:(a:int)=>int;
 var f:<K,V>()=>int;
-var g:<K,V>(a:int)=>int;
+var g:<K,V>(a:K,b:V)=>int;
 var h:int[][];
 var i:Map<int,int>[][];
 var t:(int)[];
 var j:((a:int)=>int)[][];
-var k:(<K,V>(a:int)=>int)[][];
-var l=new int[][][][]();
-class Map<K,v>{
-
+var k:(<K,V>(aa:K,b:V)=>int)[][];
+var l:<K,V>(a:K,b:V)=><M,N>(a:K,b:V)=>M;
+var m=new int[][][][]();
+function n():int{};
+function o(a:int):int{};
+function p(a:int,b:int):int{};
+class Map<H,I>{
+    var a:Map;
+    var b:(Map);
+    var c:Map<int,int>;
+    var d:()=>int;
+    var e:(a:int)=>int;
+    var f:<K,V>()=>int;
+    var g:<K,V>(a:K,b:V)=>int;
+    var h:int[][];
+    var i:Map<int,int>[][];
+    var t:(int)[];
+    var j:((a:int)=>int)[][];
+    var k:(<K,V>(aa:K,b:V)=>int)[][];
+    var l:<K,V>(a:K,b:V)=><M,N>(a:K,b:V)=>M;
+    var m=new int[][][][]();
+    function n():int{};
+    function o(a:int):int{};
+    function p(a:int,b:int):int{};
 }
+class Set<H>{}

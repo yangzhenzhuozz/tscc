@@ -1,15 +1,17 @@
 import fs from "fs";
 import TSCC from "../../tscc/tscc.js";
+import globalLexer from './lexrule.js';
 import { Grammar } from "../../tscc/tscc.js";
 import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScope, SemanticException, ProgramScope, program } from "./lib.js"
 let grammar: Grammar = {
     userCode: `
     import globalLexer from './lexrule.js';
     import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScope, SemanticException, ProgramScope, program } from "./lib.js";`,
-    tokens: ['var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'throw', 'super', 'basic_type'],
+    tokens: ['var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'throw', 'super', 'basic_type', 'instanceof'],
     association: [
         { 'right': ['='] },
         { 'right': ['?'] },
+        { 'nonassoc': ['instanceof'] },
         { 'left': ['==', '!='] },
         { 'left': ['||'] },
         { 'left': ['&&'] },
@@ -105,7 +107,7 @@ let grammar: Grammar = {
                     if (head instanceof ProgramScope) {//在程序空间中声明的变量
                         head.type.registerField(id, type, 'val');
                     } else if (head instanceof Scope) {//在function或者block中声明的变量
-                        head.registerField(id, type, 'val');
+                        console.log('本轮扫描不处理function和block中的declare');
                     } else {//在class中声明的变量
                         head.registerField(id, type, 'val');
                     }
@@ -115,14 +117,100 @@ let grammar: Grammar = {
         },//声明语句_5，声明一个变量id，并且将object设置为id的初始值，object的类型要和声明的类型一致
         { "declare:val id = object": {} },//声明语句_6，声明一个变量id，并且将object设置为id的初始值，类型自动推导
         { "declare:function_definition": {} },//声明语句_7，可以是一个函数定义语句
-        { "class_definition:modifier class basic_type template_declare extends_declare { class_units }": {} },//class定义语句由修饰符等组成(太长了我就不一一列举)
+        {
+            "class_definition:modifier class basic_type template_declare extends_declare { W7_3 class_units }": {
+                action: function ($, s) {
+                    let template_declare = $[3] as string[] | undefined;
+                    if (template_declare != undefined) {
+                        for (let t of template_declare) {
+                            program.unregisterType(t);
+                            globalLexer.removeRule(t);
+                        }
+                        globalLexer.compile();
+                    }
+                    let modifier: 'valuetype' | 'sealed' | 'referentialType' | undefined = $[0] as 'valuetype' | 'sealed' | undefined;
+                    if (modifier == undefined) {
+                        modifier = 'referentialType'
+                    }
+                    let basic_type = $[2] as Type;
+                    let extends_declare = $[4] as Type | undefined;
+                    let classType = $[6] as Type;
+                    classType.parentType=extends_declare;
+                    classType.genericParadigm=template_declare;
+                    console.log(`第一轮扫描:用户类型${basic_type}填充完成`);
+                    
+                }
+            }
+        },//class定义语句由修饰符等组成(太长了我就不一一列举)
+        {
+            "W7_3:": {
+                action: function ($, s): any {
+                    return s.slice(-7)[3];
+                }
+            }
+        },
         { "extends_declare:": {} },//继承可以为空
-        { "extends_declare:extends type": {} },//继承,虽然文法是允许继承任意类型,但是在语义分析的时候再具体决定该class能不能被继承
-        { "function_definition:function id template_declare ( parameter_declare ) ret_type { statements }": {} },//函数定义语句，同样太长，不列表
+        {
+            "extends_declare:extends type": {
+                action: function ($, s): Type {
+                    return $[1] as Type;
+                }
+            }
+        },//继承,虽然文法是允许继承任意类型,但是在语义分析的时候再具体决定该class能不能被继承
+        {
+            "function_definition:function id template_declare ( parameter_declare ) ret_type { statements }": {
+                action: function ($, s) {
+                    let template_declare = $[2] as string[] | undefined;
+                    if (template_declare != undefined) {
+                        for (let t of template_declare) {
+                            program.unregisterType(t);
+                            globalLexer.removeRule(t);
+                        }
+                        globalLexer.compile();
+                    }
+
+                    let head = s.slice(-1)[0] as ProgramScope | FunctionScope | BlockScope | Type;
+                    let id = $[1] as string;
+                    let parameter_declare = $[4] as { name: string, type: Type }[] | undefined;
+                    let ret_type = $[6] as Type | undefined;
+                    if (ret_type == undefined) {
+                        console.log('本轮不处理需要推导类型的函数');
+                        return;
+                    }
+                    let type = new FunctionType(parameter_declare, ret_type, undefined);
+                    if (head instanceof ProgramScope) {//在程序空间中声明的变量
+                        head.type.registerField(id, type, 'val');
+                    } else if (head instanceof Scope) {//在function或者block中声明的变量
+                        console.log('本轮扫描不处理function和block中的declare');
+                    } else {//在class中声明的变量
+                        head.registerField(id, type, 'val');
+                    }
+                    console.log(`注册函数 ${id}:${type}`);
+                }
+            }
+        },//函数定义语句，同样太长，不列表
         { "ret_type:": {} },//返回值类型可以不声明，自动推导,lambda就不用写返回值声明
-        { "ret_type: : type": {} },//可以声明返回值类型,function fun() : int {codes}
-        { "modifier:valuetype": {} },//modifier可以是"valuetype"
-        { "modifier:sealed": {} },//modifier可以是"sealed"
+        {
+            "ret_type: : type": {
+                action: function ($, s): Type {
+                    return $[1] as Type
+                }
+            }
+        },//可以声明返回值类型,function fun() : int {codes}
+        {
+            "modifier:valuetype": {
+                action: function ($, s): string {
+                    return 'valuetype';
+                }
+            }
+        },//modifier可以是"valuetype"
+        {
+            "modifier:sealed": {
+                action: function ($, s): string {
+                    return 'sealed';
+                }
+            }
+        },//modifier可以是"sealed"
         { "modifier:": {} },//modifier可以为空
         { "template_declare:": {} },//模板声明可以为空
         {
@@ -135,6 +223,11 @@ let grammar: Grammar = {
         {
             "template_definition:< template_definition_list >": {
                 action: function ($, s): string[] {
+                    for (let t of $[1] as string[]) {
+                        program.registerType(t);
+                        globalLexer.addRule([t, (arg) => { arg.value = program.getType(t); return "basic_type"; }]);
+                    }
+                    globalLexer.compile();
                     return $[1] as string[];
                 }
             }
@@ -151,7 +244,7 @@ let grammar: Grammar = {
                 action: function ($, s): string[] {
                     let template_definition_list = $[0] as string[];
                     let id = $[2] as string;
-                    if(template_definition_list.indexOf(id)!=-1){
+                    if (template_definition_list.indexOf(id) != -1) {
                         throw new SemanticException(`模板类型${id}已经存在`);
                     }
                     template_definition_list.push(id);
@@ -189,8 +282,17 @@ let grammar: Grammar = {
             "type:template_definition ( parameter_declare ) => type": {
                 priority: "low_priority_for_[",
                 action: function ($, s): Type {
-                    console.error(`遇到template_definition,则在这条语句中后面的K,V应该被解析成basic_type`);
+                    /**
+                     * 形如var g:<K,V>(a:K,b:V)=><K,V>(a:K,b:V)=>V;这种输入是非法的
+                     * 因为在第一个<K,V>之后的K、V都被处理成了type,第二个<K,V>应该选用不同的名字,比如下面这种输入
+                     * var g:<K,V>(a:K,b:V)=><M,N>(a:K,b:V)=>M
+                     */
                     let template_definition = $[0] as string[];
+                    for (let t of template_definition) {
+                        program.unregisterType(t);
+                        globalLexer.removeRule(t);
+                    }
+                    globalLexer.compile();
                     let parameter_declare = $[2] as { name: string, type: Type }[];
                     let ret_type = $[5] as Type;
                     let ret = new FunctionType(parameter_declare, ret_type, template_definition);
@@ -268,7 +370,7 @@ let grammar: Grammar = {
         },//parameter_list可以是一个parameter_list接上 , id : type
 
 
-        { "class_units:class_units class_unit": {} },//class_units可以由多个class_unit组成
+        { "class_units:class_units W2_0 class_unit": {} },//class_units可以由多个class_unit组成
         { "class_units:": {} },//class_units可以为空
         { "class_unit:declare ;": {} },//class_unit可以是一个声明语句
         { "class_unit:operator_overload": {} },//class_unit可以是一个运算符重载
@@ -323,6 +425,7 @@ let grammar: Grammar = {
         { "object:object == object": {} },
         { "object:object || object": {} },
         { "object:object && object": {} },
+        { "object:object instanceof type": {} },
         { "object:! object": {} },//单目运算符-非
         { "object:object ++": {} },//单目运算符++
         { "object:object --": {} },//单目运算符--

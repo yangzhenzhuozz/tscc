@@ -7,11 +7,10 @@ class Type {
     public templateInstances: Type[] | undefined;
     public name: string;
     private allocated = 0;//分配的地址位置
-    constructor(name: string, modifier: "valuetype" | "sealed" | "referentialType", genericParadigm: string[] | undefined, templateInstances: Type[] | undefined) {
+    constructor(name: string, modifier: "valuetype" | "sealed" | "referentialType", templateInstances: Type[] | undefined) {
         this.templateInstances = templateInstances;
         this.name = name;
         this.modifier = modifier;
-        this.genericParadigm = genericParadigm;
     }
     public setParent(parentType: Type) {
         this.parentType = parentType;
@@ -57,14 +56,14 @@ class Type {
     }
     //也可以用作签名
     public toString() {
-        let ret = `${this.name}`;
+        let ret = `${this.genericParadigm != undefined ? `<${this.genericParadigm.reduce((p, c) => `${p},${c}`)}>` : ''}${this.name}${this.templateInstances != undefined ? `<${this.templateInstances.map((v) => `${v}`).reduce((p, c) => `${p},${c}`)}>` : ''}`;
         return ret;
     }
 }
 class ArrayType extends Type {
     public innerType: Type;//数组的基本类型
     constructor(inner_type: Type) {
-        super(`$Array<${inner_type.name}>`, "referentialType", undefined, undefined);
+        super(`$Array<${inner_type.name}>`, "referentialType", undefined);
         this.innerType = inner_type;
     }
 }
@@ -72,7 +71,8 @@ class FunctionType extends Type {
     public parameters: Map<string, Type> = new Map();//参数名和类型列表,反射的时候可以直接得到参数的名字
     public returnType: Type;//返回值类型
     constructor(parameters: { name: string, type: Type }[] | undefined, ret_type: Type, genericParadigm: string[] | undefined) {
-        super(`function`, "referentialType", genericParadigm, undefined);
+        super(`function`, "referentialType", undefined);
+        super.genericParadigm = genericParadigm;
         if (parameters != undefined) {
             for (let parameter of parameters) {
                 if (this.parameters.has(parameter.name)) {
@@ -97,7 +97,7 @@ class FunctionType extends Type {
         } else {
             parametersSign = '';
         }
-        let ret = `${this.name}(${parametersSign})`;
+        let ret = `${this.genericParadigm != undefined ? `<${this.genericParadigm.reduce((p, c) => `${p},${c}`)}>` : ''}${this.name}(${parametersSign})=>${this.returnType}`;
         return ret;
     }
 }
@@ -152,9 +152,9 @@ class BlockScope extends Scope {
 }
 class ProgramScope {
     public userTypes = new Map<string, Type>();
-    public type = new Type('$program', 'referentialType', undefined, undefined);
+    public type = new Type('$program', 'referentialType', undefined);
     constructor() {
-        this.userTypes.set("int", new Type('int', 'valuetype', undefined, undefined));
+        this.userTypes.set("int", new Type('int', 'valuetype', undefined));
     }
     public generateType(): Type {
         throw '构造一个Type'
@@ -164,7 +164,14 @@ class ProgramScope {
         if (this.userTypes.has(name)) {
             throw new SemanticException(`用户类型${name}已存在`);
         } else {
-            this.userTypes.set(name, new Type(name, "referentialType", undefined, undefined));
+            this.userTypes.set(name, new Type(name, "referentialType", undefined));
+        }
+    }
+    public unregisterType(name:string){
+        if (!this.userTypes.has(name)) {
+            throw new SemanticException(`试图释放不存在的类型${name}`);
+        } else {
+            this.userTypes.delete(name);
         }
     }
     //调整类型
