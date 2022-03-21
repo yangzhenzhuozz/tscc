@@ -1,6 +1,5 @@
 import Lexer from "../lexer/lexer.js";
 import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScope, SemanticException, program } from "./lib.js"
-let oldT = new Date().getTime();
 //词法规则
 let lexer = new Lexer();
 lexer.addRule(['( |\t|\r|\n)( |\t|\r|\n)*', undefined]);//忽略空格、制表、回车、换行
@@ -66,5 +65,4 @@ lexer.addRule(['throw', () => 'throw']);
 lexer.addRule(['super', () => 'super']);
 lexer.addRule(['int', (arg) => { arg.value = program.getType('int'); return "basic_type"; }]);
 lexer.addRule(['bool', (arg) => { arg.value = program.getType('bool'); return "basic_type"; }]);
-let newT = new Date().getTime();
 export default lexer

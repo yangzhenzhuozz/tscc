@@ -9,13 +9,12 @@ let parser1 = new Parser1();
 let source = fs.readFileSync("./src/example/toy-language-3/test.ty", 'utf-8').toString();
 lexer.setSource(source);
 try {
-    let oldT = new Date().getTime();
+    console.time("解析源码");
     console.log('预处理源码');
     pre_process(source);
     lexer.compile();
     parser1.parse(lexer);
-    let newT = new Date().getTime();
-    console.log(`解析源码耗时:${newT - oldT}ms`);
+    console.timeEnd("解析源码");
 } catch (e: unknown) {
     console.error(`${e}`);
 }

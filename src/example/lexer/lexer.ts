@@ -149,14 +149,13 @@ class Lexer {
         this.errorTipsWidth = 50;
     }
     public compile() {
-        let oldT = new Date().getTime();
+        console.time("编译词法分析器")
         this.NFAStartState = new State();//创建一个开始状态，然后将该状态连接到所有规则生成的自动机
         for (let rule of this.rules) {
             this.NFAStartState.addEdge("", rule[1].start);
         }
         this.DFAStartState = this.generateDFA(this.NFAStartState);//构造DFA        
-        let newT = new Date().getTime();
-        console.log(`编译词法分析器耗时:${newT - oldT}ms`);
+        console.timeEnd("编译词法分析器");
 
     }
     private epsilon_closure(set: State[]) {
