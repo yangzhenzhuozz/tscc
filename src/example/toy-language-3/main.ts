@@ -5,7 +5,6 @@ import fs from 'fs';
 import { Buffer } from 'buffer';
 let buffer=Buffer.alloc(8);
 fs.readSync(0,buffer);//等待键盘输入
-debugger;
 let parser1 = new Parser1();
 let source = fs.readFileSync("./src/example/toy-language-3/test.ty", 'utf-8').toString();
 lexer.setSource(source);
