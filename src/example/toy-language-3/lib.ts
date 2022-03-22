@@ -108,14 +108,6 @@ class Address {
     public variable: 'var' | 'val';
     public type: Type | undefined;
     public value: number;//地址
-    /**
-     * 可以由变量直接推导的类型,eg:
-     * var a:int;
-     * var b=a;
-     * 则b的type_direct='a'
-     * c没有type_direct
-     */
-    public type_direct:string|undefined;
     constructor(type: Type | undefined, value: number, vari: 'var' | 'val') {
         this.type = type;
         this.value = value;
