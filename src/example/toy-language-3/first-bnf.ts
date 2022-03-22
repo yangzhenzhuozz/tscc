@@ -1,11 +1,13 @@
 import fs from "fs";
 import TSCC from "../../tscc/tscc.js";
 import globalLexer from './lexrule.js';
+import { userTypeDictionary } from './lexrule.js';
 import { Grammar } from "../../tscc/tscc.js";
 import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScope, SemanticException, ProgramScope, program } from "./lib.js"
 let grammar: Grammar = {
     userCode: `
     import globalLexer from './lexrule.js';
+    import { userTypeDictionary } from './lexrule.js';
     import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScope, SemanticException, ProgramScope, program } from "./lib.js";`,
     tokens: ['var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'throw', 'super', 'basic_type', 'instanceof'],
     association: [
@@ -124,9 +126,8 @@ let grammar: Grammar = {
                     if (template_declare != undefined) {
                         for (let t of template_declare) {
                             program.unregisterType(t);
-                            globalLexer.removeRule(t);
+                            userTypeDictionary.delete(t);
                         }
-                        globalLexer.compile();
                     }
                     let modifier: 'valuetype' | 'sealed' | 'referentialType' | undefined = $[0] as 'valuetype' | 'sealed' | undefined;
                     if (modifier == undefined) {
@@ -164,9 +165,8 @@ let grammar: Grammar = {
                     if (template_declare != undefined) {
                         for (let t of template_declare) {
                             program.unregisterType(t);
-                            globalLexer.removeRule(t);
+                            userTypeDictionary.delete(t);
                         }
-                        globalLexer.compile();
                     }
 
                     let head = s.slice(-1)[0] as ProgramScope | FunctionScope | BlockScope | Type;
@@ -225,9 +225,8 @@ let grammar: Grammar = {
                 action: function ($, s): string[] {
                     for (let t of $[1] as string[]) {
                         program.registerType(t);
-                        globalLexer.addRule([t, (arg) => { arg.value = program.getType(t); return "basic_type"; }]);
+                        userTypeDictionary.add(t);
                     }
-                    globalLexer.compile();
                     return $[1] as string[];
                 }
             }
@@ -290,9 +289,8 @@ let grammar: Grammar = {
                     let template_definition = $[0] as string[];
                     for (let t of template_definition) {
                         program.unregisterType(t);
-                        globalLexer.removeRule(t);
+                        userTypeDictionary.delete(t);
                     }
-                    globalLexer.compile();
                     let parameter_declare = $[2] as { name: string, type: Type }[];
                     let ret_type = $[5] as Type;
                     let ret = new FunctionType(parameter_declare, ret_type, template_definition);
