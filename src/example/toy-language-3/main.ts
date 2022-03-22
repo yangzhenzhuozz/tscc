@@ -7,11 +7,10 @@ let source = fs.readFileSync("./src/example/toy-language-3/test.ty", 'utf-8').to
 lexer.setSource(source);
 try {
     lexer.compile();
-    console.time("解析源码");
-    console.log('预处理源码');
+    console.time("解析源码耗时");
     pre_process(source);
     parser1.parse(lexer);
-    console.timeEnd("解析源码");
+    console.timeEnd("解析源码耗时");
 } catch (e: unknown) {
     console.error(`${e}`);
 }

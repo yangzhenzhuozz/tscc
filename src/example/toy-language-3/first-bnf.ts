@@ -51,15 +51,14 @@ let grammar: Grammar = {
         {
             "declare:var id : type": {
                 action: function ($, s) {
-                    let head = s.slice(-1)[0] as ProgramScope | FunctionScope | BlockScope | Type;
+                    let head = s.slice(-1)[0] as ProgramScope | Type | undefined;
                     let id = $[1] as string;
                     let type = $[3] as Type;
                     if (head instanceof ProgramScope) {//在程序空间中声明的变量
                         head.type.registerField(id, type, 'var');
-                    } else if (head instanceof Scope) {//在function或者block中声明的变量
+                    } else if (head instanceof Type) {//在class中声明的变量
                         head.registerField(id, type, 'var');
-                    } else {//在class中声明的变量
-                        head.registerField(id, type, 'var');
+                    } else {//function中声明的变量暂时不管
                     }
                     console.log(`var ${id}:${type}`);
                 }
@@ -68,33 +67,45 @@ let grammar: Grammar = {
         {
             "declare:var id : type = object": {
                 action: function ($, s) {
-                    let head = s.slice(-1)[0] as ProgramScope | FunctionScope | BlockScope | Type;
+                    let head = s.slice(-1)[0] as ProgramScope | Type | undefined;
                     let id = $[1] as string;
                     let type = $[3] as Type;
                     if (head instanceof ProgramScope) {//在程序空间中声明的变量
                         head.type.registerField(id, type, 'var');
-                    } else if (head instanceof Scope) {//在function或者block中声明的变量
+                    } else if (head instanceof Type) {//在class中声明的变量
                         head.registerField(id, type, 'var');
-                    } else {//在class中声明的变量
-                        head.registerField(id, type, 'var');
+                    } else {//function中声明的变量暂时不管
                     }
                     console.log(`var ${id}:${type}`);
                 }
             }
         },//声明语句_2，声明一个变量id，并且将object设置为id的初始值，object的类型要和声明的类型一致
-        { "declare:var id = object": {} },//声明语句_3，声明一个变量id，并且将object设置为id的初始值，类型自动推导
+        {
+            "declare:var id = object": {
+                action: function ($, s) {
+                    let head = s.slice(-1)[0] as ProgramScope | Type | undefined;
+                    let id = $[1] as string;
+                    if (head instanceof ProgramScope) {//在程序空间中声明的变量
+                        head.type.registerField(id, undefined, 'var');
+                    } else if (head instanceof Type) {//在class中声明的变量
+                        head.registerField(id, undefined, 'var');
+                    } else {//function中声明的变量暂时不管
+                    }
+                    console.log(`var ${id}: 待推导`);
+                }
+            }
+        },//声明语句_3，声明一个变量id，并且将object设置为id的初始值，类型自动推导
         {
             "declare:val id : type": {
                 action: function ($, s) {
-                    let head = s.slice(-1)[0] as ProgramScope | FunctionScope | BlockScope | Type;
+                    let head = s.slice(-1)[0] as ProgramScope | Type | undefined;
                     let id = $[1] as string;
                     let type = $[3] as Type;
                     if (head instanceof ProgramScope) {//在程序空间中声明的变量
-                        head.type.registerField(id, type, 'val');
-                    } else if (head instanceof Scope) {//在function或者block中声明的变量
-                        head.registerField(id, type, 'val');
-                    } else {//在class中声明的变量
-                        head.registerField(id, type, 'val');
+                        head.type.registerField(id, type, 'var');
+                    } else if (head instanceof Type) {//在class中声明的变量
+                        head.registerField(id, type, 'var');
+                    } else {//function中声明的变量暂时不管
                     }
                     console.log(`var ${id}:${type}`);
                 }
@@ -103,21 +114,34 @@ let grammar: Grammar = {
         {
             "declare:val id : type = object": {
                 action: function ($, s) {
-                    let head = s.slice(-1)[0] as ProgramScope | FunctionScope | BlockScope | Type;
+                    let head = s.slice(-1)[0] as ProgramScope | Type | undefined;
                     let id = $[1] as string;
                     let type = $[3] as Type;
                     if (head instanceof ProgramScope) {//在程序空间中声明的变量
-                        head.type.registerField(id, type, 'val');
-                    } else if (head instanceof Scope) {//在function或者block中声明的变量
-                        console.log('本轮扫描不处理function和block中的declare');
-                    } else {//在class中声明的变量
-                        head.registerField(id, type, 'val');
+                        head.type.registerField(id, type, 'var');
+                    } else if (head instanceof Type) {//在class中声明的变量
+                        head.registerField(id, type, 'var');
+                    } else {//function中声明的变量暂时不管
                     }
                     console.log(`var ${id}:${type}`);
                 }
             }
         },//声明语句_5，声明一个变量id，并且将object设置为id的初始值，object的类型要和声明的类型一致
-        { "declare:val id = object": {} },//声明语句_6，声明一个变量id，并且将object设置为id的初始值，类型自动推导
+        {
+            "declare:val id = object": {
+                action: function ($, s) {
+                    let head = s.slice(-1)[0] as ProgramScope | Type | undefined;
+                    let id = $[1] as string;
+                    if (head instanceof ProgramScope) {//在程序空间中声明的变量
+                        head.type.registerField(id, undefined, 'val');
+                    } else if (head instanceof Type) {//在class中声明的变量
+                        head.registerField(id, undefined, 'val');
+                    } else {//function中声明的变量暂时不管
+                    }
+                    console.log(`val ${id}: 待推导`);
+                }
+            }
+        },//声明语句_6，声明一个变量id，并且将object设置为id的初始值，类型自动推导
         { "declare:function_definition": {} },//声明语句_7，可以是一个函数定义语句
         {
             "class_definition:modifier class basic_type template_declare extends_declare { W7_3 class_units }": {
@@ -136,10 +160,10 @@ let grammar: Grammar = {
                     let basic_type = $[2] as Type;
                     let extends_declare = $[4] as Type | undefined;
                     let classType = $[6] as Type;
-                    classType.parentType=extends_declare;
-                    classType.genericParadigm=template_declare;
+                    classType.parentType = extends_declare;
+                    classType.genericParadigm = template_declare;
                     console.log(`第一轮扫描:用户类型${basic_type}填充完成`);
-                    
+
                 }
             }
         },//class定义语句由修饰符等组成(太长了我就不一一列举)
@@ -169,21 +193,16 @@ let grammar: Grammar = {
                         }
                     }
 
-                    let head = s.slice(-1)[0] as ProgramScope | FunctionScope | BlockScope | Type;
+                    let head = s.slice(-1)[0] as ProgramScope | Type | undefined;
                     let id = $[1] as string;
                     let parameter_declare = $[4] as { name: string, type: Type }[] | undefined;
                     let ret_type = $[6] as Type | undefined;
-                    if (ret_type == undefined) {
-                        console.log('本轮不处理需要推导类型的函数');
-                        return;
-                    }
                     let type = new FunctionType(parameter_declare, ret_type, undefined);
                     if (head instanceof ProgramScope) {//在程序空间中声明的变量
                         head.type.registerField(id, type, 'val');
-                    } else if (head instanceof Scope) {//在function或者block中声明的变量
-                        console.log('本轮扫描不处理function和block中的declare');
-                    } else {//在class中声明的变量
+                    } else if (head instanceof Type) {//在class中声明的变量
                         head.registerField(id, type, 'val');
+                    } else {//function中声明的变量暂时不管
                     }
                     console.log(`注册函数 ${id}:${type}`);
                 }

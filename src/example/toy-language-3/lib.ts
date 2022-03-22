@@ -15,7 +15,7 @@ class Type {
     public setParent(parentType: Type) {
         this.parentType = parentType;
     }
-    public registerField(name: string, type: Type, vari: 'var' | 'val') {
+    public registerField(name: string, type: Type | undefined, vari: 'var' | 'val') {
         if (this.fields.has(name)) {
             throw new SemanticException(`属性:${name}重复定义`);
         }
@@ -45,6 +45,9 @@ class Type {
         }
         valueTypes.add(this.name);
         for (let [n, f] of this.fields) {
+            if (f.type == undefined) {
+                throw new SemanticException(`存在还未确定类型的变量${n},无法检测循环包含`);
+            }
             if (f.type.modifier == "valuetype") {
                 f.type.checkRecursiveValue(new Set(valueTypes));
             }
@@ -69,8 +72,8 @@ class ArrayType extends Type {
 }
 class FunctionType extends Type {
     public parameters: Map<string, Type> = new Map();//参数名和类型列表,反射的时候可以直接得到参数的名字
-    public returnType: Type;//返回值类型
-    constructor(parameters: { name: string, type: Type }[] | undefined, ret_type: Type, genericParadigm: string[] | undefined) {
+    public returnType: Type | undefined;//返回值类型
+    constructor(parameters: { name: string, type: Type }[] | undefined, ret_type: Type | undefined, genericParadigm: string[] | undefined) {
         super(`function`, "referentialType", undefined);
         super.genericParadigm = genericParadigm;
         if (parameters != undefined) {
@@ -97,15 +100,23 @@ class FunctionType extends Type {
         } else {
             parametersSign = '';
         }
-        let ret = `${this.genericParadigm != undefined ? `<${this.genericParadigm.reduce((p, c) => `${p},${c}`)}>` : ''}${this.name}(${parametersSign})=>${this.returnType}`;
+        let ret = `${this.genericParadigm != undefined ? `<${this.genericParadigm.reduce((p, c) => `${p},${c}`)}>` : ''}${this.name}(${parametersSign})=>${this.returnType != undefined ? `${this.returnType}` : '待推导返回类型'}`;
         return ret;
     }
 }
 class Address {
     public variable: 'var' | 'val';
-    public type: Type;
+    public type: Type | undefined;
     public value: number;//地址
-    constructor(type: Type, value: number, vari: 'var' | 'val') {
+    /**
+     * 可以由变量直接推导的类型,eg:
+     * var a:int;
+     * var b=a;
+     * 则b的type_direct='a'
+     * c没有type_direct
+     */
+    public type_direct:string|undefined;
+    constructor(type: Type | undefined, value: number, vari: 'var' | 'val') {
         this.type = type;
         this.value = value;
         this.variable = vari;
@@ -167,7 +178,7 @@ class ProgramScope {
             this.userTypes.set(name, new Type(name, "referentialType", undefined));
         }
     }
-    public unregisterType(name:string){
+    public unregisterType(name: string) {
         if (!this.userTypes.has(name)) {
             throw new SemanticException(`试图释放不存在的类型${name}`);
         } else {
