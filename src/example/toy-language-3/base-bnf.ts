@@ -234,6 +234,7 @@ let grammar: Grammar = {
         { "object:super": {} },//super是一个对象
         { "object:immediate_val": {} },//立即数是一个object
         { "object:this": {} },//this是一个object
+        { "object:template_definition ( parameter_declare ) => { statements }": {} },//模板lambda
         { "object:( parameter_declare ) => { statements }": {} },//lambda
         /**
          * 强制转型会出现如下二义性:
