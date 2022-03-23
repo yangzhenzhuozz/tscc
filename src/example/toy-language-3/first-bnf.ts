@@ -397,7 +397,8 @@ let grammar: Grammar = {
         { "class_unit:operator_overload": {} },//class_unit可以是一个运算符重载
         { "class_unit:get id ( ) : type { statements }": {} },//get
         { "class_unit:set id ( id : type ) { statements }": {} },//set
-        { "class_unit:basic_type ( parameter_declare )": {} },//构造函数
+        { "class_unit:basic_type ( parameter_declare )  { statements }": {} },//构造函数
+        { "class_unit:default ( )  { statements }": {} },//default函数,用于初始化值类型
         { "operator_overload:operator + ( parameter_declare ) : type { statements }": {} },//运算符重载,运算符重载实在是懒得做泛型了,以后要是有需求再讲,比起C#和java的残废泛型，已经很好了
         { "statements:statements statement": {} },//statements可以由多个statement组成
         { "statements:": {} },//statements可以为空
