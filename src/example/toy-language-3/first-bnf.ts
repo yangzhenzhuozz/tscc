@@ -3,12 +3,12 @@ import TSCC from "../../tscc/tscc.js";
 import globalLexer from './lexrule.js';
 import { userTypeDictionary } from './lexrule.js';
 import { Grammar } from "../../tscc/tscc.js";
-import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScope, SemanticException, ProgramScope, CalculatedNode, LoadNode, AbstracSyntaxTree, program } from "./lib.js";
+import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScope, SemanticException, ProgramScope, CalculatedNode, SingleNode, AbstracSyntaxTreeForType, program } from "./lib.js";
 let grammar: Grammar = {
     userCode: `
     import globalLexer from './lexrule.js';
     import { userTypeDictionary } from './lexrule.js';
-    import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScope, SemanticException, ProgramScope, CalculatedNode, LoadNode, AbstracSyntaxTree, program } from "./lib.js";
+    import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScope, SemanticException, ProgramScope, CalculatedNode, SingleNode, AbstracSyntaxTreeForType, program } from "./lib.js";
     `,
     tokens: ['var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'throw', 'super', 'basic_type', 'instanceof'],
     association: [
@@ -66,7 +66,7 @@ let grammar: Grammar = {
             }
         },//声明语句_1，声明一个变量id，其类型为type
         {
-            "declare:var id : type = object": {
+            "declare:var id : type = W6_0 object": {
                 action: function ($, s) {
                     let head = s.slice(-1)[0] as ProgramScope | Type | undefined;
                     let id = $[1] as string;
@@ -82,15 +82,15 @@ let grammar: Grammar = {
             }
         },//声明语句_2，声明一个变量id，并且将object设置为id的初始值，object的类型要和声明的类型一致
         {
-            "declare:var id = object": {
+            "declare:var id = W4_0 object": {
                 action: function ($, s) {
                     let head = s.slice(-1)[0] as ProgramScope | Type | undefined;
                     let id = $[1] as string;
-                    let object = $[3] as AbstracSyntaxTree;
+                    let object = $[3] as AbstracSyntaxTreeForType;
                     if (head instanceof ProgramScope) {//在程序空间中声明的变量
-                        head.type.registerField(id, object, 'var');
+                        head.type.registerField(id, object.root, 'var');
                     } else if (head instanceof Type) {//在class中声明的变量
-                        head.registerField(id, object, 'var');
+                        head.registerField(id, object.root, 'var');
                     } else {//function中声明的变量暂时不管
                     }
                     console.log(`var ${id}: 待推导`);
@@ -114,7 +114,7 @@ let grammar: Grammar = {
             }
         },//声明语句_4，声明一个变量id，其类型为type
         {
-            "declare:val id : type = object": {
+            "declare:val id : type = W6_0 object": {
                 action: function ($, s) {
                     let head = s.slice(-1)[0] as ProgramScope | Type | undefined;
                     let id = $[1] as string;
@@ -130,15 +130,15 @@ let grammar: Grammar = {
             }
         },//声明语句_5，声明一个变量id，并且将object设置为id的初始值，object的类型要和声明的类型一致
         {
-            "declare:val id = object": {
+            "declare:val id = W4_0 object": {
                 action: function ($, s) {
                     let head = s.slice(-1)[0] as ProgramScope | Type | undefined;
                     let id = $[1] as string;
-                    let object = $[3] as AbstracSyntaxTree;
+                    let object = $[3] as AbstracSyntaxTreeForType;
                     if (head instanceof ProgramScope) {//在程序空间中声明的变量
-                        head.type.registerField(id, object, 'val');
+                        head.type.registerField(id, object.root, 'val');
                     } else if (head instanceof Type) {//在class中声明的变量
-                        head.registerField(id, object, 'val');
+                        head.registerField(id, object.root, 'val');
                     } else {//function中声明的变量暂时不管
                     }
                     console.log(`val ${id}: 待推导`);
@@ -147,7 +147,7 @@ let grammar: Grammar = {
         },//声明语句_6，声明一个变量id，并且将object设置为id的初始值，类型自动推导
         { "declare:function_definition": {} },//声明语句_7，可以是一个函数定义语句
         {
-            "class_definition:modifier class basic_type template_declare extends_declare { W7_3 class_units }": {
+            "class_definition:modifier class basic_type template_declare extends_declare { create_class_Type class_units }": {
                 action: function ($, s) {
                     let template_declare = $[3] as string[] | undefined;
                     if (template_declare != undefined) {
@@ -161,9 +161,7 @@ let grammar: Grammar = {
                         modifier = 'referentialType'
                     }
                     let basic_type = $[2] as Type;
-                    let extends_declare = $[4] as Type | undefined;
                     let classType = $[6] as Type;
-                    classType.parentType = extends_declare;
                     classType.genericParadigm = template_declare;
                     console.log(`第一轮扫描:用户类型${basic_type}填充完成`);
 
@@ -171,9 +169,12 @@ let grammar: Grammar = {
             }
         },//class定义语句由修饰符等组成(太长了我就不一一列举)
         {
-            "W7_3:": {
-                action: function ($, s): any {
-                    return s.slice(-7)[3];
+            "create_class_Type:": {
+                action: function ($, s): Type {
+                    let classType = s.slice(-4)[0] as Type;
+                    let extends_declare = s.slice(-2)[0] as Type | undefined;
+                    classType.parentType = extends_declare;
+                    return classType;
                 }
             }
         },
@@ -396,6 +397,7 @@ let grammar: Grammar = {
         { "class_unit:operator_overload": {} },//class_unit可以是一个运算符重载
         { "class_unit:get id ( ) : type { statements }": {} },//get
         { "class_unit:set id ( id : type ) { statements }": {} },//set
+        { "class_unit:basic_type ( parameter_declare )": {} },//构造函数
         { "operator_overload:operator + ( parameter_declare ) : type { statements }": {} },//运算符重载,运算符重载实在是懒得做泛型了,以后要是有需求再讲,比起C#和java的残废泛型，已经很好了
         { "statements:statements statement": {} },//statements可以由多个statement组成
         { "statements:": {} },//statements可以为空
@@ -431,6 +433,7 @@ let grammar: Grammar = {
         { "switch_body:case immediate_val : statement": {} },//case 语句
         { "switch_body:default : statement": {} },//default语句
         { "object:( object )": {} },//括号括住的object还是一个object
+        { "object:object . id": {} },//取成员
         { "object:object  ( arguments )": {} },//函数调用
         { "object:object template_instances ( arguments )": {} },//模板函数调用
         { "object:object = object": {} },
@@ -451,9 +454,37 @@ let grammar: Grammar = {
         { "object:object --": {} },//单目运算符--
         { "object:object [ object ]": {} },//[]运算符
         { "object:object ? object : object": { priority: "?" } },//三目运算
-        { "object:id": {} },//id是一个对象
+        {
+            "object:id": {
+                action: function ($, s): AbstracSyntaxTreeForType | undefined {
+                    let id = $[0] as string;
+                    let head = s.slice(-1)[0] as ProgramScope | Type | undefined;
+                    if (head == undefined) {
+                        //在函数内部使用的变量在本轮解析中不处理
+                        return undefined;
+                    } else {
+                        let root = new SingleNode(id, undefined, undefined);
+                        return new AbstracSyntaxTreeForType(root);
+                    }
+                }
+            }
+        },//id是一个对象
+        {
+            "object:immediate_val": {
+                action: function ($, s): AbstracSyntaxTreeForType | undefined {
+                    let immediate_val = $[0] as { value: unknown, type: Type };
+                    let head = s.slice(-1)[0] as ProgramScope | Type | undefined;
+                    if (head == undefined) {
+                        //在函数内部使用的变量在本轮解析中不处理
+                        return undefined;
+                    } else {
+                        let root = new SingleNode(undefined, immediate_val, undefined);
+                        return new AbstracSyntaxTreeForType(root);
+                    }
+                }
+            }
+        },//立即数是一个object
         { "object:super": {} },//super是一个对象
-        { "object:immediate_val": {} },//立即数是一个object
         { "object:this": {} },//this是一个object
         { "object:template_definition ( parameter_declare ) => { statements }": {} },//模板lambda
         { "object:( parameter_declare ) => { statements }": {} },//lambda
@@ -499,6 +530,20 @@ let grammar: Grammar = {
             "W2_0:": {
                 action: function ($, s) {
                     return s.slice(-2)[0];
+                }
+            }
+        },
+        {
+            "W4_0:": {
+                action: function ($, s) {
+                    return s.slice(-4)[0];
+                }
+            }
+        },
+        {
+            "W6_0:": {
+                action: function ($, s) {
+                    return s.slice(-6)[0];
                 }
             }
         },

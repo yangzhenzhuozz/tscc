@@ -97,6 +97,7 @@ let grammar: Grammar = {
         { "class_unit:operator_overload": {} },//class_unit可以是一个运算符重载
         { "class_unit:get id ( ) : type { statements }": {} },//get
         { "class_unit:set id ( id : type ) { statements }": {} },//set
+        { "class_unit:basic_type ( parameter_declare )": {} },//构造函数
         { "operator_overload:operator + ( parameter_declare ) : type { statements }": {} },//运算符重载,运算符重载实在是懒得做泛型了,以后要是有需求再讲,比起C#和java的残废泛型，已经很好了
         { "statements:statements statement": {} },//statements可以由多个statement组成
         { "statements:": {} },//statements可以为空
@@ -166,6 +167,7 @@ let grammar: Grammar = {
         { "switch_body:case immediate_val : statement": {} },//case 语句
         { "switch_body:default : statement": {} },//default语句
         { "object:( object )": {} },//括号括住的object还是一个object
+        { "object:object . id": {} },//取成员
         /**
         * obj_1 + obj_2  ( obj_3 )  ,中间的+可以换成 - * / < > || 等等双目运算符
         * 会出现如下二义性:
@@ -231,8 +233,23 @@ let grammar: Grammar = {
          */
         { "object:object ? object : object": { priority: "?" } },//三目运算
         { "object:id": {} },//id是一个对象
-        { "object:super": {} },//super是一个对象
         { "object:immediate_val": {} },//立即数是一个object
+        /**
+         * this和super只能在函数中使用,eg:
+         * class Base{
+         *      var a:int;
+         *      Base(){
+         *          a=10;
+         *      }
+         * }
+         * class Child extend Base{
+         *      var parent=super;//此时还没有调用Base的构造函数，只是分配了内存而已,this也是同理,所以只允许在函数中使用this和super
+         *      Child(){
+         *          super();
+         *      }
+         * }
+         */
+        { "object:super": {} },//super是一个对象
         { "object:this": {} },//this是一个object
         { "object:template_definition ( parameter_declare ) => { statements }": {} },//模板lambda
         { "object:( parameter_declare ) => { statements }": {} },//lambda

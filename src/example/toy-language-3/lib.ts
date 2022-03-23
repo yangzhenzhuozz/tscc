@@ -16,7 +16,7 @@ class Type {
     public setParent(parentType: Type) {
         this.parentType = parentType;
     }
-    public registerField(name: string, type: Type | AbstracSyntaxTree, vari: 'var' | 'val') {
+    public registerField(name: string, type: Type | CalculatedNode | SingleNode, vari: 'var' | 'val') {
         if (this.fields.has(name)) {
             throw new SemanticException(`属性:${name}重复定义`);
         }
@@ -46,7 +46,7 @@ class Type {
         }
         valueTypes.add(this.name);
         for (let [n, f] of this.fields) {
-            if (f.type instanceof CalculatedNode || f.type instanceof LoadNode) {
+            if (f.type instanceof CalculatedNode || f.type instanceof SingleNode) {
                 throw new SemanticException(`存在还未确定类型的变量${n},无法检测循环包含`);
             } else {
                 if (f.type.modifier == "valuetype") {
@@ -108,9 +108,9 @@ class FunctionType extends Type {
 }
 class Address {
     public variable: 'var' | 'val';
-    public type: Type | AbstracSyntaxTree;
+    public type: Type | CalculatedNode | SingleNode;
     public value: number;//地址
-    constructor(type: Type | AbstracSyntaxTree, value: number, vari: 'var' | 'val') {
+    constructor(type: Type | CalculatedNode | SingleNode, value: number, vari: 'var' | 'val') {
         this.type = type;
         this.value = value;
         this.variable = vari;
@@ -204,23 +204,35 @@ class ProgramScope {
 type operator = '+' | '-' | '*' | '/';
 class CalculatedNode {
     public op: operator;
-    public leftChild: AbstracSyntaxTree;
-    public rightChild: AbstracSyntaxTree;
-    constructor(op: operator, lc: AbstracSyntaxTree, rc: AbstracSyntaxTree) {
+    public leftChild: CalculatedNode | SingleNode;
+    public rightChild: CalculatedNode | SingleNode;
+    public type: Type | undefined;
+    constructor(op: operator, lc: CalculatedNode | SingleNode, rc: CalculatedNode | SingleNode) {
         this.op = op;
         this.leftChild = lc;
         this.rightChild = rc;
     }
 }
 //直接加载符号得到的节点
-class LoadNode {
-    public ref: string;//节点引用了某个变量
-    public immediate: { val: string, type: Type };//节点是一个立即数,如:1、1.0、"this is a string"
-    constructor(ref: string, immediate: { val: string, type: Type }) {
+class SingleNode {
+    public ref: string | undefined;//节点引用了某个变量
+    public immediate: { value: unknown, type: Type } | undefined;//节点是一个立即数,如:1、1.0、"this is a string"
+    public type: Type | undefined;
+    constructor(ref: string | undefined, immediate: { value: unknown, type: Type } | undefined, type: Type | undefined) {
+        if (ref == undefined && immediate == undefined) {
+            throw new SemanticException(`ref和immediate不能同时为undefined`);
+        }
         this.ref = ref;
         this.immediate = immediate;
+        this.type = type;
     }
 }
-type AbstracSyntaxTree = CalculatedNode | LoadNode;
+//为类型推导服务的抽象语法树
+class AbstracSyntaxTreeForType {
+    public root: CalculatedNode | SingleNode;
+    constructor(root: CalculatedNode | SingleNode) {
+        this.root = root;
+    }
+}
 const program = new ProgramScope();
-export { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScope, SemanticException, ProgramScope, CalculatedNode, LoadNode, AbstracSyntaxTree, program }
+export { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScope, SemanticException, ProgramScope, CalculatedNode, SingleNode, AbstracSyntaxTreeForType, program }
