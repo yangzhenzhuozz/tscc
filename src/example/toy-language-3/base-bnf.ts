@@ -234,21 +234,6 @@ let grammar: Grammar = {
         { "object:object ? object : object": { priority: "?" } },//三目运算
         { "object:id": {} },//id是一个对象
         { "object:immediate_val": {} },//立即数是一个object
-        /**
-         * this和super只能在函数中使用,eg:
-         * class Base{
-         *      var a:int;
-         *      Base(){
-         *          a=10;
-         *      }
-         * }
-         * class Child extend Base{
-         *      var parent=super;//此时还没有调用Base的构造函数，只是分配了内存而已,this也是同理,所以只允许在函数中使用this和super
-         *      Child(){
-         *          super();
-         *      }
-         * }
-         */
         { "object:super": {} },//super是一个对象
         { "object:this": {} },//this是一个object
         { "object:template_definition ( parameter_declare ) => { statements }": {} },//模板lambda
