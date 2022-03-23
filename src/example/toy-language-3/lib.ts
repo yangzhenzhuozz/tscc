@@ -214,9 +214,11 @@ class CalculatedNode {
 }
 //直接加载符号得到的节点
 class LoadNode {
-    public id: string;
-    constructor(id: string) {
-        this.id = id;
+    public ref: string;//节点引用了某个变量
+    public immediate: { val: string, type: Type };//节点是一个立即数,如:1、1.0、"this is a string"
+    constructor(ref: string, immediate: { val: string, type: Type }) {
+        this.ref = ref;
+        this.immediate = immediate;
     }
 }
 type AbstracSyntaxTree = CalculatedNode | LoadNode;
