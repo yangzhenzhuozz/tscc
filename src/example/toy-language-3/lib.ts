@@ -6,6 +6,7 @@ class Type {
     public genericParadigm: string[] | undefined;
     public templateInstances: Type[] | undefined;
     public name: string;
+    public programScope: ProgramScope | undefined;
     private allocated = 0;//分配的地址位置
     constructor(name: string, modifier: "valuetype" | "sealed" | "referentialType", templateInstances: Type[] | undefined) {
         this.templateInstances = templateInstances;
@@ -15,7 +16,7 @@ class Type {
     public setParent(parentType: Type) {
         this.parentType = parentType;
     }
-    public registerField(name: string, type: Type | undefined, vari: 'var' | 'val') {
+    public registerField(name: string, type: Type | AbstracSyntaxTree, vari: 'var' | 'val') {
         if (this.fields.has(name)) {
             throw new SemanticException(`属性:${name}重复定义`);
         }
@@ -45,11 +46,12 @@ class Type {
         }
         valueTypes.add(this.name);
         for (let [n, f] of this.fields) {
-            if (f.type == undefined) {
+            if (f.type instanceof CalculatedNode || f.type instanceof LoadNode) {
                 throw new SemanticException(`存在还未确定类型的变量${n},无法检测循环包含`);
-            }
-            if (f.type.modifier == "valuetype") {
-                f.type.checkRecursiveValue(new Set(valueTypes));
+            } else {
+                if (f.type.modifier == "valuetype") {
+                    f.type.checkRecursiveValue(new Set(valueTypes));
+                }
             }
         }
     }
@@ -106,9 +108,9 @@ class FunctionType extends Type {
 }
 class Address {
     public variable: 'var' | 'val';
-    public type: Type | undefined;
+    public type: Type | AbstracSyntaxTree;
     public value: number;//地址
-    constructor(type: Type | undefined, value: number, vari: 'var' | 'val') {
+    constructor(type: Type | AbstracSyntaxTree, value: number, vari: 'var' | 'val') {
         this.type = type;
         this.value = value;
         this.variable = vari;
@@ -167,7 +169,9 @@ class ProgramScope {
         if (this.userTypes.has(name)) {
             throw new SemanticException(`用户类型${name}已存在`);
         } else {
-            this.userTypes.set(name, new Type(name, "referentialType", undefined));
+            let userType = new Type(name, "referentialType", undefined);
+            userType.programScope = this;
+            this.userTypes.set(name, userType);
         }
     }
     public unregisterType(name: string) {
@@ -196,5 +200,25 @@ class ProgramScope {
         }
     }
 };
+//需要计算才能得到的节点
+type operator = '+' | '-' | '*' | '/';
+class CalculatedNode {
+    public op: operator;
+    public leftChild: AbstracSyntaxTree;
+    public rightChild: AbstracSyntaxTree;
+    constructor(op: operator, lc: AbstracSyntaxTree, rc: AbstracSyntaxTree) {
+        this.op = op;
+        this.leftChild = lc;
+        this.rightChild = rc;
+    }
+}
+//直接加载符号得到的节点
+class LoadNode {
+    public id: string;
+    constructor(id: string) {
+        this.id = id;
+    }
+}
+type AbstracSyntaxTree = CalculatedNode | LoadNode;
 const program = new ProgramScope();
-export { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScope, SemanticException, ProgramScope, program }
+export { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScope, SemanticException, ProgramScope, CalculatedNode, LoadNode, AbstracSyntaxTree, program }

@@ -3,12 +3,13 @@ import TSCC from "../../tscc/tscc.js";
 import globalLexer from './lexrule.js';
 import { userTypeDictionary } from './lexrule.js';
 import { Grammar } from "../../tscc/tscc.js";
-import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScope, SemanticException, ProgramScope, program } from "./lib.js"
+import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScope, SemanticException, ProgramScope, CalculatedNode, LoadNode, AbstracSyntaxTree, program } from "./lib.js";
 let grammar: Grammar = {
     userCode: `
     import globalLexer from './lexrule.js';
     import { userTypeDictionary } from './lexrule.js';
-    import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScope, SemanticException, ProgramScope, program } from "./lib.js";`,
+    import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScope, SemanticException, ProgramScope, CalculatedNode, LoadNode, AbstracSyntaxTree, program } from "./lib.js";
+    `,
     tokens: ['var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'throw', 'super', 'basic_type', 'instanceof'],
     association: [
         { 'right': ['='] },
@@ -85,10 +86,11 @@ let grammar: Grammar = {
                 action: function ($, s) {
                     let head = s.slice(-1)[0] as ProgramScope | Type | undefined;
                     let id = $[1] as string;
+                    let object = $[3] as AbstracSyntaxTree;
                     if (head instanceof ProgramScope) {//在程序空间中声明的变量
-                        head.type.registerField(id, undefined, 'var');
+                        head.type.registerField(id, object, 'var');
                     } else if (head instanceof Type) {//在class中声明的变量
-                        head.registerField(id, undefined, 'var');
+                        head.registerField(id, object, 'var');
                     } else {//function中声明的变量暂时不管
                     }
                     console.log(`var ${id}: 待推导`);
@@ -132,10 +134,11 @@ let grammar: Grammar = {
                 action: function ($, s) {
                     let head = s.slice(-1)[0] as ProgramScope | Type | undefined;
                     let id = $[1] as string;
+                    let object = $[3] as AbstracSyntaxTree;
                     if (head instanceof ProgramScope) {//在程序空间中声明的变量
-                        head.type.registerField(id, undefined, 'val');
+                        head.type.registerField(id, object, 'val');
                     } else if (head instanceof Type) {//在class中声明的变量
-                        head.registerField(id, undefined, 'val');
+                        head.registerField(id, object, 'val');
                     } else {//function中声明的变量暂时不管
                     }
                     console.log(`val ${id}: 待推导`);
