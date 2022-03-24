@@ -263,7 +263,7 @@ let grammar: Grammar = {
          * 我当然希望采取第二种语法树,所以需要设置产生式优先级,即在new一个对象的时候,如果后面跟有方括号[,优先选择移入而不是规约,那么只需要把冲突的产生式优先级设置为比'['低即可
          * 设置array_placeholder作为产生式头的两个产生式优先级低于'['
          */
-        { "object:new type array_init_list": {} },//new一个数组
+        { "object:new type array_init_list": {} },//创建数组
         { "array_init_list:array_inits array_placeholder": {} },//new 数组的时候是可以这样写的 new int [2][3][][],其中[2][3]对应了array_inits,后面的[][]对应了array_placeholder(数组占位符)
         { "array_inits:array_inits [ object ]": {} },//见array_init_list一条的解释
         { "array_inits:[ object ]": {} },//见array_init_list一条的解释

@@ -159,7 +159,7 @@ class BlockScope extends Scope {
 }
 class ProgramScope {
     public userTypes = new Map<string, Type>();
-    public type = new Type('$program', 'referentialType', undefined);
+    public type = new Type('$program', 'referentialType', undefined);//program是一个引用类型
     constructor() {
         this.userTypes.set("int", new Type('int', 'valuetype', undefined));
     }
