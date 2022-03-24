@@ -254,7 +254,7 @@ let grammar: Grammar = {
          * 为其指定优先级为cast_priority
          */
         { "object:( type ) object": { priority: "cast_priority" } },//强制转型
-        { "object:new type  ( arguments )": {} },//new 对象
+        { "object:new type  ( arguments )": {} },//创建对象
         /**
          * 假设只针对产生式array_init_list:array_inits array_placeholder 会出现如下二义性
          * new int [10][3]可以有如下两种解释:(把array_placeholder规约成ε)
@@ -280,7 +280,7 @@ let grammar: Grammar = {
         { "argument_list:argument_list , object": {} },//参数列表可以是多个object
     ]
 }
-let tscc = new TSCC(grammar, { language: "zh-cn", debug: false });
+let tscc = new TSCC(grammar, { language: "zh-cn", debug: true });
 let str = tscc.generate();//构造编译器代码
 if (str != null) {//如果构造成功则生成编编译器代码
     console.log(`成功`);

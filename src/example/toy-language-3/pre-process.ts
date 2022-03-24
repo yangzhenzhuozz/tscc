@@ -3,7 +3,7 @@
  */
 import globalLexer from './lexrule.js';
 import { userTypeDictionary } from './lexrule.js';
-import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScope, SemanticException, ProgramScope, program } from "./lib.js"
+import { SemanticException, ProgramScope, program } from "./lib.js"
 function pre_process(source: string) {
     let regularExpression: RegExp = /class\s+([a-zA-Z_][a-zA-Z_0-9]+)/g;
     for (let group: RegExpExecArray | null; (group = regularExpression.exec(source)) != null;) {

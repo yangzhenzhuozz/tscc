@@ -16,7 +16,7 @@ class Type {
     public setParent(parentType: Type) {
         this.parentType = parentType;
     }
-    public registerField(name: string, type: Type | CalculatedNode | SingleNode, vari: 'var' | 'val') {
+    public registerField(name: string, type: { type: Type | undefined, AST: AbstracSyntaxTree | undefined }, vari: 'var' | 'val') {
         if (this.fields.has(name)) {
             throw new SemanticException(`属性:${name}重复定义`);
         }
@@ -46,12 +46,14 @@ class Type {
         }
         valueTypes.add(this.name);
         for (let [n, f] of this.fields) {
-            if (f.type instanceof CalculatedNode || f.type instanceof SingleNode) {
-                throw new SemanticException(`存在还未确定类型的变量${n},无法检测循环包含`);
+            let type: Type;;
+            if (f.typeRef.type != undefined) {
+                type = f.typeRef.type;
             } else {
-                if (f.type.modifier == "valuetype") {
-                    f.type.checkRecursiveValue(new Set(valueTypes));
-                }
+                type = f.typeRef.AST!.type!;
+            }
+            if (type.modifier == "valuetype") {
+                type.checkRecursiveValue(new Set(valueTypes));
             }
         }
     }
@@ -108,10 +110,10 @@ class FunctionType extends Type {
 }
 class Address {
     public variable: 'var' | 'val';
-    public type: Type | CalculatedNode | SingleNode;
+    public typeRef: { type: Type | undefined, AST: AbstracSyntaxTree | undefined };//类型可以是一个Type或者由语法树推导得到的Type
     public value: number;//地址
-    constructor(type: Type | CalculatedNode | SingleNode, value: number, vari: 'var' | 'val') {
-        this.type = type;
+    constructor(typeRef: { type: Type | undefined, AST: AbstracSyntaxTree | undefined }, value: number, vari: 'var' | 'val') {
+        this.typeRef = typeRef;
         this.value = value;
         this.variable = vari;
     }
@@ -125,7 +127,7 @@ class SemanticException extends Error {
 class Scope {
     private Field: Map<string, Address> = new Map();
     private allocated = 0;
-    public registerField(name: string, type: Type, variable: 'var' | 'val') {
+    public registerField(name: string, type: { type: Type | undefined, AST: AbstracSyntaxTree | undefined }, variable: 'var' | 'val') {
         if (this.Field.has(name)) {
             throw new SemanticException(`变量 ${name} 重复定义`);
         } else {
@@ -228,11 +230,12 @@ class SingleNode {
     }
 }
 //为类型推导服务的抽象语法树
-class AbstracSyntaxTreeForType {
+class AbstracSyntaxTree {
+    public type: Type | undefined;
     public root: CalculatedNode | SingleNode;
     constructor(root: CalculatedNode | SingleNode) {
         this.root = root;
     }
 }
 const program = new ProgramScope();
-export { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScope, SemanticException, ProgramScope, CalculatedNode, SingleNode, AbstracSyntaxTreeForType, program }
+export { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScope, SemanticException, ProgramScope, CalculatedNode, SingleNode, AbstracSyntaxTree, program }
