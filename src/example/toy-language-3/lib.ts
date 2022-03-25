@@ -206,17 +206,17 @@ class ProgramScope {
 type operator = '+' | '-' | '*' | '/';
 class CalculatedNode {
     public op: operator;
-    public leftChild: CalculatedNode | SingleNode;
-    public rightChild: CalculatedNode | SingleNode;
+    public leftChild: CalculatedNode | Leaf;
+    public rightChild: CalculatedNode | Leaf;
     public type: Type | undefined;
-    constructor(op: operator, lc: CalculatedNode | SingleNode, rc: CalculatedNode | SingleNode) {
+    constructor(op: operator, lc: CalculatedNode | Leaf, rc: CalculatedNode | Leaf) {
         this.op = op;
         this.leftChild = lc;
         this.rightChild = rc;
     }
 }
 //直接加载符号得到的节点
-class SingleNode {
+class Leaf {
     public ref: string | undefined;//节点引用了某个变量
     public immediate: { value: unknown, type: Type } | undefined;//节点是一个立即数,如:1、1.0、"this is a string"
     public type: Type | undefined;
@@ -232,10 +232,10 @@ class SingleNode {
 //为类型推导服务的抽象语法树
 class AbstracSyntaxTree {
     public type: Type | undefined;
-    public root: CalculatedNode | SingleNode;
-    constructor(root: CalculatedNode | SingleNode) {
+    public root: CalculatedNode | Leaf;
+    constructor(root: CalculatedNode | Leaf) {
         this.root = root;
     }
 }
 const program = new ProgramScope();
-export { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScope, SemanticException, ProgramScope, CalculatedNode, SingleNode, AbstracSyntaxTree, program }
+export { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScope, SemanticException, ProgramScope, CalculatedNode, Leaf, AbstracSyntaxTree, program }
