@@ -1,8 +1,14 @@
 import fs from "fs";
 import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
+import { userTypeDictionary } from './lexrule.js';
+import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScope, SemanticException, ProgramScope, Node, AbstracSyntaxTree, program } from "./lib.js";
 let grammar: Grammar = {
-    tokens: ['var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'throw', 'super', 'basic_type','instanceof'],
+    userCode: `
+import { userTypeDictionary } from './lexrule.js';
+import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScope, SemanticException, ProgramScope, Node, AbstracSyntaxTree, program } from "./lib.js";
+`,
+    tokens: ['var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'throw', 'super', 'basic_type', 'instanceof'],
     association: [
         { 'right': ['='] },
         { 'right': ['?'] },
@@ -44,20 +50,78 @@ let grammar: Grammar = {
         { "declare:val id : type = object": {} },//声明语句_5，声明一个变量id，并且将object设置为id的初始值，object的类型要和声明的类型一致
         { "declare:val id = object": {} },//声明语句_6，声明一个变量id，并且将object设置为id的初始值，类型自动推导
         { "declare:function_definition": {} },//声明语句_7，可以是一个函数定义语句
-        { "class_definition:modifier class basic_type template_declare extends_declare { class_units }": {} },//class定义语句由修饰符等组成(太长了我就不一一列举)
+        {
+            "class_definition:modifier class basic_type template_declare extends_declare { class_units }": {
+                action: function ($, s) {
+                    let template_declare = $[3] as string[] | undefined;
+                    if (template_declare != undefined) {
+                        for (let t of template_declare) {
+                            program.unregisterType(t);
+                            userTypeDictionary.delete(t);
+                        }
+                    }
+                }
+            }
+        },//class定义语句由修饰符等组成(太长了我就不一一列举)
         { "extends_declare:": {} },//继承可以为空
         { "extends_declare:extends type": {} },//继承,虽然文法是允许继承任意类型,但是在语义分析的时候再具体决定该class能不能被继承
-        { "function_definition:function id template_declare ( parameter_declare ) ret_type { statements }": {} },//函数定义语句，同样太长，不列表
+        {
+            "function_definition:function id template_declare ( parameter_declare ) ret_type { statements }": {
+                action: function ($, s) {
+                    let template_declare = $[2] as string[] | undefined;
+                    if (template_declare != undefined) {
+                        for (let t of template_declare) {
+                            program.unregisterType(t);
+                            userTypeDictionary.delete(t);
+                        }
+                    }
+                }
+            }
+        },//函数定义语句，同样太长，不列表
         { "ret_type:": {} },//返回值类型可以不声明，自动推导,lambda就不用写返回值声明
         { "ret_type: : type": {} },//可以声明返回值类型,function fun() : int {codes}
         { "modifier:valuetype": {} },//modifier可以是"valuetype"
         { "modifier:sealed": {} },//modifier可以是"sealed"
         { "modifier:": {} },//modifier可以为空
         { "template_declare:": {} },//模板声明可以为空
-        { "template_declare:template_definition": {} },//模板声明可以是一个模板定义
-        { "template_definition:< template_definition_list >": {} },//模板定义由一对尖括号<>和内部的template_definition_list组成
-        { "template_definition_list:id": {} },//template_definition_list可以是一个id
-        { "template_definition_list:template_definition_list , id": {} },//template_definition_list可以是一个template_definition_list后面接上 , id
+        {
+            "template_declare:template_definition": {
+                action: function ($, s): string[] {
+                    return $[0] as string[];
+                }
+            }
+        },//模板声明可以是一个模板定义
+        {
+            "template_definition:< template_definition_list >": {
+                action: function ($, s): string[] {
+                    for (let t of $[1] as string[]) {
+                        program.registerType(t);
+                        userTypeDictionary.add(t);
+                    }
+                    return $[1] as string[];
+                }
+            }
+        },//模板定义由一对尖括号<>和内部的template_definition_list组成
+        {
+            "template_definition_list:id": {
+                action: function ($, s): string[] {
+                    return [$[0] as string];
+                }
+            }
+        },//template_definition_list可以是一个id
+        {
+            "template_definition_list:template_definition_list , id": {
+                action: function ($, s): string[] {
+                    let template_definition_list = $[0] as string[];
+                    let id = $[2] as string;
+                    if (template_definition_list.indexOf(id) != -1) {
+                        throw new SemanticException(`模板类型${id}已经存在`);
+                    }
+                    template_definition_list.push(id);
+                    return template_definition_list;
+                }
+            }
+        },//template_definition_list可以是一个template_definition_list后面接上 , id
         { "type:( type )": {} },//type可以用圆括号包裹
         /**
          * type后面的'['会导致如下二义性:
@@ -82,7 +146,18 @@ let grammar: Grammar = {
          */
         { "type:basic_type": { priority: "low_priority_for_[" } },//type可以是一个base_type
         { "type:basic_type template_instances": { priority: "low_priority_for_[" } },//type可以是一个base_type template_instances
-        { "type:template_definition ( parameter_declare ) => type": { priority: "low_priority_for_[" } },//泛型函数类型
+        {
+            "type:template_definition ( parameter_declare ) => type": {
+                priority: "low_priority_for_[",
+                action: function ($, s) {
+                    let template_definition = $[0] as string[];
+                    for (let t of template_definition) {
+                        program.unregisterType(t);
+                        userTypeDictionary.delete(t);
+                    }
+                }
+            }
+        },//泛型函数类型
         { "type:( parameter_declare ) => type": { priority: "low_priority_for_[" } },//函数类型
         { "type:type array_type_list": { priority: "low_priority_for_[" } },//数组类型
         { "array_type_list:[ ]": {} },//array_type_list可以是一对方括号
@@ -167,8 +242,26 @@ let grammar: Grammar = {
         { "switch_bodys:switch_bodys switch_body": {} },//switch_bodys可以由多个switch_body组成
         { "switch_body:case immediate_val : statement": {} },//case 语句
         { "switch_body:default : statement": {} },//default语句
-        { "object:( object )": {} },//括号括住的object还是一个object
-        { "object:object . id": {} },//取成员
+        {
+            "object:( object )": {
+                action: function ($, s): AbstracSyntaxTree {
+                    return $[1] as AbstracSyntaxTree;
+                }
+            }
+        },//括号括住的object还是一个object
+        {
+            "object:object . id": {
+                action: function ($, s): AbstracSyntaxTree {
+                    let obj = $[0] as AbstracSyntaxTree;
+                    let id = $[2] as string;
+                    let node = new Node('field',);
+                    node.tag = id;
+                    node.children.push(obj.root.index);
+                    let ret = new AbstracSyntaxTree(node);
+                    return ret;
+                }
+            }
+        },//取成员
         /**
         * obj_1 + obj_2  ( obj_3 )  ,中间的+可以换成 - * / < > || 等等双目运算符
         * 会出现如下二义性:
@@ -233,8 +326,27 @@ let grammar: Grammar = {
          * 2.因为?为右结合,所以情况2会选择2.2这种语法树进行解析
          */
         { "object:object ? object : object": { priority: "?" } },//三目运算
-        { "object:id": {} },//id是一个对象
-        { "object:immediate_val": {} },//立即数是一个object
+        {
+            "object:id": {
+                action: function ($, s): AbstracSyntaxTree {
+                    let id = $[0] as string;
+                    let node = new Node('load');
+                    node.value = id;
+                    return new AbstracSyntaxTree(node);
+                }
+            }
+        },//id是一个对象
+        {
+            "object:immediate_val": {
+                action: function ($, s): AbstracSyntaxTree {
+                    let immediate_val = $[0] as { value: unknown, type: Type };
+                    let node = new Node('immediate');
+                    node.value = immediate_val.value;
+                    node.type = immediate_val.type;
+                    return new AbstracSyntaxTree(node);
+                }
+            }
+        },//立即数是一个object
         { "object:super": {} },//super是一个对象
         { "object:this": {} },//this是一个object
         { "object:template_definition ( parameter_declare ) => { statements }": {} },//模板lambda
@@ -284,7 +396,7 @@ let tscc = new TSCC(grammar, { language: "zh-cn", debug: false });
 let str = tscc.generate();//构造编译器代码
 if (str != null) {//如果构造成功则生成编编译器代码
     console.log(`成功`);
-    fs.writeFileSync('./src/example/toy-language-3/parser-base.ts', str);
+    fs.writeFileSync('./src/example/toy-language-3/parser-2.ts', str);
 } else {
     console.log(`失败`);
 }

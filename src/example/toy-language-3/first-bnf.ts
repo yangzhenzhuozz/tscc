@@ -1,14 +1,12 @@
 import fs from "fs";
 import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
-import globalLexer from './lexrule.js';
 import { userTypeDictionary } from './lexrule.js';
-import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScope, SemanticException, ProgramScope, CalculatedNode, Leaf, AbstracSyntaxTree, program } from "./lib.js";
+import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScope, SemanticException, ProgramScope, Node, AbstracSyntaxTree, program } from "./lib.js";
 let grammar: Grammar = {
     userCode: `
-    import globalLexer from './lexrule.js';
-    import { userTypeDictionary } from './lexrule.js';
-    import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScope, SemanticException, ProgramScope, CalculatedNode, Leaf, AbstracSyntaxTree, program } from "./lib.js";
+import { userTypeDictionary } from './lexrule.js';
+import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScope, SemanticException, ProgramScope, Node, AbstracSyntaxTree, program } from "./lib.js";
     `,
     tokens: ['var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'throw', 'super', 'basic_type', 'instanceof'],
     association: [
@@ -33,10 +31,6 @@ let grammar: Grammar = {
         { 'nonassoc': ['low_priority_for_if_stmt'] },
         { 'nonassoc': ['else'] },
     ],
-    accept:function($,s){
-        let p=program;
-        debugger;
-    },
     BNF: [
         { "program:import_stmts getProgram program_units": {} },//整个程序由导入语句组和程序单元组构成
         {

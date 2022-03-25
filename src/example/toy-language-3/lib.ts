@@ -50,7 +50,7 @@ class Type {
             if (f.typeRef.type != undefined) {
                 type = f.typeRef.type;
             } else {
-                type = f.typeRef.AST!.type!;
+                type = f.typeRef.AST!.root.type!;
             }
             if (type.modifier == "valuetype") {
                 type.checkRecursiveValue(new Set(valueTypes));
@@ -202,40 +202,40 @@ class ProgramScope {
         }
     }
 };
-//需要计算才能得到的节点
-type operator = '+' | '-' | '*' | '/';
-class CalculatedNode {
+const nodeCatch: Node[] = [];
+type operator = '+' | '-' | '*' | '/' | 'immediate' | 'load' | 'super' | 'this' | 'field';
+class Node {
     public op: operator;
-    public leftChild: CalculatedNode | Leaf;
-    public rightChild: CalculatedNode | Leaf;
+    public tag: string | undefined;
+    public children: number[] = [];
     public type: Type | undefined;
-    constructor(op: operator, lc: CalculatedNode | Leaf, rc: CalculatedNode | Leaf) {
+    public value: unknown;
+    public index: number;
+    constructor(op: operator) {
         this.op = op;
-        this.leftChild = lc;
-        this.rightChild = rc;
+        this.index = nodeCatch.length;
+        nodeCatch.push(this);
     }
-}
-//直接加载符号得到的节点
-class Leaf {
-    public ref: string | undefined;//节点引用了某个变量
-    public immediate: { value: unknown, type: Type } | undefined;//节点是一个立即数,如:1、1.0、"this is a string"
-    public type: Type | undefined;
-    constructor(ref: string | undefined, immediate: { value: unknown, type: Type } | undefined, type: Type | undefined) {
-        if (ref == undefined && immediate == undefined) {
-            throw new SemanticException(`ref和immediate不能同时为undefined`);
+    public postorderTraversal() {
+        switch (this.op) {
+            case 'load':
+                console.log(`load ${this.value}`);
+                break;
+            case 'field':
+                nodeCatch[this.children[0]].postorderTraversal();
+                console.log(`get field ${this.tag}`);
+                break;
+            default: console.log(`还未实现打印的操作符${this.op}`);
+
         }
-        this.ref = ref;
-        this.immediate = immediate;
-        this.type = type;
     }
 }
 //为类型推导服务的抽象语法树
 class AbstracSyntaxTree {
-    public type: Type | undefined;
-    public root: CalculatedNode | Leaf;
-    constructor(root: CalculatedNode | Leaf) {
+    public root: Node;
+    constructor(root: Node) {
         this.root = root;
     }
 }
 const program = new ProgramScope();
-export { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScope, SemanticException, ProgramScope, CalculatedNode, Leaf, AbstracSyntaxTree, program }
+export { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScope, SemanticException, ProgramScope, Node, AbstracSyntaxTree, program }
