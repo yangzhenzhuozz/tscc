@@ -206,7 +206,7 @@ const nodeCatch: Node[] = [];
 type operator = '+' | '-' | '*' | '/' | '=' | 'immediate' | 'load' | 'super' | 'this' | 'field' | 'call';
 class Node {
     public op: operator;
-    public tag: string | undefined;
+    public tag: any;
     public children: number[] = [];
     public type: Type | undefined;
     public value: unknown;

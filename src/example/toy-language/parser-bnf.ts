@@ -448,12 +448,26 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
                     for (let a of _arguments) {
                         node.children.push(a.root.index);
                     }
-                    node.postorderTraversal();
                     return new AbstracSyntaxTree(node);
                 }
             }
         },//函数调用
-        { "object:object template_instances ( arguments )": {} },//模板函数调用
+        {
+            "object:object template_instances ( arguments )": {
+                action: function ($, s): AbstracSyntaxTree {
+                    let obj = $[0] as AbstracSyntaxTree;
+                    let template_instances = $[1] as Type[];
+                    let _arguments = $[3] as AbstracSyntaxTree[];
+                    let node = new Node('call');
+                    node.children.push(obj.root.index);
+                    for (let a of _arguments) {
+                        node.children.push(a.root.index);
+                    }
+                    node.tag = template_instances;
+                    return new AbstracSyntaxTree(node);
+                }
+            }
+        },//模板函数调用
         { "object:object = object": {} },
         { "object:object + object": {} },
         { "object:object - object": {} },
