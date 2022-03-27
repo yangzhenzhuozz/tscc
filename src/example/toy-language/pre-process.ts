@@ -1,9 +1,8 @@
 /**
  * 用于预处理源码,把所有 class xxx 后面的 xxx添加到lexer中的basic_type类型
  */
-import globalLexer from './lexrule.js';
 import { userTypeDictionary } from './lexrule.js';
-import { SemanticException, ProgramScope, program } from "./lib.js"
+import { program } from "./lib.js"
 function pre_process(source: string) {
     let regularExpression: RegExp = /class\s+([a-zA-Z_][a-zA-Z_0-9]+)/g;
     for (let group: RegExpExecArray | null; (group = regularExpression.exec(source)) != null;) {

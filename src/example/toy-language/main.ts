@@ -1,18 +1,16 @@
 import Parser from "./parser.js";
 import lexer from './lexrule.js';
-import { SemanticException } from './lib.js';
+import pre_process from './pre-process.js'
 import fs from 'fs';
 let parser = new Parser();
-lexer.setSource(fs.readFileSync("./src/example/toy-language/test.ty", 'utf-8').toString());
+let source = fs.readFileSync("./src/example/toy-language-3/test.ty", 'utf-8').toString();
+lexer.setSource(source);
 try {
-    let oldT = new Date().getTime();
-    parser.parse(lexer)
-    let newT = new Date().getTime();
-    console.log(`解析源码耗时:${newT - oldT}ms`);
+    lexer.compile();
+    console.time("解析源码耗时");
+    pre_process(source);
+    parser.parse(lexer);
+    console.timeEnd("解析源码耗时");
 } catch (e: unknown) {
-    if (e instanceof SemanticException) {
-        lexer.yyerror(`${e}`);
-    }else{
-        console.error(`${e}`);
-    }
+    console.error(`${e}`);
 }

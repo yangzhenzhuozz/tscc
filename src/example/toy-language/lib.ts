@@ -1,352 +1,248 @@
-import lexer from './lexrule.js';
-type locationType = "global" | "stack" | "class" | "constant_val";//定义寻址模式,global在data区寻址,stack在栈中寻址,class则通过this指针寻址
-//两个类型是否相等可以用toString来判断
 class Type {
-    public type: "base_type" | "function" | "array" | undefined;//class也算是base_type,array和function是特殊的对象
-    public refType: "reference" | "value" = 'reference';//引用类型
-    public basic_type: string | undefined;
-    public innerType: Type | undefined;
-    public argumentTypes: Type[] | undefined;
-    public returnType: Type | undefined;
-    public fields: Map<string, Type> = new Map();
-    public static ConstructBase(name: string) {
-        let result = new Type();
-        result.type = "base_type";
-        result.basic_type = name;
-        return result;
+    public fields: Map<string, Address> = new Map();//属性列表
+    public operatorOverload: Map<string, Function> = new Map();//操作符重载列表
+    public modifier: "valuetype" | "sealed" | "referentialType";
+    public parentType: Type | undefined;//父对象,为undefined表示这是object
+    public genericParadigm: string[] | undefined;
+    public templateInstances: Type[] | undefined;
+    public name: string;
+    public programScope: ProgramScope | undefined;
+    private allocated = 0;//分配的地址位置
+    constructor(name: string, modifier: "valuetype" | "sealed" | "referentialType", templateInstances: Type[] | undefined) {
+        this.templateInstances = templateInstances;
+        this.name = name;
+        this.modifier = modifier;
     }
-    public static ConstructArray(innerType: Type) {
-        let result = new Type();
-        result.type = "array";
-        result.innerType = innerType;
-        return result;
+    public setParent(parentType: Type) {
+        this.parentType = parentType;
     }
-    public static ConstructFunction(argumentTypes: Type[], returnType: Type) {
-        let result = new Type();
-        result.type = "function";
-        result.argumentTypes = argumentTypes;
-        result.returnType = returnType;
-        return result;
+    public registerField(name: string, type: { type: Type | undefined, AST: AbstracSyntaxTree | undefined }, vari: 'var' | 'val') {
+        if (this.fields.has(name)) {
+            throw new SemanticException(`属性:${name}重复定义`);
+        }
+        this.fields.set(name, new Address(type, this.allocated++, vari));
     }
-    //禁用构造器，只允许使用工厂方法构造
-    private constructor() {
-
+    public registerOperatorOverload(name: string, fun: Function) {
+        if (this.operatorOverload.has(name)) {
+            throw new SemanticException(`重载符号:${name}重复定义`);
+        }
+        this.operatorOverload.set(name, fun);
     }
-    public setBasicType(name: string) {
-        this.basic_type = name;
+    //检查循环继承
+    private checkRecursiveExtend() {
+        let extendList = new Set<string>();
+        extendList.add(this.name);
+        for (let node: Type | undefined = this.parentType; node != undefined; node = node.parentType) {
+            if (extendList.has(node.name)) {
+                throw new SemanticException(`类型${node}出现了循环继承`);
+            }
+            extendList.add(node.name)
+        }
     }
-    public setArgument(...types: Type[]) {
-        this.argumentTypes = types;
+    //检查值类型循环包含
+    private checkRecursiveValue(valueTypes: Set<string>) {
+        if (valueTypes.has(this.name)) {
+            throw new SemanticException(`值类型${this.name}出现了循环布局`);
+        }
+        valueTypes.add(this.name);
+        for (let [n, f] of this.fields) {
+            let type: Type;;
+            if (f.typeRef.type != undefined) {
+                type = f.typeRef.type;
+            } else {
+                type = f.typeRef.AST!.root.type!;
+            }
+            if (type.modifier == "valuetype") {
+                type.checkRecursiveValue(new Set(valueTypes));
+            }
+        }
     }
-    public setReturnType(type: Type) {
-        this.returnType = type;
+    public checkRecursive() {
+        this.checkRecursiveExtend();
+        this.checkRecursiveValue(new Set());
+    }
+    //也可以用作签名
+    public toString() {
+        let ret = `${this.genericParadigm != undefined ? `<${this.genericParadigm.reduce((p, c) => `${p},${c}`)}>` : ''}${this.name}${this.templateInstances != undefined ? `<${this.templateInstances.map((v) => `${v}`).reduce((p, c) => `${p},${c}`)}>` : ''}`;
+        return ret;
+    }
+}
+class ArrayType extends Type {
+    public innerType: Type;//数组的基本类型
+    constructor(inner_type: Type) {
+        super(`$Array<${inner_type.name}>`, "referentialType", undefined);
+        this.innerType = inner_type;
+    }
+}
+class FunctionType extends Type {
+    public parameters: Map<string, Type> = new Map();//参数名和类型列表,反射的时候可以直接得到参数的名字
+    public returnType: Type | undefined;//返回值类型
+    constructor(parameters: { name: string, type: Type }[] | undefined, ret_type: Type | undefined, genericParadigm: string[] | undefined) {
+        super(`function`, "referentialType", undefined);
+        super.genericParadigm = genericParadigm;
+        if (parameters != undefined) {
+            for (let parameter of parameters) {
+                if (this.parameters.has(parameter.name)) {
+                    throw new SemanticException(`参数${parameter.name}重复定义`);
+                } else {
+                    this.parameters.set(parameter.name, parameter.type);
+                }
+            }
+        }
+        this.returnType = ret_type;
+    }
+    public registerParameter(name: string, type: Type) {
+        if (this.parameters.has(name)) {
+            throw new SemanticException(`变量重复定义:${name}`);
+        }
+        this.parameters.set(name, type);
     }
     public toString() {
-        if (this.type == "base_type") {
-            return this.basic_type;
-        } else if (this.type == "array") {
-            return `Array<${this.innerType}>`;
-        } else if (this.type == "function") {
-            return `(${[...this.argumentTypes!]})=>${this.returnType}`;
+        let parametersSign: string;//参数签名
+        if (this.parameters.size != 0) {
+            parametersSign = `${[...this.parameters.values()].map((value) => `${value}`).reduce((previous, current) => `${previous},${current}`)}`;
+        } else {
+            parametersSign = '';
         }
+        let ret = `${this.genericParadigm != undefined ? `<${this.genericParadigm.reduce((p, c) => `${p},${c}`)}>` : ''}${this.name}(${parametersSign})=>${this.returnType != undefined ? `${this.returnType}` : '待推导返回类型'}`;
+        return ret;
     }
 }
 class Address {
-    public location: locationType;
-    public value: number | string;
-    public type: Type;
-    public isComplete: boolean = true;//当前还不知道类型和地址，等待class闭合之后回填
-    public classScope: ClassScope | undefined;//如果isComplete为真，则附带其对应的scope
-    public nameOfClass: string | undefined;//如果isComplete为真，则附带其对应的名字
-    constructor(location: locationType, value: number | string, type: Type) {
-        this.location = location;
+    public variable: 'var' | 'val';
+    public typeRef: { type: Type | undefined, AST: AbstracSyntaxTree | undefined };//类型可以是一个Type或者由语法树推导得到的Type
+    public value: number;//地址
+    constructor(typeRef: { type: Type | undefined, AST: AbstracSyntaxTree | undefined }, value: number, vari: 'var' | 'val') {
+        this.typeRef = typeRef;
         this.value = value;
-        this.type = type;
-    }
-    public toString(): string {
-        switch (this.location) {
-            case "class": return `class.[${this.value}]`;
-            case "constant_val": return `${this.value}`;
-            case "global": return `global.[${this.value}]`;
-            case "stack": return `stack.[${this.value}]`;
-        }
+        this.variable = vari;
     }
 }
-abstract class Scope {
-    public location: locationType;
-    public addressMap: Map<string, Address> = new Map();//地址空间
-    public parentScope: Scope | undefined;//父空间
-    public allocated: number = 0;//当前可以使用的地址
-    protected ConflictWithParent: boolean;//声明空间是否和父空间冲突,即判断重复定义的时候需不需要搜索父空间
-    public errorMSG = '';//用于错误提示的字符串
-    public classScope: ClassScope | undefined;//每个scope chain只可能有唯一一个classScope
-    public functionScope: FunctionScope | undefined;//每个scope chain只可能有唯一一个classScope
-
-    /**
-     * 
-     * @param location 变量存放位置
-     * @param conflictWithParent 定义变量时是否会和父空间冲突
-     */
-    constructor(location: locationType, conflictWithParent: boolean) {
-        this.location = location;
-        this.ConflictWithParent = conflictWithParent;
-    }
-    abstract createVariable(name: string, type: Type): boolean;
-    public linkParentScope(scope: Scope) {
-        this.parentScope = scope;
-        if (scope.classScope != undefined) {
-            this.classScope = scope.classScope;
-        }
-        if (scope.functionScope != undefined) {
-            this.functionScope = scope.functionScope;
-        }
-    }
-
-    protected checkRedeclaration(name: string): boolean {
-        if (this.addressMap.has(name)) {
-            return true;
-        } else {
-            if (this.ConflictWithParent && this.parentScope != undefined) {//如果本scope和父scope声明可能会冲突，则搜索父空间
-                return this.parentScope.checkRedeclaration(name);
-            }
-            else {
-                return false;
-            }
-        }
-    }
-    public getVariable(name: string): Address | undefined {
-        let result = this.addressMap.get(name);
-        if (result != undefined) {
-            return result;
-        }
-        else {
-            if (this.parentScope != undefined) {//如果本scope和父scope声明可能会冲突，则搜索父空间
-                return this.parentScope?.getVariable(name);
-            }
-            else {
-                return undefined;
-            }
-        }
-    }
-}
-class GlobalScope extends Scope {
-    constructor() {
-        super("global", false);
-    }
-    public createVariable(name: string, type: Type): boolean {
-        if (this.checkRedeclaration(name)) {
-            this.errorMSG = `重复定义:${name}`;
-            return false;
-        } else {
-            this.addressMap.set(name, new Address(this.location, this.allocated++, type));
-            return true;
-        }
-    }
-}
-class FunctionScope extends Scope {
-    public returnType: Type;
-    constructor(retType: Type) {
-        super("stack", false);
-        this.returnType = retType;
-        this.functionScope = this;
-    }
-    public createVariable(name: string, type: Type): boolean {
-        if (this.checkRedeclaration(name)) {
-            this.errorMSG = `重复定义:${name}`;
-            return false;
-        } else {
-            this.addressMap.set(name, new Address(this.location, this.allocated++, type));
-            return true;
-        }
-    }
-}
-class ClassScope extends Scope {
-    public backpatch_list: { name: string, expectedType: Type, address: Address }[] = [];//需要回填的地址列表
-    public this_Type: Type;
-    constructor(name: string) {
-        super("class", false);
-        this.this_Type = Type.ConstructBase(name);
-        this.classScope = this;
-    }
-    //添加需要回填的地址
-    //expectedType:期望的类型
-    public addBackPatch(name: string, expectedType: Type, address: Address) {
-        this.backpatch_list.push({ name: name, expectedType: expectedType, address: address });
-    }
-    //回填
-    public backpatch() {
-        for (let obj of this.backpatch_list) {
-            let address = this.getVariable(obj.name);
-            if (address == undefined) {
-                throw new SemanticException(`未定义的符号:${obj.name}`);
-            }
-            if (obj.expectedType.toString() != address.type.toString()) {
-                throw new SemanticException(`期望类型为${obj.expectedType},实际类型为:${address.type}`);
-            }
-            obj.address.value = address.value;
-            obj.address.type = address.type;
-        }
-    }
-    public createVariable(name: string, type: Type): boolean {
-        if (this.checkRedeclaration(name)) {
-            this.errorMSG = `重复定义:${name}`;
-            return false;
-        } else {
-            this.addressMap.set(name, new Address(this.location, this.allocated++, type));
-            return true;
-        }
-    }
-}
-class StmtScope extends Scope {
-    private numOfVariable = 0;//本次stmt所申请的变量数量
-    public isLoopStmt: boolean = false;//是否是在循环语句中
-    public loopLabel: string | undefined;//是否有label
-    public breakAddresses: Address[] = [];//回填break指令
-    public continueAddresses: Address[] = [];//回填continue指令
-    constructor() {
-        super("stack", false);
-    }
-    public createTmp(type: Type): Address {
-        let parentFunctionScope: Scope | undefined = this;
-        for (; !(parentFunctionScope instanceof FunctionScope) && (parentFunctionScope != undefined);) {
-            parentFunctionScope = parentFunctionScope.parentScope;
-        }
-        if (parentFunctionScope == undefined) {
-            throw `stmtScope必然是挂在某个functionScope下面的`;
-        }
-        this.numOfVariable++;
-        return new Address(parentFunctionScope.location, parentFunctionScope.allocated++, type);
-    }
-    //如果是由stmt->declare得到的声明，则head是一个stmtScope，此时要把变量注册到functionScope中
-    public createVariable(name: string, type: Type): boolean {
-        let parentFunctionScope: Scope | undefined = this;
-        //向上搜索出层级最近的BlockScope或者FunctionScope
-        for (; !((parentFunctionScope instanceof FunctionScope) || (parentFunctionScope instanceof BlockScope)) && (parentFunctionScope != undefined);) {
-            parentFunctionScope = parentFunctionScope.parentScope;
-        }
-        if (parentFunctionScope == undefined) {
-            throw `stmtScope必然是挂在某个functionScope下面的`;
-        }
-        return parentFunctionScope.createVariable(name, type)
-    }
-    public removeTemporary() {
-        let parentFunctionScope: Scope | undefined = this;
-        for (; !(parentFunctionScope instanceof FunctionScope) && (parentFunctionScope != undefined);) {
-            parentFunctionScope = parentFunctionScope.parentScope;
-        }
-        if (parentFunctionScope == undefined) {
-            throw `stmtScope必然是挂在某个functionScope下面的`;
-        }
-        parentFunctionScope.allocated -= this.numOfVariable;
-    }
-}
-
-class BlockScope extends Scope {
-    public variables: Set<string> = new Set();//创建的临时变量列表
-    constructor() {
-        super("stack", false);
-    }
-    public createVariable(name: string, type: Type): boolean {
-        let parentFunctionScope: Scope | undefined = this;
-        for (; !(parentFunctionScope instanceof FunctionScope) && (parentFunctionScope != undefined);) {
-            parentFunctionScope = parentFunctionScope.parentScope;
-        }
-        if (parentFunctionScope == undefined) {
-            throw `stmtScope必然是挂在某个functionScope下面的`;
-        }
-        if (parentFunctionScope.createVariable(name, type)) {
-            this.variables.add(name);
-            return true;
-        } else {
-            return false;
-        }
-    }
-    public removeBlockVariable() {
-        let parentFunctionScope: Scope | undefined = this;
-        for (; !(parentFunctionScope instanceof FunctionScope) && (parentFunctionScope != undefined);) {
-            parentFunctionScope = parentFunctionScope.parentScope;
-        }
-        if (parentFunctionScope == undefined) {
-            throw `stmtScope必然是挂在某个functionScope下面的`;
-        }
-        for (let name of this.variables.values()) {
-            parentFunctionScope.addressMap.delete(name);//销毁作用域内的变量
-        }
-        parentFunctionScope.allocated -= this.variables.size;
-    }
-}
-
 class SemanticException extends Error {
     constructor(msg: string) {
         super(msg);
         super.name = 'SemanticException';
     }
 }
-class Descriptor {
-    public quadruples: Quadruple[] = [];
-    public tag: any;//用于附带对象
-    public toString(): string {
-        let ret = '';
-        for (let q of this.quadruples) {
-            ret += `${q}`;
-        }
-        return ret;
-    }
-}
-class StmtDescriptor extends Descriptor {
-    public hasReturn: boolean = false;
-}
-class ObjectDescriptor extends Descriptor {
-    public address: Address;//如果是需要回填的指令，则没有address
-    public boolBackPatch: boolean = false;//是否需要bool回填
-    public locationValue: boolean = false;//是否左值
-    public trueList: Address[] = [];
-    public falseList: Address[] = [];
-    constructor(add: Address) {
-        super();
-        this.address = add;
-    }
-}
-type operateType = "if" | "if <" | "if >" | "goto" | "=" | "+" | "ret";//指令的操作类型
-class Quadruple {
-    private static PC = 0;
-    public op: operateType;
-    public arg1: Address | undefined;
-    public arg2: Address | undefined;
-    public result: Address;
-    public pc = Quadruple.PC++;
-    public isJmp: boolean;//是否为跳转指令,无条件跳转或者有条件跳转都算
-    constructor(op: operateType, arg1: Address | undefined, arg2: Address | undefined, ret: Address) {
-        this.op = op;
-        this.arg1 = arg1;
-        this.arg2 = arg2;
-        this.result = ret;
-        if (op == 'goto' || op == 'if' || op == 'if <' || op == 'if >') {
-            this.isJmp = true;
+class Scope {
+    private Field: Map<string, Address> = new Map();
+    private allocated = 0;
+    public registerField(name: string, type: { type: Type | undefined, AST: AbstracSyntaxTree | undefined }, variable: 'var' | 'val') {
+        if (this.Field.has(name)) {
+            throw new SemanticException(`变量 ${name} 重复定义`);
         } else {
-            this.isJmp = false;
+            this.Field.set(name, new Address(type, this.allocated++, variable));
         }
     }
-    public toString(): string {
+}
+
+class FunctionScope extends Scope {
+    public programWraper: Type;//函数所在的program空间
+    public classWraper: Type | undefined;//class空间
+    constructor(programWraper: Type, classWraper: Type | undefined, isGenericParadigm: boolean) {
+        super();
+        this.programWraper = programWraper;
+        this.classWraper = classWraper;
+    }
+    public generateType(): FunctionType {
+        throw '构造函数类型'
+    }
+}
+class BlockScope extends Scope {
+    public parentFunction: FunctionScope;
+    public parent: FunctionScope | BlockScope;//是一个函数或者block
+    constructor(parentFunction: FunctionScope, parent: FunctionScope | BlockScope) {
+        super();
+        this.parentFunction = parentFunction;
+        this.parent = parent;
+    }
+}
+class ProgramScope {
+    public userTypes = new Map<string, Type>();
+    public type = new Type('$program', 'referentialType', undefined);//program是一个引用类型
+    constructor() {
+        this.userTypes.set("int", new Type('int', 'valuetype', undefined));
+    }
+    public generateType(): Type {
+        throw '构造一个Type'
+    }
+    //注册类型,刚刚注册的类型信息是不准确的，需要后续使用modifyType进行调整
+    public registerType(name: string) {
+        if (this.userTypes.has(name)) {
+            throw new SemanticException(`用户类型${name}已存在`);
+        } else {
+            let userType = new Type(name, "referentialType", undefined);
+            userType.programScope = this;
+            this.userTypes.set(name, userType);
+        }
+    }
+    public unregisterType(name: string) {
+        if (!this.userTypes.has(name)) {
+            throw new SemanticException(`试图释放不存在的类型${name}`);
+        } else {
+            this.userTypes.delete(name);
+        }
+    }
+    //调整类型
+    public modifyType(name: string, modifier: "valuetype" | "sealed" | "referentialType", genericParadigm: string[] | undefined, templateInstances: Type[] | undefined) {
+        let type = this.userTypes.get(name);
+        if (type != undefined) {
+            type.modifier = modifier;
+            type.genericParadigm = genericParadigm;
+            type.templateInstances = templateInstances;
+        } else {
+            throw new SemanticException(`试图调整未注册的类型${name}`);
+        }
+    }
+    public getType(name: string): Type {
+        if (this.userTypes.has(name)) {
+            return this.userTypes.get(name)!;
+        } else {
+            throw new SemanticException(`试获取不存在的类型${name}`);
+        }
+    }
+};
+const nodeCatch: Node[] = [];
+type operator = '+' | '-' | '*' | '/' | '=' | 'immediate' | 'load' | 'super' | 'this' | 'field' | 'call';
+class Node {
+    public op: operator;
+    public tag: string | undefined;
+    public children: number[] = [];
+    public type: Type | undefined;
+    public value: unknown;
+    public index: number;
+    constructor(op: operator) {
+        this.op = op;
+        this.index = nodeCatch.length;
+        nodeCatch.push(this);
+    }
+    public postorderTraversal() {
         switch (this.op) {
-            case "if": return `${this.pc}\t${this.op}\t${this.arg1}\tgoto\t${this.result}\n`;
-            case "if <": return `${this.pc}\tif\t${this.arg1}<${this.arg2}\tgoto\t${this.result}\n`;
-            case "if >": return `${this.pc}\tif\t${this.arg1}<${this.arg2}\tgoto\t${this.result}\n`;
-            case "goto": return `${this.pc}\tgoto\t${this.result}\n`;
-            case "=": return `${this.pc}\t${this.result}\t=\t${this.arg1}\n`;
-            case "ret": return `${this.pc}\t ret ${this.result != undefined ? this.result : ''}\n`;
-            default: return `${this.pc}\t${this.result}\t=\t${this.arg1}\t${this.op}\t${this.arg2}\n`;
+            case 'load':
+                console.log(`load ${this.value}`);
+                break;
+            case 'field':
+                nodeCatch[this.children[0]].postorderTraversal();
+                console.log(`get field ${this.tag}`);
+                break;
+            case 'call':
+                nodeCatch[this.children[0]].postorderTraversal();
+                console.log(`call`);
+                for (let i = 1; i < this.children.length; i++) {
+                    nodeCatch[this.children[i]].postorderTraversal()
+                }
+                break;
+            default: console.log(`还未实现打印的操作符${this.op}`);
+
         }
     }
 }
-class BackPatchTools {
-    public static backpatch(addresses: Address[], value: number | string) {
-        for (let address of addresses) {
-            address.value = value;
-        }
-    }
-    public static merge(a: Address[], b: Address[]) {
-        return a.concat(b);
+//为类型推导服务的抽象语法树
+class AbstracSyntaxTree {
+    public root: Node;
+    constructor(root: Node) {
+        this.root = root;
     }
 }
-export { BackPatchTools, Scope, Address, SemanticException, Type, GlobalScope, FunctionScope, ClassScope, StmtScope, StmtDescriptor, ObjectDescriptor, BlockScope, Quadruple, Descriptor }
+const program = new ProgramScope();
+export { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScope, SemanticException, ProgramScope, Node, AbstracSyntaxTree, program }
