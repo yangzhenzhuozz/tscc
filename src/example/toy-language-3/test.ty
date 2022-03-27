@@ -1,4 +1,4 @@
-var test=(a).b;
+var test=(a).b((a).b);
 var a:Map;
 var b:(Map);
 var c:Map<int,int>;

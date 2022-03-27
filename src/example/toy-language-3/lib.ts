@@ -203,7 +203,7 @@ class ProgramScope {
     }
 };
 const nodeCatch: Node[] = [];
-type operator = '+' | '-' | '*' | '/' | 'immediate' | 'load' | 'super' | 'this' | 'field';
+type operator = '+' | '-' | '*' | '/' | '=' | 'immediate' | 'load' | 'super' | 'this' | 'field' | 'call';
 class Node {
     public op: operator;
     public tag: string | undefined;
@@ -224,6 +224,13 @@ class Node {
             case 'field':
                 nodeCatch[this.children[0]].postorderTraversal();
                 console.log(`get field ${this.tag}`);
+                break;
+            case 'call':
+                nodeCatch[this.children[0]].postorderTraversal();
+                console.log(`call`);
+                for (let i = 1; i < this.children.length; i++) {
+                    nodeCatch[this.children[i]].postorderTraversal()
+                }
                 break;
             default: console.log(`还未实现打印的操作符${this.op}`);
 

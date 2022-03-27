@@ -419,9 +419,40 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
         { "switch_bodys:switch_bodys switch_body": {} },//switch_bodys可以由多个switch_body组成
         { "switch_body:case immediate_val : statement": {} },//case 语句
         { "switch_body:default : statement": {} },//default语句
-        { "object:( object )": {} },//括号括住的object还是一个object
-        { "object:object . id": {} },//取成员
-        { "object:object  ( arguments )": {} },//函数调用
+        {
+            "object:( object )": {
+                action: function ($, s): AbstracSyntaxTree {
+                    return $[1] as AbstracSyntaxTree;
+                }
+            }
+        },//括号括住的object还是一个object
+        {
+            "object:object . id": {
+                action: function ($, s): AbstracSyntaxTree {
+                    let obj = $[0] as AbstracSyntaxTree;
+                    let id = $[2] as string;
+                    let node = new Node('field',);
+                    node.tag = id;
+                    node.children.push(obj.root.index);
+                    return new AbstracSyntaxTree(node);
+                }
+            }
+        },//取成员
+        {
+            "object:object  ( arguments )": {
+                action: function ($, s): AbstracSyntaxTree {
+                    let obj = $[0] as AbstracSyntaxTree;
+                    let _arguments = $[2] as AbstracSyntaxTree[];
+                    let node = new Node('call');
+                    node.children.push(obj.root.index);
+                    for (let a of _arguments) {
+                        node.children.push(a.root.index);
+                    }
+                    node.postorderTraversal();
+                    return new AbstracSyntaxTree(node);
+                }
+            }
+        },//函数调用
         { "object:object template_instances ( arguments )": {} },//模板函数调用
         { "object:object = object": {} },
         { "object:object + object": {} },
@@ -441,8 +472,27 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
         { "object:object --": {} },//单目运算符--
         { "object:object [ object ]": {} },//[]运算符
         { "object:object ? object : object": { priority: "?" } },//三目运算
-        { "object:id": {} },//id是一个对象
-        { "object:immediate_val": {} },//立即数是一个object
+        {
+            "object:id": {
+                action: function ($, s): AbstracSyntaxTree {
+                    let id = $[0] as string;
+                    let node = new Node('load');
+                    node.value = id;
+                    return new AbstracSyntaxTree(node);
+                }
+            }
+        },//id是一个对象
+        {
+            "object:immediate_val": {
+                action: function ($, s): AbstracSyntaxTree {
+                    let immediate_val = $[0] as { value: unknown, type: Type };
+                    let node = new Node('immediate');
+                    node.value = immediate_val.value;
+                    node.type = immediate_val.type;
+                    return new AbstracSyntaxTree(node);
+                }
+            }
+        },//立即数是一个object
         { "object:super": {} },//super是一个对象
         { "object:this": {} },//this是一个object
         { "object:template_definition ( parameter_declare ) => { statements }": {} },//模板lambda
@@ -482,9 +532,30 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
             }
         },//template_instance_list可以为多个type
         { "arguments:": {} },//实参可以为空
-        { "arguments:argument_list": {} },//实参可以是argument_list
-        { "argument_list:object": {} },//参数列表可以是一个object
-        { "argument_list:argument_list , object": {} },//参数列表可以是多个object
+        {
+            "arguments:argument_list": {
+                action: function ($, s): AbstracSyntaxTree[] {
+                    return $[0] as AbstracSyntaxTree[];
+                }
+            }
+        },//实参可以是argument_list
+        {
+            "argument_list:object": {
+                action: function ($, s): AbstracSyntaxTree[] {
+                    return [$[0] as AbstracSyntaxTree]
+                }
+            }
+        },//参数列表可以是一个object
+        {
+            "argument_list:argument_list , object": {
+                action: function ($, s): AbstracSyntaxTree[] {
+                    let argument_list = $[0] as AbstracSyntaxTree[];
+                    let obj = $[2] as AbstracSyntaxTree;
+                    argument_list.push(obj);
+                    return argument_list;
+                }
+            }
+        },//参数列表可以是多个object
         {
             "W2_0:": {
                 action: function ($, s) {
@@ -498,7 +569,7 @@ let tscc = new TSCC(grammar, { language: "zh-cn", debug: false });
 let str = tscc.generate();
 if (str != null) {
     console.log('成功');
-    fs.writeFileSync('./src/example/toy-language-3/parser-1.ts', str);
+    fs.writeFileSync('./src/example/toy-language-3/parser.ts', str);
 } else {
     console.log('失败');
 }
