@@ -217,7 +217,7 @@ class Node {
         this.index = nodeCatch.length;
         nodeCatch.push(this);
     }
-    postorderTraversal(scope: Type | FunctionScope | BlockScope | undefined) {
+    postorderTraversal(scope: ProgramScope | Type | FunctionScope | BlockScope) {
         switch (this.op) {
             case 'load':
                 console.log(`load ${this.value}`);
@@ -241,9 +241,10 @@ class Node {
 //为类型推导服务的抽象语法树
 class AbstracSyntaxTree {
     public root: Node;
-    public scope: Type | FunctionScope | BlockScope | undefined;
-    constructor(root: Node) {
+    public scope: ProgramScope | Type | FunctionScope | BlockScope;
+    constructor(root: Node, scope: ProgramScope | Type | FunctionScope | BlockScope) {
         this.root = root;
+        this.scope = scope;
     }
     traversal() {
         this.root.postorderTraversal(this.scope);
