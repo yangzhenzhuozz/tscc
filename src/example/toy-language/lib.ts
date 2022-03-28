@@ -203,7 +203,9 @@ class ProgramScope {
     }
 };
 const nodeCatch: Node[] = [];
-type operator = '+' | '-' | '*' | '/' | '=' | '<' | '>' | '<=' | '>=' | '&&' | '==' | '||' | '!' | '++' | '--' | 'index' | '?' | 'immediate' | 'load' | 'super' | 'this' | 'field' | 'call' | 'instanceof';
+type operator = '+' | '-' | '*' | '/' | '=' | '<' | '>' | '<=' | '>=' | '&&' | '==' | '||' | '!'
+    | '++' | '--' | 'index' | '?' | 'immediate' | 'load' | 'super' | 'this' | 'field' | 'call'
+    | 'instanceof' | 'cast' | 'new';
 class Node {
     public op: operator;
     public tag: any;

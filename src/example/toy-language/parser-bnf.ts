@@ -189,7 +189,7 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
                     let id = $[1] as string;
                     let parameter_declare = $[4] as { name: string, type: Type }[] | undefined;
                     let ret_type = $[6] as Type | undefined;
-                    let type = new FunctionType(parameter_declare, ret_type, undefined);
+                    let type = new FunctionType(parameter_declare, ret_type, template_declare);
                     if (head instanceof ProgramScope) {//在程序空间中声明的变量
                         head.type.registerField(id, { type: type, AST: undefined }, 'val');
                     } else if (head instanceof Type) {//在class中声明的变量
@@ -262,9 +262,9 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
             }
         },//template_definition_list可以是一个template_definition_list后面接上 , id
         {
-            "type:( type )": {
+            "type:( W2_0 type )": {
                 action: function ($, s): Type {
-                    return $[1] as Type;
+                    return $[2] as Type;
                 }
             }
         },//type可以用圆括号包裹
@@ -309,11 +309,11 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
             }
         },//泛型函数类型
         {
-            "type:( parameter_declare ) => type": {
+            "type:( W2_0 parameter_declare ) => type": {
                 priority: "low_priority_for_[",
                 action: function ($, s): Type {
-                    let parameter_declare = $[1] as { name: string, type: Type }[];
-                    let ret_type = $[4] as Type;
+                    let parameter_declare = $[2] as { name: string, type: Type }[];
+                    let ret_type = $[5] as Type;
                     let ret = new FunctionType(parameter_declare, ret_type, undefined);
                     return ret;
                 }
@@ -455,18 +455,18 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
             }
         },//函数调用
         {
-            "object:object template_instances ( arguments )": {
+            "object:object < W3_0 template_instance_list > ( arguments )": {
                 action: function ($, s): AbstracSyntaxTree {
                     let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
                     let obj = $[0] as AbstracSyntaxTree;
-                    let template_instances = $[1] as Type[];
-                    let _arguments = $[3] as AbstracSyntaxTree[];
+                    let template_instance_list = $[3] as Type[];
+                    let _arguments = $[6] as AbstracSyntaxTree[];
                     let node = new Node('call');
                     node.children.push(obj.root.index);
                     for (let a of _arguments) {
                         node.children.push(a.root.index);
                     }
-                    node.tag = template_instances;
+                    node.tag = template_instance_list;
                     return new AbstracSyntaxTree(node, head);
                 }
             }
@@ -725,12 +725,90 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
                 }
             }
         },//立即数是一个object
-        { "object:super": {} },//super是一个对象
-        { "object:this": {} },//this是一个object
-        { "object:template_definition ( parameter_declare ) => { statements }": {} },//模板lambda
-        { "object:( W2_0 parameter_declare ) => { statements }": {} },//lambda
-        { "object:( W2_0 type ) object": { priority: "cast_priority" } },//强制转型
-        { "object:new type  ( arguments )": {} },//new 对象
+        {
+            "object:super": {
+                action: function ($, s): AbstracSyntaxTree {
+                    let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
+                    let node = new Node('super');
+                    return new AbstracSyntaxTree(node, head);
+                }
+            }
+        },//super是一个对象
+        {
+            "object:this": {
+                action: function ($, s): AbstracSyntaxTree {
+                    let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
+                    let node = new Node('this');
+                    return new AbstracSyntaxTree(node, head);
+                }
+            }
+        },//this是一个object
+        {
+            "object:template_definition ( parameter_declare ) => { W7_0 statements }": {
+                action: function ($, s): AbstracSyntaxTree {
+                    let template_definition = $[0] as string[];
+                    for (let t of template_definition) {
+                        program.unregisterType(t);
+                        userTypeDictionary.delete(t);
+                    }
+                    let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
+                    let parameter_declare = $[2] as { name: string, type: Type }[] | undefined;
+                    let type = new FunctionType(parameter_declare, undefined, template_definition);
+                    let statements = $[7] as AbstracSyntaxTree[];
+                    let node = new Node('immediate');
+                    node.type = type;
+                    for (let ast of statements) {
+                        node.children.push(ast.root.index);
+                    }
+                    return new AbstracSyntaxTree(node, head);
+                }
+            }
+        },//模板lambda
+        {
+            "object:( W2_0 parameter_declare ) => { W7_0 statements }": {
+                action: function ($, s): AbstracSyntaxTree {
+                    let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
+                    let parameter_declare = $[2] as { name: string, type: Type }[] | undefined;
+                    let type = new FunctionType(parameter_declare, undefined, undefined);
+                    let statements = $[7] as AbstracSyntaxTree[];
+                    let node = new Node('immediate');
+                    node.type = type;
+                    for (let ast of statements) {
+                        node.children.push(ast.root.index);
+                    }
+                    return new AbstracSyntaxTree(node, head);
+                }
+            }
+        },//lambda
+        {
+            "object:( W2_0 type ) object": {
+                priority: "cast_priority",
+                action: function ($, s): AbstracSyntaxTree {
+                    let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
+                    let type = $[2] as Type;
+                    let obj = $[4] as AbstracSyntaxTree;
+                    let node = new Node('cast');
+                    node.tag = type;
+                    node.children.push(obj.root.index);
+                    return new AbstracSyntaxTree(node, head);
+                }
+            }
+        },//强制转型
+        {
+            "object:new type  ( W4_0 arguments )": {
+                action: function ($, s): AbstracSyntaxTree {
+                    let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
+                    let type = $[1] as Type;
+                    let _arguments = $[4] as AbstracSyntaxTree[];
+                    let node = new Node('new');
+                    node.tag = type;
+                    for(let arg of _arguments){
+                        node.children.push(arg.root.index);
+                    }
+                    return new AbstracSyntaxTree(node, head);
+                }
+            }
+        },//new 对象
         { "object:new type array_init_list": {} },//new一个数组
         { "array_init_list:array_inits array_placeholder": {} },//new 数组的时候是可以这样写的 new int [2][3][][],其中[2][3]对应了array_inits,后面的[][]对应了array_placeholder(数组占位符)
         { "array_inits:array_inits [ object ]": {} },//见array_init_list一条的解释
@@ -740,6 +818,7 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
         { "array_placeholder_list:array_placeholder_list [ ]": {} },//见array_init_list一条的解释
         { "array_placeholder_list:[ ]": {} },//见array_init_list一条的解释
         {
+            //这里的W3_0并不是真的为了向前取head，是为了避免和 object < object 冲突，所有和template_instances 相关的产生式都不能取head,否则会错乱
             "template_instances:< template_instance_list >": {
                 action: function ($, s): Type[] {
                     return $[1] as Type[];
@@ -815,14 +894,21 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
                     return s.slice(-6)[0];
                 }
             }
+        },
+        {
+            "W7_0:": {
+                action: function ($, s) {
+                    return s.slice(-7)[0];
+                }
+            }
         }
     ]
 }
-let tscc = new TSCC(grammar, { language: "zh-cn", debug: true });
+let tscc = new TSCC(grammar, { language: "zh-cn", debug: false });
 let str = tscc.generate();
 if (str != null) {
+    fs.writeFileSync('./src/example/toy-language/parser.ts', str);
     console.log('成功');
-    fs.writeFileSync('./src/example/toy-language-3/parser.ts', str);
 } else {
     console.log('失败');
 }

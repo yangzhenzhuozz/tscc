@@ -181,7 +181,7 @@ let grammar: Grammar = {
         * 也采用方案2，令函数调用优先级高于强制转型
         */
         { "object:object  ( arguments )": {} },//函数调用
-        { "object:object template_instances ( arguments )": {} },//模板函数调用
+        { "object:object < template_instance_list > ( arguments )": {} },//模板函数调用
         /**
          * 一系列的双目运算符,二义性如下:
          * a+b*c
@@ -284,7 +284,6 @@ let tscc = new TSCC(grammar, { language: "zh-cn", debug: false });
 let str = tscc.generate();//构造编译器代码
 if (str != null) {//如果构造成功则生成编编译器代码
     console.log(`成功`);
-    fs.writeFileSync('./src/example/toy-language-3/parser-base.ts', str);
 } else {
     console.log(`失败`);
 }
