@@ -431,7 +431,7 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
                 action: function ($, s): AbstracSyntaxTree {
                     let obj = $[0] as AbstracSyntaxTree;
                     let id = $[2] as string;
-                    let node = new Node('field',);
+                    let node = new Node('field');
                     node.tag = id;
                     node.children.push(obj.root.index);
                     return new AbstracSyntaxTree(node);
@@ -468,24 +468,219 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
                 }
             }
         },//模板函数调用
-        { "object:object = object": {} },
-        { "object:object + object": {} },
-        { "object:object - object": {} },
-        { "object:object * object": {} },
-        { "object:object / object": {} },
-        { "object:object < object": {} },
-        { "object:object <= object": {} },
-        { "object:object > object": {} },
-        { "object:object >= object": {} },
-        { "object:object == object": {} },
-        { "object:object || object": {} },
-        { "object:object && object": {} },
-        { "object:object instanceof type": {} },
-        { "object:! object": {} },//单目运算符-非
-        { "object:object ++": {} },//单目运算符++
-        { "object:object --": {} },//单目运算符--
-        { "object:object [ object ]": {} },//[]运算符
-        { "object:object ? object : object": { priority: "?" } },//三目运算
+        {
+            "object:object = object": {
+                action: function ($, s): AbstracSyntaxTree {
+                    let left = $[0] as AbstracSyntaxTree;
+                    let right = $[2] as AbstracSyntaxTree;
+                    let node = new Node('=');
+                    node.children.push(left.root.index);
+                    node.children.push(right.root.index);
+                    return new AbstracSyntaxTree(node);
+                }
+            }
+        },
+        {
+            "object:object + object": {
+                action: function ($, s): AbstracSyntaxTree {
+                    let left = $[0] as AbstracSyntaxTree;
+                    let right = $[2] as AbstracSyntaxTree;
+                    let node = new Node('+');
+                    node.children.push(left.root.index);
+                    node.children.push(right.root.index);
+                    return new AbstracSyntaxTree(node);
+                }
+            }
+        },
+        {
+            "object:object - object": {
+                action: function ($, s): AbstracSyntaxTree {
+                    let left = $[0] as AbstracSyntaxTree;
+                    let right = $[2] as AbstracSyntaxTree;
+                    let node = new Node('-');
+                    node.children.push(left.root.index);
+                    node.children.push(right.root.index);
+                    return new AbstracSyntaxTree(node);
+                }
+            }
+        },
+        {
+            "object:object * object": {
+                action: function ($, s): AbstracSyntaxTree {
+                    let left = $[0] as AbstracSyntaxTree;
+                    let right = $[2] as AbstracSyntaxTree;
+                    let node = new Node('*');
+                    node.children.push(left.root.index);
+                    node.children.push(right.root.index);
+                    return new AbstracSyntaxTree(node);
+                }
+            }
+        },
+        {
+            "object:object / object": {
+                action: function ($, s): AbstracSyntaxTree {
+                    let left = $[0] as AbstracSyntaxTree;
+                    let right = $[2] as AbstracSyntaxTree;
+                    let node = new Node('/');
+                    node.children.push(left.root.index);
+                    node.children.push(right.root.index);
+                    return new AbstracSyntaxTree(node);
+                }
+            }
+        },
+        {
+            "object:object < object": {
+                action: function ($, s): AbstracSyntaxTree {
+                    let left = $[0] as AbstracSyntaxTree;
+                    let right = $[2] as AbstracSyntaxTree;
+                    let node = new Node('<');
+                    node.children.push(left.root.index);
+                    node.children.push(right.root.index);
+                    return new AbstracSyntaxTree(node);
+                }
+            }
+        },
+        {
+            "object:object <= object": {
+                action: function ($, s): AbstracSyntaxTree {
+                    let left = $[0] as AbstracSyntaxTree;
+                    let right = $[2] as AbstracSyntaxTree;
+                    let node = new Node('<=');
+                    node.children.push(left.root.index);
+                    node.children.push(right.root.index);
+                    return new AbstracSyntaxTree(node);
+                }
+            }
+        },
+        {
+            "object:object > object": {
+                action: function ($, s): AbstracSyntaxTree {
+                    let left = $[0] as AbstracSyntaxTree;
+                    let right = $[2] as AbstracSyntaxTree;
+                    let node = new Node('>');
+                    node.children.push(left.root.index);
+                    node.children.push(right.root.index);
+                    return new AbstracSyntaxTree(node);
+                }
+            }
+        },
+        {
+            "object:object >= object": {
+                action: function ($, s): AbstracSyntaxTree {
+                    let left = $[0] as AbstracSyntaxTree;
+                    let right = $[2] as AbstracSyntaxTree;
+                    let node = new Node('>=');
+                    node.children.push(left.root.index);
+                    node.children.push(right.root.index);
+                    return new AbstracSyntaxTree(node);
+                }
+            }
+        },
+        {
+            "object:object == object": {
+                action: function ($, s): AbstracSyntaxTree {
+                    let left = $[0] as AbstracSyntaxTree;
+                    let right = $[2] as AbstracSyntaxTree;
+                    let node = new Node('==');
+                    node.children.push(left.root.index);
+                    node.children.push(right.root.index);
+                    return new AbstracSyntaxTree(node);
+                }
+            }
+        },
+        {
+            "object:object || object": {
+                action: function ($, s): AbstracSyntaxTree {
+                    let left = $[0] as AbstracSyntaxTree;
+                    let right = $[2] as AbstracSyntaxTree;
+                    let node = new Node('||');
+                    node.children.push(left.root.index);
+                    node.children.push(right.root.index);
+                    return new AbstracSyntaxTree(node);
+                }
+            }
+        },
+        {
+            "object:object && object": {
+                action: function ($, s): AbstracSyntaxTree {
+                    let left = $[0] as AbstracSyntaxTree;
+                    let right = $[2] as AbstracSyntaxTree;
+                    let node = new Node('&&');
+                    node.children.push(left.root.index);
+                    node.children.push(right.root.index);
+                    return new AbstracSyntaxTree(node);
+                }
+            }
+        },
+        {
+            "object:object instanceof type": {
+                action: function ($, s): AbstracSyntaxTree {
+                    let obj = $[0] as AbstracSyntaxTree;
+                    let type = $[2] as Type;
+                    let node = new Node('instanceof');
+                    node.tag = type;
+                    node.children.push(obj.root.index);
+                    return new AbstracSyntaxTree(node);
+                }
+            }
+        },
+        {
+            "object:! object": {
+                action: function ($, s): AbstracSyntaxTree {
+                    let obj = $[2] as AbstracSyntaxTree;
+                    let node = new Node('!');
+                    node.children.push(obj.root.index);
+                    return new AbstracSyntaxTree(node);
+                }
+            }
+        },//单目运算符-非
+        {
+            "object:object ++": {
+                action: function ($, s): AbstracSyntaxTree {
+                    let obj = $[0] as AbstracSyntaxTree;
+                    let node = new Node('++');
+                    node.children.push(obj.root.index);
+                    return new AbstracSyntaxTree(node);
+                }
+            }
+        },//单目运算符++
+        {
+            "object:object --": {
+                action: function ($, s): AbstracSyntaxTree {
+                    let obj = $[0] as AbstracSyntaxTree;
+                    let node = new Node('--');
+                    node.children.push(obj.root.index);
+                    return new AbstracSyntaxTree(node);
+                }
+            }
+        },//单目运算符--
+        {
+            "object:object [ object ]": {
+                action: function ($, s): AbstracSyntaxTree {
+                    let obj = $[0] as AbstracSyntaxTree;
+                    let index = $[2] as AbstracSyntaxTree;
+                    let node = new Node('index');
+                    node.children.push(obj.root.index);
+                    node.children.push(index.root.index);
+                    return new AbstracSyntaxTree(node);
+                }
+            }
+        },//[]运算符
+        {
+            "object:object ? object : object": {
+                priority: "?",
+                action: function ($, s): AbstracSyntaxTree {
+                    let obj0 = $[0] as AbstracSyntaxTree;
+                    let obj1 = $[2] as AbstracSyntaxTree;
+                    let obj2 = $[4] as AbstracSyntaxTree;
+                    let node = new Node('?');
+                    node.children.push(obj0.root.index);
+                    node.children.push(obj1.root.index);
+                    node.children.push(obj2.root.index);
+                    return new AbstracSyntaxTree(node);
+                }
+            }
+        },//三目运算
         {
             "object:id": {
                 action: function ($, s): AbstracSyntaxTree {

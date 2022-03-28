@@ -203,7 +203,7 @@ class ProgramScope {
     }
 };
 const nodeCatch: Node[] = [];
-type operator = '+' | '-' | '*' | '/' | '=' | 'immediate' | 'load' | 'super' | 'this' | 'field' | 'call';
+type operator = '+' | '-' | '*' | '/' | '=' | '<' | '>' | '<=' | '>=' | '&&' | '==' | '||' | '!' | '++' | '--' | 'index' | '?' | 'immediate' | 'load' | 'super' | 'this' | 'field' | 'call' | 'instanceof';
 class Node {
     public op: operator;
     public tag: any;
@@ -211,25 +211,26 @@ class Node {
     public type: Type | undefined;
     public value: unknown;
     public index: number;
+    public isleft = false;//是否为左值
     constructor(op: operator) {
         this.op = op;
         this.index = nodeCatch.length;
         nodeCatch.push(this);
     }
-    public postorderTraversal() {
+    postorderTraversal(scope: Type | FunctionScope | BlockScope | undefined) {
         switch (this.op) {
             case 'load':
                 console.log(`load ${this.value}`);
                 break;
             case 'field':
-                nodeCatch[this.children[0]].postorderTraversal();
+                nodeCatch[this.children[0]].postorderTraversal(scope);
                 console.log(`get field ${this.tag}`);
                 break;
             case 'call':
-                nodeCatch[this.children[0]].postorderTraversal();
+                nodeCatch[this.children[0]].postorderTraversal(scope);
                 console.log(`call`);
                 for (let i = 1; i < this.children.length; i++) {
-                    nodeCatch[this.children[i]].postorderTraversal()
+                    nodeCatch[this.children[i]].postorderTraversal(scope)
                 }
                 break;
             default: console.log(`还未实现打印的操作符${this.op}`);
@@ -240,8 +241,12 @@ class Node {
 //为类型推导服务的抽象语法树
 class AbstracSyntaxTree {
     public root: Node;
+    public scope: Type | FunctionScope | BlockScope | undefined;
     constructor(root: Node) {
         this.root = root;
+    }
+    traversal() {
+        this.root.postorderTraversal(this.scope);
     }
 }
 const program = new ProgramScope();
