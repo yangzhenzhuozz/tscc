@@ -422,7 +422,7 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
         {
             "object:( W2_0 object )": {
                 action: function ($, s): AbstracSyntaxTree {
-                    return $[1] as AbstracSyntaxTree;
+                    return $[2] as AbstracSyntaxTree;
                 }
             }
         },//括号括住的object还是一个object
@@ -444,11 +444,13 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
                 action: function ($, s): AbstracSyntaxTree {
                     let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
                     let obj = $[0] as AbstracSyntaxTree;
-                    let _arguments = $[2] as AbstracSyntaxTree[];
+                    let _arguments = $[2] as AbstracSyntaxTree[] | undefined;
                     let node = new Node('call');
                     node.children.push(obj.root.index);
-                    for (let a of _arguments) {
-                        node.children.push(a.root.index);
+                    if (_arguments != undefined) {
+                        for (let a of _arguments) {
+                            node.children.push(a.root.index);
+                        }
                     }
                     return new AbstracSyntaxTree(node, head);
                 }
@@ -460,11 +462,13 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
                     let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
                     let obj = $[0] as AbstracSyntaxTree;
                     let template_instance_list = $[3] as Type[];
-                    let _arguments = $[6] as AbstracSyntaxTree[];
+                    let _arguments = $[6] as AbstracSyntaxTree[] | undefined;
                     let node = new Node('call');
                     node.children.push(obj.root.index);
-                    for (let a of _arguments) {
-                        node.children.push(a.root.index);
+                    if (_arguments != undefined) {
+                        for (let a of _arguments) {
+                            node.children.push(a.root.index);
+                        }
                     }
                     node.tag = template_instance_list;
                     return new AbstracSyntaxTree(node, head);
@@ -476,7 +480,7 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
                 action: function ($, s): AbstracSyntaxTree {
                     let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
                     let left = $[0] as AbstracSyntaxTree;
-                    let right = $[2] as AbstracSyntaxTree;
+                    let right = $[3] as AbstracSyntaxTree;
                     let node = new Node('=');
                     node.children.push(left.root.index);
                     node.children.push(right.root.index);
@@ -489,7 +493,7 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
                 action: function ($, s): AbstracSyntaxTree {
                     let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
                     let left = $[0] as AbstracSyntaxTree;
-                    let right = $[2] as AbstracSyntaxTree;
+                    let right = $[3] as AbstracSyntaxTree;
                     let node = new Node('+');
                     node.children.push(left.root.index);
                     node.children.push(right.root.index);
@@ -502,7 +506,7 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
                 action: function ($, s): AbstracSyntaxTree {
                     let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
                     let left = $[0] as AbstracSyntaxTree;
-                    let right = $[2] as AbstracSyntaxTree;
+                    let right = $[3] as AbstracSyntaxTree;
                     let node = new Node('-');
                     node.children.push(left.root.index);
                     node.children.push(right.root.index);
@@ -515,7 +519,7 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
                 action: function ($, s): AbstracSyntaxTree {
                     let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
                     let left = $[0] as AbstracSyntaxTree;
-                    let right = $[2] as AbstracSyntaxTree;
+                    let right = $[3] as AbstracSyntaxTree;
                     let node = new Node('*');
                     node.children.push(left.root.index);
                     node.children.push(right.root.index);
@@ -528,7 +532,7 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
                 action: function ($, s): AbstracSyntaxTree {
                     let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
                     let left = $[0] as AbstracSyntaxTree;
-                    let right = $[2] as AbstracSyntaxTree;
+                    let right = $[3] as AbstracSyntaxTree;
                     let node = new Node('/');
                     node.children.push(left.root.index);
                     node.children.push(right.root.index);
@@ -541,7 +545,7 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
                 action: function ($, s): AbstracSyntaxTree {
                     let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
                     let left = $[0] as AbstracSyntaxTree;
-                    let right = $[2] as AbstracSyntaxTree;
+                    let right = $[3] as AbstracSyntaxTree;
                     let node = new Node('<');
                     node.children.push(left.root.index);
                     node.children.push(right.root.index);
@@ -554,7 +558,7 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
                 action: function ($, s): AbstracSyntaxTree {
                     let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
                     let left = $[0] as AbstracSyntaxTree;
-                    let right = $[2] as AbstracSyntaxTree;
+                    let right = $[3] as AbstracSyntaxTree;
                     let node = new Node('<=');
                     node.children.push(left.root.index);
                     node.children.push(right.root.index);
@@ -567,7 +571,7 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
                 action: function ($, s): AbstracSyntaxTree {
                     let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
                     let left = $[0] as AbstracSyntaxTree;
-                    let right = $[2] as AbstracSyntaxTree;
+                    let right = $[3] as AbstracSyntaxTree;
                     let node = new Node('>');
                     node.children.push(left.root.index);
                     node.children.push(right.root.index);
@@ -580,7 +584,7 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
                 action: function ($, s): AbstracSyntaxTree {
                     let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
                     let left = $[0] as AbstracSyntaxTree;
-                    let right = $[2] as AbstracSyntaxTree;
+                    let right = $[3] as AbstracSyntaxTree;
                     let node = new Node('>=');
                     node.children.push(left.root.index);
                     node.children.push(right.root.index);
@@ -593,7 +597,7 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
                 action: function ($, s): AbstracSyntaxTree {
                     let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
                     let left = $[0] as AbstracSyntaxTree;
-                    let right = $[2] as AbstracSyntaxTree;
+                    let right = $[3] as AbstracSyntaxTree;
                     let node = new Node('==');
                     node.children.push(left.root.index);
                     node.children.push(right.root.index);
@@ -606,7 +610,7 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
                 action: function ($, s): AbstracSyntaxTree {
                     let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
                     let left = $[0] as AbstracSyntaxTree;
-                    let right = $[2] as AbstracSyntaxTree;
+                    let right = $[3] as AbstracSyntaxTree;
                     let node = new Node('||');
                     node.children.push(left.root.index);
                     node.children.push(right.root.index);
@@ -619,7 +623,7 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
                 action: function ($, s): AbstracSyntaxTree {
                     let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
                     let left = $[0] as AbstracSyntaxTree;
-                    let right = $[2] as AbstracSyntaxTree;
+                    let right = $[3] as AbstracSyntaxTree;
                     let node = new Node('&&');
                     node.children.push(left.root.index);
                     node.children.push(right.root.index);
@@ -799,11 +803,13 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
                 action: function ($, s): AbstracSyntaxTree {
                     let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
                     let type = $[1] as Type;
-                    let _arguments = $[4] as AbstracSyntaxTree[];
+                    let _arguments = $[4] as AbstracSyntaxTree[] | undefined;
                     let node = new Node('new');
                     node.tag = type;
-                    for (let arg of _arguments) {
-                        node.children.push(arg.root.index);
+                    if (_arguments != undefined) {
+                        for (let arg of _arguments) {
+                            node.children.push(arg.root.index);
+                        }
                     }
                     return new AbstracSyntaxTree(node, head);
                 }
