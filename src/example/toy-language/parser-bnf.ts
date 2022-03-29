@@ -802,23 +802,83 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
                     let _arguments = $[4] as AbstracSyntaxTree[];
                     let node = new Node('new');
                     node.tag = type;
-                    for(let arg of _arguments){
+                    for (let arg of _arguments) {
                         node.children.push(arg.root.index);
                     }
                     return new AbstracSyntaxTree(node, head);
                 }
             }
         },//new 对象
-        { "object:new type array_init_list": {} },//new一个数组
-        { "array_init_list:array_inits array_placeholder": {} },//new 数组的时候是可以这样写的 new int [2][3][][],其中[2][3]对应了array_inits,后面的[][]对应了array_placeholder(数组占位符)
-        { "array_inits:array_inits [ object ]": {} },//见array_init_list一条的解释
-        { "array_inits:[ object ]": {} },//见array_init_list一条的解释
-        { "array_placeholder:array_placeholder_list": { priority: "low_priority_for_array_placeholder" } },//见array_init_list一条的解释
-        { "array_placeholder:": { priority: "low_priority_for_array_placeholder" } },//array_placeholder可以为空
-        { "array_placeholder_list:array_placeholder_list [ ]": {} },//见array_init_list一条的解释
-        { "array_placeholder_list:[ ]": {} },//见array_init_list一条的解释
         {
-            //这里的W3_0并不是真的为了向前取head，是为了避免和 object < object 冲突，所有和template_instances 相关的产生式都不能取head,否则会错乱
+            "object:new type array_init_list": {
+                action: function ($, s): AbstracSyntaxTree {
+                    let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
+                    let type = $[1] as Type;
+                    let array_init_list = $[2] as { initialize: AbstracSyntaxTree[], placeholder: number }
+                    let node = new Node('new_array');
+                    node.tag = { type: type, placeholder: array_init_list.placeholder };
+                    for (let init of array_init_list.initialize) {
+                        node.children.push(init.root.index);
+                    }
+                    return new AbstracSyntaxTree(node, head);
+                }
+            }
+        },//创建数组
+        {
+            "array_init_list:array_inits array_placeholder": {
+                action: function ($, s): { initialize: AbstracSyntaxTree[], placeholder: number } {
+                    return { initialize: $[0] as AbstracSyntaxTree[], placeholder: $[1] as number };
+                }
+            }
+        },//new 数组的时候是可以这样写的 new int [2][3][][],其中[2][3]对应了array_inits,后面的[][]对应了array_placeholder(数组占位符)
+        {
+            "array_inits:array_inits [ object ]": {
+                action: function ($, s): AbstracSyntaxTree[] {
+                    let array_inits = $[0] as AbstracSyntaxTree[];
+                    let obj = $[2] as AbstracSyntaxTree;
+                    array_inits.push(obj);
+                    return array_inits;
+                }
+            }
+        },//见array_init_list一条的解释
+        {
+            "array_inits:[ object ]": {
+                action: function ($, s): AbstracSyntaxTree[] {
+                    return [$[1] as AbstracSyntaxTree];
+                }
+            }
+        },//见array_init_list一条的解释
+        {
+            "array_placeholder:array_placeholder_list": {
+                priority: "low_priority_for_array_placeholder",
+                action: function ($, s): number {
+                    return $[0] as number;
+                }
+            }
+        },//见array_init_list一条的解释
+        {
+            "array_placeholder:": {
+                priority: "low_priority_for_array_placeholder",
+                action: function ($, s): number {
+                    return 0;
+                }
+            }
+        },//array_placeholder可以为空
+        {
+            "array_placeholder_list:array_placeholder_list [ ]": {
+                action: function ($, s): number {
+                    return ($[0] as number)++;
+                }
+            }
+        },//见array_init_list一条的解释
+        {
+            "array_placeholder_list:[ ]": {
+                action: function ($, s): number {
+                    return 1;
+                }
+            }
+        },//见array_init_list一条的解释
+        {
             "template_instances:< template_instance_list >": {
                 action: function ($, s): Type[] {
                     return $[1] as Type[];

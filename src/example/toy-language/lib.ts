@@ -205,7 +205,7 @@ class ProgramScope {
 const nodeCatch: Node[] = [];
 type operator = '+' | '-' | '*' | '/' | '=' | '<' | '>' | '<=' | '>=' | '&&' | '==' | '||' | '!'
     | '++' | '--' | 'index' | '?' | 'immediate' | 'load' | 'super' | 'this' | 'field' | 'call'
-    | 'instanceof' | 'cast' | 'new';
+    | 'instanceof' | 'cast' | 'new'|'new_array';
 class Node {
     public op: operator;
     public tag: any;
