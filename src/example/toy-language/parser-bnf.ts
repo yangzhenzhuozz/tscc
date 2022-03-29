@@ -176,7 +176,7 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
             }
         },//继承,虽然文法是允许继承任意类型,但是在语义分析的时候再具体决定该class能不能被继承
         {
-            "function_definition:function id template_declare ( parameter_declare ) ret_type { statements }": {
+            "function_definition:function id template_declare ( parameter_declare ) ret_type { W8_0 statements }": {
                 action: function ($, s) {
                     let template_declare = $[2] as string[] | undefined;
                     if (template_declare != undefined) {
@@ -963,6 +963,13 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
         },
         {
             "W7_0:": {
+                action: function ($, s) {
+                    return s.slice(-7)[0];
+                }
+            }
+        },
+        {
+            "W8_0:": {
                 action: function ($, s) {
                     return s.slice(-7)[0];
                 }
