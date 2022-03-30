@@ -386,7 +386,19 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
         { "class_unit:basic_type ( parameter_declare )  { statements }": {} },//构造函数
         { "class_unit:default ( )  { statements }": {} },//default函数,用于初始化值类型
         { "operator_overload:operator + ( parameter_declare ) : type { statements }": {} },//运算符重载,运算符重载实在是懒得做泛型了,以后要是有需求再讲,比起C#和java的残废泛型，已经很好了
-        { "statements:statements statement": {} },//statements可以由多个statement组成
+        {
+            "statements:statements W2_0 statement": {
+                action: function ($, s): AbstracSyntaxTree[] {
+                    let statements = $[0] as AbstracSyntaxTree[];
+                    let statement = $[2] as AbstracSyntaxTree;
+                    if (statements.slice(-1)[0].root.op == 'return') {
+                        throw new SemanticException('return 之后不能有语句');
+                    }
+                    statements.push(statement);
+                    return statements;
+                }
+            }
+        },//statements可以由多个statement组成
         { "statements:": {} },//statements可以为空
         { "statement:declare ;": {} },//statement可以是一条声明语句
         { "statement:try { statement } catch ( id : type ) { statement }": {} },//try catch语句，允许捕获任意类型的异常
