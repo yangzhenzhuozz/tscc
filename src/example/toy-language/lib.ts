@@ -16,11 +16,11 @@ class Type {
     public setParent(parentType: Type) {
         this.parentType = parentType;
     }
-    public registerField(name: string, type: { type: Type | undefined, AST: AbstracSyntaxTree | undefined }, vari: 'var' | 'val') {
+    public registerField(name: string, type: Type | undefined, initAST: AbstracSyntaxTree | undefined, vari: 'var' | 'val') {
         if (this.fields.has(name)) {
             throw new SemanticException(`属性:${name}重复定义`);
         }
-        this.fields.set(name, new Address(type, this.allocated++, vari));
+        this.fields.set(name, new Address(type, initAST, this.allocated++, vari));
     }
     public registerOperatorOverload(name: string, fun: Function) {
         if (this.operatorOverload.has(name)) {
@@ -47,10 +47,10 @@ class Type {
         valueTypes.add(this.name);
         for (let [n, f] of this.fields) {
             let type: Type;;
-            if (f.typeRef.type != undefined) {
-                type = f.typeRef.type;
+            if (f.type != undefined) {
+                type = f.type;
             } else {
-                type = f.typeRef.AST!.root.type!;
+                throw new SemanticException(`类型推导未推导完成的类型不能检测值类型循环`);
             }
             if (type.modifier == "valuetype") {
                 type.checkRecursiveValue(new Set(valueTypes));
@@ -110,11 +110,13 @@ class FunctionType extends Type {
 }
 class Address {
     public variable: 'var' | 'val';
-    public typeRef: { type: Type | undefined, AST: AbstracSyntaxTree | undefined };//类型可以是一个Type或者由语法树推导得到的Type
-    public value: number;//地址
-    constructor(typeRef: { type: Type | undefined, AST: AbstracSyntaxTree | undefined }, value: number, vari: 'var' | 'val') {
-        this.typeRef = typeRef;
-        this.value = value;
+    public type: Type | undefined;
+    public initAST: AbstracSyntaxTree | undefined;
+    public add: number;//地址
+    constructor(type: Type | undefined, initAST: AbstracSyntaxTree | undefined, add: number, vari: 'var' | 'val') {
+        this.type = type;
+        this.initAST = initAST;
+        this.add = add;
         this.variable = vari;
     }
 }
@@ -127,11 +129,11 @@ class SemanticException extends Error {
 class Scope {
     private Field: Map<string, Address> = new Map();
     private allocated = 0;
-    public registerField(name: string, type: { type: Type | undefined, AST: AbstracSyntaxTree | undefined }, variable: 'var' | 'val') {
+    public registerField(name: string, type: Type | undefined, initAST: AbstracSyntaxTree | undefined, variable: 'var' | 'val') {
         if (this.Field.has(name)) {
             throw new SemanticException(`变量 ${name} 重复定义`);
         } else {
-            this.Field.set(name, new Address(type, this.allocated++, variable));
+            this.Field.set(name, new Address(type, initAST, this.allocated++, variable));
         }
     }
 }
@@ -214,7 +216,7 @@ class Node {
     public value: unknown;
     public index: number;
     public isleft = false;//是否为左值
-    public hasReturn=false;//是否为return语句
+    public hasReturn = false;//是否为return语句
     constructor(op: operator) {
         this.op = op;
         this.index = nodeCatch.length;

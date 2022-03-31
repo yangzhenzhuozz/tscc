@@ -54,10 +54,11 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
                     let id = $[1] as string;
                     let type = $[3] as Type;
                     if (head instanceof ProgramScope) {//在程序空间中声明的变量
-                        head.type.registerField(id, { type: type, AST: undefined }, 'var');
+                        head.type.registerField(id, type, undefined, 'var');
                     } else if (head instanceof Type) {//在class中声明的变量
-                        head.registerField(id, { type: type, AST: undefined }, 'var');
+                        head.registerField(id, type, undefined, 'var');
                     } else {//function中声明的变量暂时不管
+                        throw new SemanticException(`function中的declare暂未实现`);
                     }
                 }
             }
@@ -68,11 +69,13 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
                     let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
                     let id = $[1] as string;
                     let type = $[3] as Type;
+                    let obj = $[6] as AbstracSyntaxTree;
                     if (head instanceof ProgramScope) {//在程序空间中声明的变量
-                        head.type.registerField(id, { type: type, AST: undefined }, 'var');
+                        head.type.registerField(id, type, obj, 'var');
                     } else if (head instanceof Type) {//在class中声明的变量
-                        head.registerField(id, { type: type, AST: undefined }, 'var');
+                        head.registerField(id, type, obj, 'var');
                     } else {//function中声明的变量暂时不管
+                        throw new SemanticException(`function中的declare暂未实现`);
                     }
                 }
             }
@@ -82,11 +85,13 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
                 action: function ($, s) {
                     let head = s.slice(-1)[0] as ProgramScope | Type | undefined;
                     let id = $[1] as string;
+                    let obj = $[4] as AbstracSyntaxTree;
                     if (head instanceof ProgramScope) {//在程序空间中声明的变量
-                        head.type.registerField(id, { type: undefined, AST: undefined }, 'var');
+                        head.type.registerField(id, undefined, obj, 'var');
                     } else if (head instanceof Type) {//在class中声明的变量
-                        head.registerField(id, { type: undefined, AST: undefined }, 'var');
+                        head.registerField(id, undefined, obj, 'var');
                     } else {//function中声明的变量暂时不管
+                        throw new SemanticException(`function中的declare暂未实现`);
                     }
                 }
             }
@@ -98,10 +103,11 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
                     let id = $[1] as string;
                     let type = $[3] as Type;
                     if (head instanceof ProgramScope) {//在程序空间中声明的变量
-                        head.type.registerField(id, { type: type, AST: undefined }, 'var');
+                        head.type.registerField(id, type, undefined, 'var');
                     } else if (head instanceof Type) {//在class中声明的变量
-                        head.registerField(id, { type: type, AST: undefined }, 'var');
+                        head.registerField(id, type, undefined, 'var');
                     } else {//function中声明的变量暂时不管
+                        throw new SemanticException(`function中的declare暂未实现`);
                     }
                 }
             }
@@ -112,11 +118,13 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
                     let head = s.slice(-1)[0] as ProgramScope | Type | undefined;
                     let id = $[1] as string;
                     let type = $[3] as Type;
+                    let obj = $[6] as AbstracSyntaxTree;
                     if (head instanceof ProgramScope) {//在程序空间中声明的变量
-                        head.type.registerField(id, { type: type, AST: undefined }, 'var');
+                        head.type.registerField(id, type, obj, 'var');
                     } else if (head instanceof Type) {//在class中声明的变量
-                        head.registerField(id, { type: type, AST: undefined }, 'var');
+                        head.registerField(id, type, obj, 'var');
                     } else {//function中声明的变量暂时不管
+                        throw new SemanticException(`function中的declare暂未实现`);
                     }
                 }
             }
@@ -126,11 +134,13 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
                 action: function ($, s) {
                     let head = s.slice(-1)[0] as ProgramScope | Type | undefined;
                     let id = $[1] as string;
+                    let obj = $[4] as AbstracSyntaxTree;
                     if (head instanceof ProgramScope) {//在程序空间中声明的变量
-                        head.type.registerField(id, { type: undefined, AST: undefined }, 'val');
+                        head.type.registerField(id, undefined, obj, 'val');
                     } else if (head instanceof Type) {//在class中声明的变量
-                        head.registerField(id, { type: undefined, AST: undefined }, 'val');
+                        head.registerField(id, undefined, obj, 'val');
                     } else {//function中声明的变量暂时不管
+                        throw new SemanticException(`function中的declare暂未实现`);
                     }
                 }
             }
@@ -191,10 +201,11 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
                     let ret_type = $[6] as Type | undefined;
                     let type = new FunctionType(parameter_declare, ret_type, template_declare);
                     if (head instanceof ProgramScope) {//在程序空间中声明的变量
-                        head.type.registerField(id, { type: type, AST: undefined }, 'val');
+                        head.type.registerField(id, type, undefined, 'val');
                     } else if (head instanceof Type) {//在class中声明的变量
-                        head.registerField(id, { type: type, AST: undefined }, 'val');
+                        head.registerField(id, type, undefined, 'val');
                     } else {//function中声明的变量暂时不管
+                        throw new SemanticException(`function内部继续定义functionh还未实现`);
                     }
                 }
             }
