@@ -391,7 +391,7 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
                 action: function ($, s): AbstracSyntaxTree[] {
                     let statements = $[0] as AbstracSyntaxTree[];
                     let statement = $[2] as AbstracSyntaxTree;
-                    if (statements.slice(-1)[0].root.op == 'return') {
+                    if (statements.slice(-1)[0].root.hasReturn) {
                         throw new SemanticException('return 之后不能有语句');
                     }
                     statements.push(statement);

@@ -214,6 +214,7 @@ class Node {
     public value: unknown;
     public index: number;
     public isleft = false;//是否为左值
+    public hasReturn=false;//是否为return语句
     constructor(op: operator) {
         this.op = op;
         this.index = nodeCatch.length;
