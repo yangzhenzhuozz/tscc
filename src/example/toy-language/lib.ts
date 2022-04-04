@@ -1,13 +1,13 @@
 class Type {
     public fields: Map<string, Address> = new Map();//属性列表
-    public operatorOverload: Map<string, Function> = new Map();//操作符重载列表
+    private allocated = 0;//分配的地址位置
+    public operatorOverload: Map<string, AbstracSyntaxTree[]> = new Map();//操作符重载列表
     public modifier: "valuetype" | "sealed" | "referentialType";
     public parentType: Type | undefined;//父对象,为undefined表示这是object
     public genericParadigm: string[] | undefined;
     public templateInstances: Type[] | undefined;
     public name: string;
     public programScope: ProgramScope | undefined;
-    private allocated = 0;//分配的地址位置
     constructor(name: string, modifier: "valuetype" | "sealed" | "referentialType", templateInstances: Type[] | undefined) {
         this.templateInstances = templateInstances;
         this.name = name;
@@ -22,11 +22,11 @@ class Type {
         }
         this.fields.set(name, new Address(type, initAST, this.allocated++, vari));
     }
-    public registerOperatorOverload(name: string, fun: Function) {
+    public registerOperatorOverload(name: string, instructions: AbstracSyntaxTree[]) {
         if (this.operatorOverload.has(name)) {
             throw new SemanticException(`重载符号:${name}重复定义`);
         }
-        this.operatorOverload.set(name, fun);
+        this.operatorOverload.set(name, instructions);
     }
     //检查循环继承
     private checkRecursiveExtend() {
@@ -77,6 +77,7 @@ class ArrayType extends Type {
 class FunctionType extends Type {
     public parameters: Map<string, Type> = new Map();//参数名和类型列表,反射的时候可以直接得到参数的名字
     public returnType: Type | undefined;//返回值类型
+    public scope: Scope | undefined;
     constructor(parameters: { name: string, type: Type }[] | undefined, ret_type: Type | undefined, genericParadigm: string[] | undefined) {
         super(`function`, "referentialType", undefined);
         super.genericParadigm = genericParadigm;
@@ -126,38 +127,10 @@ class SemanticException extends Error {
         super.name = 'SemanticException';
     }
 }
+//functionScope或者blockScope
 class Scope {
-    private Field: Map<string, Address> = new Map();
-    private allocated = 0;
-    public registerField(name: string, type: Type | undefined, initAST: AbstracSyntaxTree | undefined, variable: 'var' | 'val') {
-        if (this.Field.has(name)) {
-            throw new SemanticException(`变量 ${name} 重复定义`);
-        } else {
-            this.Field.set(name, new Address(type, initAST, this.allocated++, variable));
-        }
-    }
-}
-
-class FunctionScope extends Scope {
-    public programWraper: Type;//函数所在的program空间
-    public classWraper: Type | undefined;//class空间
-    constructor(programWraper: Type, classWraper: Type | undefined, isGenericParadigm: boolean) {
-        super();
-        this.programWraper = programWraper;
-        this.classWraper = classWraper;
-    }
-    public generateType(): FunctionType {
-        throw '构造函数类型'
-    }
-}
-class BlockScope extends Scope {
-    public parentFunction: FunctionScope;
-    public parent: FunctionScope | BlockScope;//是一个函数或者block
-    constructor(parentFunction: FunctionScope, parent: FunctionScope | BlockScope) {
-        super();
-        this.parentFunction = parentFunction;
-        this.parent = parent;
-    }
+    public instruction: AbstracSyntaxTree[] = [];//语法树序列
+    public parent: Scope | undefined;//父scope
 }
 class ProgramScope {
     public userTypes = new Map<string, Type>();
@@ -204,38 +177,34 @@ class ProgramScope {
         }
     }
 };
-const nodeCatch: Node[] = [];
 type operator = '+' | '-' | '*' | '/' | '=' | '<' | '>' | '<=' | '>=' | '&&' | '==' | '||' | '!'
     | '++' | '--' | 'index' | '?' | 'immediate' | 'load' | 'super' | 'this' | 'field' | 'call'
-    | 'instanceof' | 'cast' | 'new' | 'new_array' | 'return';
+    | 'instanceof' | 'cast' | 'new' | 'new_array' | 'return' | 'register_local_variable' | 'register_local_value';
 class Node {
     public op: operator;
     public tag: any;
-    public children: number[] = [];
+    public children: Node[] = [];
     public type: Type | undefined;
     public value: unknown;
-    public index: number;
     public isleft = false;//是否为左值
     public hasReturn = false;//是否为return语句
     constructor(op: operator) {
         this.op = op;
-        this.index = nodeCatch.length;
-        nodeCatch.push(this);
     }
-    postorderTraversal(scope: ProgramScope | Type | FunctionScope | BlockScope) {
+    postorderTraversal() {
         switch (this.op) {
             case 'load':
                 console.log(`load ${this.value}`);
                 break;
             case 'field':
-                nodeCatch[this.children[0]].postorderTraversal(scope);
+                this.children[0].postorderTraversal();
                 console.log(`get field ${this.tag}`);
                 break;
             case 'call':
-                nodeCatch[this.children[0]].postorderTraversal(scope);
+                this.children[0].postorderTraversal();
                 console.log(`call`);
                 for (let i = 1; i < this.children.length; i++) {
-                    nodeCatch[this.children[i]].postorderTraversal(scope)
+                    this.children[i].postorderTraversal()
                 }
                 break;
             default: console.log(`还未实现打印的操作符${this.op}`);
@@ -246,14 +215,12 @@ class Node {
 //为类型推导服务的抽象语法树
 class AbstracSyntaxTree {
     public root: Node;
-    public scope: ProgramScope | Type | FunctionScope | BlockScope;
-    constructor(root: Node, scope: ProgramScope | Type | FunctionScope | BlockScope) {
+    constructor(root: Node) {
         this.root = root;
-        this.scope = scope;
     }
     traversal() {
-        this.root.postorderTraversal(this.scope);
+        this.root.postorderTraversal();
     }
 }
 const program = new ProgramScope();
-export { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScope, SemanticException, ProgramScope, Node, AbstracSyntaxTree, program }
+export { Type, ArrayType, FunctionType, Address, Scope, SemanticException, ProgramScope, Node, AbstracSyntaxTree, program }

@@ -99,7 +99,7 @@ let grammar: Grammar = {
         { "class_unit:set id ( id : type ) { statements }": {} },//set
         { "class_unit:basic_type ( parameter_declare )  { statements }": {} },//构造函数
         { "class_unit:default ( )  { statements }": {} },//default函数,用于初始化值类型
-        { "operator_overload:operator + ( parameter_declare ) : type { statements }": {} },//运算符重载,运算符重载实在是懒得做泛型了,以后要是有需求再讲,比起C#和java的残废泛型，已经很好了
+        { "operator_overload:operator + ( id : type ) : type { statements }": {} },//运算符重载,运算符重载实在是懒得做泛型了,以后要是有需求再讲,比起C#和java的残废泛型，已经很好了
         { "statements:statements statement": {} },//statements可以由多个statement组成
         { "statements:": {} },//statements可以为空
         { "statement:declare ;": {} },//statement可以是一条声明语句

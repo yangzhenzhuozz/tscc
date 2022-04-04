@@ -2,11 +2,11 @@ import fs from "fs";
 import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
 import { userTypeDictionary } from './lexrule.js';
-import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScope, SemanticException, ProgramScope, Node, AbstracSyntaxTree, program } from "./lib.js";
+import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, ProgramScope, Node, AbstracSyntaxTree, program } from "./lib.js";
 let grammar: Grammar = {
     userCode: `
 import { userTypeDictionary } from './lexrule.js';
-import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScope, SemanticException, ProgramScope, Node, AbstracSyntaxTree, program } from "./lib.js";
+import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, ProgramScope, Node, AbstracSyntaxTree, program } from "./lib.js";
     `,
     tokens: ['var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'throw', 'super', 'basic_type', 'instanceof'],
     association: [
@@ -50,15 +50,18 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
         {
             "declare:var id : type": {
                 action: function ($, s) {
-                    let head = s.slice(-1)[0] as ProgramScope | Type | undefined;
+                    let head = s.slice(-1)[0] as ProgramScope | Type | Scope;
                     let id = $[1] as string;
                     let type = $[3] as Type;
                     if (head instanceof ProgramScope) {//在程序空间中声明的变量
                         head.type.registerField(id, type, undefined, 'var');
                     } else if (head instanceof Type) {//在class中声明的变量
                         head.registerField(id, type, undefined, 'var');
-                    } else {//function中声明的变量暂时不管
-                        throw new SemanticException(`function中的declare暂未实现`);
+                    } else {//function或者block中的变量声明
+                        let node = new Node('register_local_variable');
+                        node.value = id;
+                        node.type = type;
+                        head.instruction.push(new AbstracSyntaxTree(node));
                     }
                 }
             }
@@ -66,7 +69,7 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
         {
             "declare:var id : type = W6_0 object": {
                 action: function ($, s) {
-                    let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
+                    let head = s.slice(-1)[0] as ProgramScope | Type | Scope;
                     let id = $[1] as string;
                     let type = $[3] as Type;
                     let obj = $[6] as AbstracSyntaxTree;
@@ -74,8 +77,12 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
                         head.type.registerField(id, type, obj, 'var');
                     } else if (head instanceof Type) {//在class中声明的变量
                         head.registerField(id, type, obj, 'var');
-                    } else {//function中声明的变量暂时不管
-                        throw new SemanticException(`function中的declare暂未实现`);
+                    } else {//function或者block中的变量声明
+                        let node = new Node('register_local_variable');
+                        node.value = id;
+                        node.type = type;
+                        node.tag = obj;
+                        head.instruction.push(new AbstracSyntaxTree(node));
                     }
                 }
             }
@@ -83,15 +90,18 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
         {
             "declare:var id = W4_0 object": {
                 action: function ($, s) {
-                    let head = s.slice(-1)[0] as ProgramScope | Type | undefined;
+                    let head = s.slice(-1)[0] as ProgramScope | Type | Scope;
                     let id = $[1] as string;
                     let obj = $[4] as AbstracSyntaxTree;
                     if (head instanceof ProgramScope) {//在程序空间中声明的变量
                         head.type.registerField(id, undefined, obj, 'var');
                     } else if (head instanceof Type) {//在class中声明的变量
                         head.registerField(id, undefined, obj, 'var');
-                    } else {//function中声明的变量暂时不管
-                        throw new SemanticException(`function中的declare暂未实现`);
+                    } else {//function或者block中的变量声明
+                        let node = new Node('register_local_variable');
+                        node.value = id;
+                        node.tag = obj;
+                        head.instruction.push(new AbstracSyntaxTree(node));
                     }
                 }
             }
@@ -99,15 +109,18 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
         {
             "declare:val id : type": {
                 action: function ($, s) {
-                    let head = s.slice(-1)[0] as ProgramScope | Type | undefined;
+                    let head = s.slice(-1)[0] as ProgramScope | Type | Scope;
                     let id = $[1] as string;
                     let type = $[3] as Type;
                     if (head instanceof ProgramScope) {//在程序空间中声明的变量
                         head.type.registerField(id, type, undefined, 'var');
                     } else if (head instanceof Type) {//在class中声明的变量
                         head.registerField(id, type, undefined, 'var');
-                    } else {//function中声明的变量暂时不管
-                        throw new SemanticException(`function中的declare暂未实现`);
+                    } else {//function或者block中的变量声明
+                        let node = new Node('register_local_value');
+                        node.value = id;
+                        node.type = type;
+                        head.instruction.push(new AbstracSyntaxTree(node));
                     }
                 }
             }
@@ -115,7 +128,7 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
         {
             "declare:val id : type = W6_0 object": {
                 action: function ($, s) {
-                    let head = s.slice(-1)[0] as ProgramScope | Type | undefined;
+                    let head = s.slice(-1)[0] as ProgramScope | Type | Scope;
                     let id = $[1] as string;
                     let type = $[3] as Type;
                     let obj = $[6] as AbstracSyntaxTree;
@@ -123,8 +136,12 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
                         head.type.registerField(id, type, obj, 'var');
                     } else if (head instanceof Type) {//在class中声明的变量
                         head.registerField(id, type, obj, 'var');
-                    } else {//function中声明的变量暂时不管
-                        throw new SemanticException(`function中的declare暂未实现`);
+                    } else {//function或者block中的变量声明
+                        let node = new Node('register_local_value');
+                        node.value = id;
+                        node.type = type;
+                        node.tag = obj;
+                        head.instruction.push(new AbstracSyntaxTree(node));
                     }
                 }
             }
@@ -132,15 +149,18 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
         {
             "declare:val id = W4_0 object": {
                 action: function ($, s) {
-                    let head = s.slice(-1)[0] as ProgramScope | Type | undefined;
+                    let head = s.slice(-1)[0] as ProgramScope | Type | Scope;
                     let id = $[1] as string;
                     let obj = $[4] as AbstracSyntaxTree;
                     if (head instanceof ProgramScope) {//在程序空间中声明的变量
                         head.type.registerField(id, undefined, obj, 'val');
                     } else if (head instanceof Type) {//在class中声明的变量
                         head.registerField(id, undefined, obj, 'val');
-                    } else {//function中声明的变量暂时不管
-                        throw new SemanticException(`function中的declare暂未实现`);
+                    } else {//function或者block中的变量声明
+                        let node = new Node('register_local_value');
+                        node.value = id;
+                        node.tag = obj;
+                        head.instruction.push(new AbstracSyntaxTree(node));
                     }
                 }
             }
@@ -186,7 +206,7 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
             }
         },//继承,虽然文法是允许继承任意类型,但是在语义分析的时候再具体决定该class能不能被继承
         {
-            "function_definition:function id template_declare ( parameter_declare ) ret_type { W8_0 statements }": {
+            "function_definition:function id template_declare ( parameter_declare ) ret_type { create_scope statements }": {
                 action: function ($, s) {
                     let template_declare = $[2] as string[] | undefined;
                     if (template_declare != undefined) {
@@ -195,21 +215,33 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
                             userTypeDictionary.delete(t);
                         }
                     }
-                    let head = s.slice(-1)[0] as ProgramScope | Type | undefined;
+                    let head = s.slice(-1)[0] as ProgramScope | Type | Scope;
                     let id = $[1] as string;
                     let parameter_declare = $[4] as { name: string, type: Type }[] | undefined;
                     let ret_type = $[6] as Type | undefined;
-                    let type = new FunctionType(parameter_declare, ret_type, template_declare);
+                    let scope = $[8] as Scope;
+                    let functionType = new FunctionType(parameter_declare, ret_type, undefined);
+                    functionType.scope = scope;
                     if (head instanceof ProgramScope) {//在程序空间中声明的变量
-                        head.type.registerField(id, type, undefined, 'val');
+                        head.type.registerField(id, functionType, undefined, 'val');
                     } else if (head instanceof Type) {//在class中声明的变量
-                        head.registerField(id, type, undefined, 'val');
-                    } else {//function中声明的变量暂时不管
-                        throw new SemanticException(`function内部继续定义functionh还未实现`);
+                        head.registerField(id, functionType, undefined, 'val');
+                    } else {
+                        let node = new Node('register_local_value');
+                        node.value = id;
+                        node.type = functionType;
+                        head.instruction.push(new AbstracSyntaxTree(node));
                     }
                 }
             }
         },//函数定义语句，同样太长，不列表
+        {
+            "create_scope:": {
+                action: function (): Scope {
+                    return new Scope();
+                }
+            }
+        },
         { "ret_type:": {} },//返回值类型可以不声明，自动推导,lambda就不用写返回值声明
         {
             "ret_type: : type": {
@@ -396,7 +428,21 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
         { "class_unit:set id ( id : type ) { statements }": {} },//set
         { "class_unit:basic_type ( parameter_declare )  { statements }": {} },//构造函数
         { "class_unit:default ( )  { statements }": {} },//default函数,用于初始化值类型
-        { "operator_overload:operator + ( parameter_declare ) : type { statements }": {} },//运算符重载,运算符重载实在是懒得做泛型了,以后要是有需求再讲,比起C#和java的残废泛型，已经很好了
+        {
+            "operator_overload:operator + ( id : type ) : type { create_scope statements }": {
+                action: function ($, s) {
+                    let head = s.slice(-1)[0] as Type;
+                    let id = $[3] as string;
+                    let parameter_type = $[5] as Type;
+                    let ret_type = $[8] as Type;
+                    let statements = $[11] as AbstracSyntaxTree[];
+                    debugger;
+                    if (statements.length < 1 || !statements.slice(-1)[0].root.hasReturn) {
+                        throw new SemanticException(`get必须有返回值`);
+                    }
+                }
+            }
+        },//运算符重载,运算符重载实在是懒得做泛型了,以后要是有需求再讲,比起C#和java的残废泛型，已经很好了
         {
             "statements:statements W2_0 statement": {
                 action: function ($, s): AbstracSyntaxTree[] {
@@ -410,7 +456,13 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
                 }
             }
         },//statements可以由多个statement组成
-        { "statements:": {} },//statements可以为空
+        {
+            "statements:": {
+                action: function ($, s): AbstracSyntaxTree[] {
+                    return [];
+                }
+            }
+        },//statements可以为空
         { "statement:declare ;": {} },//statement可以是一条声明语句
         { "statement:try { statement } catch ( id : type ) { statement }": {} },//try catch语句，允许捕获任意类型的异常
         { "statement:throw object ;": {} },//抛异常语句
@@ -452,264 +504,244 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
         {
             "object:object . id": {
                 action: function ($, s): AbstracSyntaxTree {
-                    let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
                     let obj = $[0] as AbstracSyntaxTree;
                     let id = $[2] as string;
                     let node = new Node('field');
                     node.tag = id;
-                    node.children.push(obj.root.index);
-                    return new AbstracSyntaxTree(node, head);
+                    node.children.push(obj.root);
+                    return new AbstracSyntaxTree(node);
                 }
             }
         },//取成员
         {
             "object:object  ( arguments )": {
                 action: function ($, s): AbstracSyntaxTree {
-                    let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
                     let obj = $[0] as AbstracSyntaxTree;
                     let _arguments = $[2] as AbstracSyntaxTree[] | undefined;
                     let node = new Node('call');
-                    node.children.push(obj.root.index);
+                    node.children.push(obj.root);
                     if (_arguments != undefined) {
                         for (let a of _arguments) {
-                            node.children.push(a.root.index);
+                            node.children.push(a.root);
                         }
                     }
-                    return new AbstracSyntaxTree(node, head);
+                    return new AbstracSyntaxTree(node);
                 }
             }
         },//函数调用
         {
             "object:object < W3_0 template_instance_list > ( arguments )": {
                 action: function ($, s): AbstracSyntaxTree {
-                    let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
                     let obj = $[0] as AbstracSyntaxTree;
                     let template_instance_list = $[3] as Type[];
                     let _arguments = $[6] as AbstracSyntaxTree[] | undefined;
                     let node = new Node('call');
-                    node.children.push(obj.root.index);
+                    node.children.push(obj.root);
                     if (_arguments != undefined) {
                         for (let a of _arguments) {
-                            node.children.push(a.root.index);
+                            node.children.push(a.root);
                         }
                     }
                     node.tag = template_instance_list;
-                    return new AbstracSyntaxTree(node, head);
+                    return new AbstracSyntaxTree(node);
                 }
             }
         },//模板函数调用
         {
             "object:object = W3_0 object": {
                 action: function ($, s): AbstracSyntaxTree {
-                    let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
                     let left = $[0] as AbstracSyntaxTree;
                     let right = $[3] as AbstracSyntaxTree;
                     let node = new Node('=');
-                    node.children.push(left.root.index);
-                    node.children.push(right.root.index);
-                    return new AbstracSyntaxTree(node, head);
+                    node.children.push(left.root);
+                    node.children.push(right.root);
+                    return new AbstracSyntaxTree(node);
                 }
             }
         },
         {
             "object:object + W3_0 object": {
                 action: function ($, s): AbstracSyntaxTree {
-                    let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
                     let left = $[0] as AbstracSyntaxTree;
                     let right = $[3] as AbstracSyntaxTree;
                     let node = new Node('+');
-                    node.children.push(left.root.index);
-                    node.children.push(right.root.index);
-                    return new AbstracSyntaxTree(node, head);
+                    node.children.push(left.root);
+                    node.children.push(right.root);
+                    return new AbstracSyntaxTree(node);
                 }
             }
         },
         {
             "object:object - W3_0 object": {
                 action: function ($, s): AbstracSyntaxTree {
-                    let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
                     let left = $[0] as AbstracSyntaxTree;
                     let right = $[3] as AbstracSyntaxTree;
                     let node = new Node('-');
-                    node.children.push(left.root.index);
-                    node.children.push(right.root.index);
-                    return new AbstracSyntaxTree(node, head);
+                    node.children.push(left.root);
+                    node.children.push(right.root);
+                    return new AbstracSyntaxTree(node);
                 }
             }
         },
         {
             "object:object * W3_0 object": {
                 action: function ($, s): AbstracSyntaxTree {
-                    let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
                     let left = $[0] as AbstracSyntaxTree;
                     let right = $[3] as AbstracSyntaxTree;
                     let node = new Node('*');
-                    node.children.push(left.root.index);
-                    node.children.push(right.root.index);
-                    return new AbstracSyntaxTree(node, head);
+                    node.children.push(left.root);
+                    node.children.push(right.root);
+                    return new AbstracSyntaxTree(node);
                 }
             }
         },
         {
             "object:object / W3_0 object": {
                 action: function ($, s): AbstracSyntaxTree {
-                    let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
                     let left = $[0] as AbstracSyntaxTree;
                     let right = $[3] as AbstracSyntaxTree;
                     let node = new Node('/');
-                    node.children.push(left.root.index);
-                    node.children.push(right.root.index);
-                    return new AbstracSyntaxTree(node, head);
+                    node.children.push(left.root);
+                    node.children.push(right.root);
+                    return new AbstracSyntaxTree(node);
                 }
             }
         },
         {
             "object:object < W3_0 object": {
                 action: function ($, s): AbstracSyntaxTree {
-                    let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
                     let left = $[0] as AbstracSyntaxTree;
                     let right = $[3] as AbstracSyntaxTree;
                     let node = new Node('<');
-                    node.children.push(left.root.index);
-                    node.children.push(right.root.index);
-                    return new AbstracSyntaxTree(node, head);
+                    node.children.push(left.root);
+                    node.children.push(right.root);
+                    return new AbstracSyntaxTree(node);
                 }
             }
         },
         {
             "object:object <= W3_0 object": {
                 action: function ($, s): AbstracSyntaxTree {
-                    let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
                     let left = $[0] as AbstracSyntaxTree;
                     let right = $[3] as AbstracSyntaxTree;
                     let node = new Node('<=');
-                    node.children.push(left.root.index);
-                    node.children.push(right.root.index);
-                    return new AbstracSyntaxTree(node, head);
+                    node.children.push(left.root);
+                    node.children.push(right.root);
+                    return new AbstracSyntaxTree(node);
                 }
             }
         },
         {
             "object:object > W3_0 object": {
                 action: function ($, s): AbstracSyntaxTree {
-                    let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
                     let left = $[0] as AbstracSyntaxTree;
                     let right = $[3] as AbstracSyntaxTree;
                     let node = new Node('>');
-                    node.children.push(left.root.index);
-                    node.children.push(right.root.index);
-                    return new AbstracSyntaxTree(node, head);
+                    node.children.push(left.root);
+                    node.children.push(right.root);
+                    return new AbstracSyntaxTree(node);
                 }
             }
         },
         {
             "object:object >= W3_0 object": {
                 action: function ($, s): AbstracSyntaxTree {
-                    let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
                     let left = $[0] as AbstracSyntaxTree;
                     let right = $[3] as AbstracSyntaxTree;
                     let node = new Node('>=');
-                    node.children.push(left.root.index);
-                    node.children.push(right.root.index);
-                    return new AbstracSyntaxTree(node, head);
+                    node.children.push(left.root);
+                    node.children.push(right.root);
+                    return new AbstracSyntaxTree(node);
                 }
             }
         },
         {
             "object:object == W3_0 object": {
                 action: function ($, s): AbstracSyntaxTree {
-                    let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
                     let left = $[0] as AbstracSyntaxTree;
                     let right = $[3] as AbstracSyntaxTree;
                     let node = new Node('==');
-                    node.children.push(left.root.index);
-                    node.children.push(right.root.index);
-                    return new AbstracSyntaxTree(node, head);
+                    node.children.push(left.root);
+                    node.children.push(right.root);
+                    return new AbstracSyntaxTree(node);
                 }
             }
         },
         {
             "object:object || W3_0 object": {
                 action: function ($, s): AbstracSyntaxTree {
-                    let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
                     let left = $[0] as AbstracSyntaxTree;
                     let right = $[3] as AbstracSyntaxTree;
                     let node = new Node('||');
-                    node.children.push(left.root.index);
-                    node.children.push(right.root.index);
-                    return new AbstracSyntaxTree(node, head);
+                    node.children.push(left.root);
+                    node.children.push(right.root);
+                    return new AbstracSyntaxTree(node);
                 }
             }
         },
         {
             "object:object && W3_0 object": {
                 action: function ($, s): AbstracSyntaxTree {
-                    let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
                     let left = $[0] as AbstracSyntaxTree;
                     let right = $[3] as AbstracSyntaxTree;
                     let node = new Node('&&');
-                    node.children.push(left.root.index);
-                    node.children.push(right.root.index);
-                    return new AbstracSyntaxTree(node, head);
+                    node.children.push(left.root);
+                    node.children.push(right.root);
+                    return new AbstracSyntaxTree(node);
                 }
             }
         },
         {
             "object:object instanceof type": {
                 action: function ($, s): AbstracSyntaxTree {
-                    let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
                     let obj = $[0] as AbstracSyntaxTree;
                     let type = $[2] as Type;
                     let node = new Node('instanceof');
                     node.tag = type;
-                    node.children.push(obj.root.index);
-                    return new AbstracSyntaxTree(node, head);
+                    node.children.push(obj.root);
+                    return new AbstracSyntaxTree(node);
                 }
             }
         },
         {
             "object:! W2_0 object": {
                 action: function ($, s): AbstracSyntaxTree {
-                    let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
                     let obj = $[2] as AbstracSyntaxTree;
                     let node = new Node('!');
-                    node.children.push(obj.root.index);
-                    return new AbstracSyntaxTree(node, head);
+                    node.children.push(obj.root);
+                    return new AbstracSyntaxTree(node);
                 }
             }
         },//单目运算符-非
         {
             "object:object ++": {
                 action: function ($, s): AbstracSyntaxTree {
-                    let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
                     let obj = $[0] as AbstracSyntaxTree;
                     let node = new Node('++');
-                    node.children.push(obj.root.index);
-                    return new AbstracSyntaxTree(node, head);
+                    node.children.push(obj.root);
+                    return new AbstracSyntaxTree(node);
                 }
             }
         },//单目运算符++
         {
             "object:object --": {
                 action: function ($, s): AbstracSyntaxTree {
-                    let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
                     let obj = $[0] as AbstracSyntaxTree;
                     let node = new Node('--');
-                    node.children.push(obj.root.index);
-                    return new AbstracSyntaxTree(node, head);
+                    node.children.push(obj.root);
+                    return new AbstracSyntaxTree(node);
                 }
             }
         },//单目运算符--
         {
             "object:object [ W3_0 object ]": {
                 action: function ($, s): AbstracSyntaxTree {
-                    let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
                     let obj = $[0] as AbstracSyntaxTree;
                     let index = $[2] as AbstracSyntaxTree;
                     let node = new Node('index');
-                    node.children.push(obj.root.index);
-                    node.children.push(index.root.index);
-                    return new AbstracSyntaxTree(node, head);
+                    node.children.push(obj.root);
+                    node.children.push(index.root);
+                    return new AbstracSyntaxTree(node);
                 }
             }
         },//[]运算符
@@ -717,93 +749,91 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
             "object:object ? W3_0 object : W6_0 object": {
                 priority: "?",
                 action: function ($, s): AbstracSyntaxTree {
-                    let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
                     let obj0 = $[0] as AbstracSyntaxTree;
                     let obj1 = $[2] as AbstracSyntaxTree;
                     let obj2 = $[4] as AbstracSyntaxTree;
                     let node = new Node('?');
-                    node.children.push(obj0.root.index);
-                    node.children.push(obj1.root.index);
-                    node.children.push(obj2.root.index);
-                    return new AbstracSyntaxTree(node, head);
+                    node.children.push(obj0.root);
+                    node.children.push(obj1.root);
+                    node.children.push(obj2.root);
+                    return new AbstracSyntaxTree(node);
                 }
             }
         },//三目运算
         {
             "object:id": {
                 action: function ($, s): AbstracSyntaxTree {
-                    let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
                     let id = $[0] as string;
                     let node = new Node('load');
                     node.value = id;
-                    return new AbstracSyntaxTree(node, head);
+                    return new AbstracSyntaxTree(node);
                 }
             }
         },//id是一个对象
         {
             "object:immediate_val": {
                 action: function ($, s): AbstracSyntaxTree {
-                    let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
                     let immediate_val = $[0] as { value: unknown, type: Type };
                     let node = new Node('immediate');
                     node.value = immediate_val.value;
                     node.type = immediate_val.type;
-                    return new AbstracSyntaxTree(node, head);
+                    return new AbstracSyntaxTree(node);
                 }
             }
         },//立即数是一个object
         {
             "object:super": {
                 action: function ($, s): AbstracSyntaxTree {
-                    let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
                     let node = new Node('super');
-                    return new AbstracSyntaxTree(node, head);
+                    return new AbstracSyntaxTree(node);
                 }
             }
         },//super是一个对象
         {
             "object:this": {
                 action: function ($, s): AbstracSyntaxTree {
-                    let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
                     let node = new Node('this');
-                    return new AbstracSyntaxTree(node, head);
+                    return new AbstracSyntaxTree(node);
                 }
             }
         },//this是一个object
         {
-            "object:template_definition ( parameter_declare ) => { W7_0 statements }": {
+            "object:template_definition ( parameter_declare ) => { create_scope statements }": {
                 action: function ($, s): AbstracSyntaxTree {
                     let template_definition = $[0] as string[];
                     for (let t of template_definition) {
                         program.unregisterType(t);
                         userTypeDictionary.delete(t);
                     }
-                    let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
+                    let head = s.slice(-1)[0] as ProgramScope | Type | Scope;
                     let parameter_declare = $[2] as { name: string, type: Type }[] | undefined;
-                    let type = new FunctionType(parameter_declare, undefined, template_definition);
+                    let scope = $[6] as Scope;
                     let statements = $[7] as AbstracSyntaxTree[];
+                    let functionType = new FunctionType(parameter_declare, undefined, undefined);
+                    functionType.scope = scope;
                     let node = new Node('immediate');
-                    node.type = type;
+                    node.type = functionType;
                     for (let ast of statements) {
-                        node.children.push(ast.root.index);
+                        node.children.push(ast.root);
                     }
-                    return new AbstracSyntaxTree(node, head);
+                    return new AbstracSyntaxTree(node);
                 }
             }
         },//模板lambda
         {
-            "object:( W2_0 parameter_declare ) => { W7_0 statements }": {
+            "object:( W2_0 parameter_declare ) => { create_scope statements }": {
                 action: function ($, s): AbstracSyntaxTree {
-                    let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
                     let parameter_declare = $[2] as { name: string, type: Type }[] | undefined;
-                    let type = new FunctionType(parameter_declare, undefined, undefined);
+                    let scope = $[6] as Scope;
                     let statements = $[7] as AbstracSyntaxTree[];
                     let node = new Node('immediate');
-                    node.type = type;
+                    let functionType = new FunctionType(parameter_declare, undefined, undefined);
+                    functionType.scope = scope;
+                    node.type = functionType;
                     for (let ast of statements) {
-                        node.children.push(ast.root.index);
+                        node.children.push(ast.root);
                     }
-                    return new AbstracSyntaxTree(node, head);
+                    return new AbstracSyntaxTree(node);
                 }
             }
         },//lambda
@@ -811,45 +841,42 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
             "object:( W2_0 type ) object": {
                 priority: "cast_priority",
                 action: function ($, s): AbstracSyntaxTree {
-                    let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
                     let type = $[2] as Type;
                     let obj = $[4] as AbstracSyntaxTree;
                     let node = new Node('cast');
                     node.tag = type;
-                    node.children.push(obj.root.index);
-                    return new AbstracSyntaxTree(node, head);
+                    node.children.push(obj.root);
+                    return new AbstracSyntaxTree(node);
                 }
             }
         },//强制转型
         {
             "object:new type  ( W4_0 arguments )": {
                 action: function ($, s): AbstracSyntaxTree {
-                    let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
                     let type = $[1] as Type;
                     let _arguments = $[4] as AbstracSyntaxTree[] | undefined;
                     let node = new Node('new');
                     node.tag = type;
                     if (_arguments != undefined) {
                         for (let arg of _arguments) {
-                            node.children.push(arg.root.index);
+                            node.children.push(arg.root);
                         }
                     }
-                    return new AbstracSyntaxTree(node, head);
+                    return new AbstracSyntaxTree(node);
                 }
             }
         },//new 对象
         {
             "object:new type array_init_list": {
                 action: function ($, s): AbstracSyntaxTree {
-                    let head = s.slice(-1)[0] as ProgramScope | Type | FunctionScope | BlockScope;
                     let type = $[1] as Type;
                     let array_init_list = $[2] as { initialize: AbstracSyntaxTree[], placeholder: number }
                     let node = new Node('new_array');
                     node.tag = { type: type, placeholder: array_init_list.placeholder };
                     for (let init of array_init_list.initialize) {
-                        node.children.push(init.root.index);
+                        node.children.push(init.root);
                     }
-                    return new AbstracSyntaxTree(node, head);
+                    return new AbstracSyntaxTree(node);
                 }
             }
         },//创建数组
@@ -981,20 +1008,6 @@ import { Type, ArrayType, FunctionType, Address, Scope, FunctionScope, BlockScop
             "W6_0:": {
                 action: function ($, s) {
                     return s.slice(-6)[0];
-                }
-            }
-        },
-        {
-            "W7_0:": {
-                action: function ($, s) {
-                    return s.slice(-7)[0];
-                }
-            }
-        },
-        {
-            "W8_0:": {
-                action: function ($, s) {
-                    return s.slice(-7)[0];
                 }
             }
         }

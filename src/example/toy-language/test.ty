@@ -1,4 +1,6 @@
-var test=(a).b((a).b);
+class test{
+    operator + ( a:int ) : int { }
+}
 var a:Map;
 var b:(Map);
 var c:Map<int,int>;
