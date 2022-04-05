@@ -1,4 +1,4 @@
-import fs from "fs";
+import fs, { stat } from "fs";
 import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
 import { userTypeDictionary } from './lexrule.js';
@@ -427,13 +427,56 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
         {
             "class_unit:get id ( ) : type { create_scope statements }": {
                 action: function ($, s) {
-
+                    let head = s.slice(-1)[0] as Type;
+                    let statements = $[8] as Scope;
+                    let id = $[1] as string;
+                    let type = $[5] as Type;
+                    if (!statements.hasReturn) {
+                        throw new SemanticException(`get属性${id}必须有返回值`);
+                    }
+                    head.add_get(id, new FunctionType(undefined, type, undefined));
                 }
             }
         },//get
-        { "class_unit:set id ( id : type ) { create_scope statements }": {} },//set
-        { "class_unit:basic_type ( parameter_declare )  { statements }": {} },//构造函数
-        { "class_unit:default ( )  { statements }": {} },//default函数,用于初始化值类型
+        {
+            "class_unit:set id ( id : type ) { create_scope statements }": {
+                action: function ($, s) {
+                    let head = s.slice(-1)[0] as Type;
+                    let statements = $[9] as Scope;
+                    let id = $[1] as string;
+                    let type = $[5] as Type;
+                    let parameter_id = $[3] as string;
+                    let parameter_type = $[5] as Type;
+                    if (!statements.hasReturn) {
+                        throw new SemanticException(`get属性${id}必须有返回值`);
+                    }
+                    head.add_set(id, new FunctionType([{ name: parameter_id, type: parameter_type }], type, undefined));
+                }
+            }
+        },//set
+        {
+            "class_unit:basic_type ( parameter_declare )  { create_scope statements }": {
+                action: function ($, s) {
+                    let basic_type = $[0] as Type;
+                    let head = s.slice(-1)[0] as Type;
+                    let parameter_declare = $[2] as { name: string, type: Type }[];
+                    if (basic_type.name != head.name) {
+                        throw new SemanticException(`构造函数必须和class名字一致`);
+                    }
+                    let _constructor = new FunctionType(parameter_declare, undefined, undefined);
+                    head._constructor = _constructor;
+                }
+            }
+        },//构造函数
+        {
+            "class_unit:default ( )  { create_scope statements }": {
+                action: function ($, s) {
+                    let head = s.slice(-1)[0] as Type;
+                    let _default = new FunctionType(undefined, undefined, undefined);
+                    head._default = _default;
+                }
+            }
+        },//default函数,用于初始化值类型
         {
             "operator_overload:operator + ( id : type ) : type { create_scope statements }": {
                 action: function ($, s) {

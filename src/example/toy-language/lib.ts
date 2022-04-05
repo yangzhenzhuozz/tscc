@@ -10,6 +10,8 @@ class Type {
     public templateInstances: Type[] | undefined;
     public name: string;
     public programScope: ProgramScope | undefined;
+    public _constructor:FunctionType|undefined;//只允许一个构造函数
+    public _default:FunctionType|undefined;//只允许一个default
     constructor(name: string, modifier: "valuetype" | "sealed" | "referentialType", templateInstances: Type[] | undefined) {
         this.templateInstances = templateInstances;
         this.name = name;
