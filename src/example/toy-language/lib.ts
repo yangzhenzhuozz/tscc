@@ -209,8 +209,11 @@ type operator = '+' | '-' | '*' | '/' | '=' | '<' | '>' | '<=' | '>=' | '&&' | '
 class Node {
     public op: operator;
     public tag: any;
+    public tag2: any;
+    public tag3: any;
     public leftChild: Node | Scope | undefined;
     public rightChild: Node | Scope | undefined;
+    public additionalChild: Node | Scope | undefined;
     public type: Type | undefined;
     public value: unknown;
     public isleft = false;//是否为左值

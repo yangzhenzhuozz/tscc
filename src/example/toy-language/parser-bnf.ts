@@ -529,12 +529,7 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
                     let _arguments = $[2] as Node[] | undefined;
                     let node = new Node('call');
                     node.leftChild = obj;
-                    (node.tag as Node[]) = [];
-                    if (_arguments != undefined) {
-                        for (let a of _arguments) {
-                            (node.tag as Node[]).push(a);
-                        }
-                    }
+                    node.tag = _arguments;
                     return node;
                 }
             }
@@ -546,14 +541,10 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
                     let template_instance_list = $[3] as Type[];
                     let _arguments = $[6] as Node[] | undefined;
                     let node = new Node('call');
-                    node.children.push(obj.root);
-                    if (_arguments != undefined) {
-                        for (let a of _arguments) {
-                            node.children.push(a.root);
-                        }
-                    }
-                    node.tag = template_instance_list;
-                    return new Node(node);
+                    node.leftChild = obj;
+                    node.tag = _arguments;
+                    node.tag2 = template_instance_list;
+                    return node;
                 }
             }
         },//模板函数调用
@@ -563,9 +554,9 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
                     let left = $[0] as Node;
                     let right = $[3] as Node;
                     let node = new Node('=');
-                    node.children.push(left.root);
-                    node.children.push(right.root);
-                    return new Node(node);
+                    node.leftChild = left;
+                    node.rightChild = right;
+                    return node;
                 }
             }
         },
@@ -575,9 +566,9 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
                     let left = $[0] as Node;
                     let right = $[3] as Node;
                     let node = new Node('+');
-                    node.children.push(left.root);
-                    node.children.push(right.root);
-                    return new Node(node);
+                    node.leftChild = left;
+                    node.rightChild = right;
+                    return node;
                 }
             }
         },
@@ -587,9 +578,9 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
                     let left = $[0] as Node;
                     let right = $[3] as Node;
                     let node = new Node('-');
-                    node.children.push(left.root);
-                    node.children.push(right.root);
-                    return new Node(node);
+                    node.leftChild = left;
+                    node.rightChild = right;
+                    return node;
                 }
             }
         },
@@ -599,9 +590,9 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
                     let left = $[0] as Node;
                     let right = $[3] as Node;
                     let node = new Node('*');
-                    node.children.push(left.root);
-                    node.children.push(right.root);
-                    return new Node(node);
+                    node.leftChild = left;
+                    node.rightChild = right;
+                    return node;
                 }
             }
         },
@@ -611,9 +602,9 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
                     let left = $[0] as Node;
                     let right = $[3] as Node;
                     let node = new Node('/');
-                    node.children.push(left.root);
-                    node.children.push(right.root);
-                    return new Node(node);
+                    node.leftChild = left;
+                    node.rightChild = right;
+                    return node;
                 }
             }
         },
@@ -623,9 +614,9 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
                     let left = $[0] as Node;
                     let right = $[3] as Node;
                     let node = new Node('<');
-                    node.children.push(left.root);
-                    node.children.push(right.root);
-                    return new Node(node);
+                    node.leftChild = left;
+                    node.rightChild = right;
+                    return node;
                 }
             }
         },
@@ -635,9 +626,9 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
                     let left = $[0] as Node;
                     let right = $[3] as Node;
                     let node = new Node('<=');
-                    node.children.push(left.root);
-                    node.children.push(right.root);
-                    return new Node(node);
+                    node.leftChild = left;
+                    node.rightChild = right;
+                    return node;
                 }
             }
         },
@@ -647,9 +638,9 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
                     let left = $[0] as Node;
                     let right = $[3] as Node;
                     let node = new Node('>');
-                    node.children.push(left.root);
-                    node.children.push(right.root);
-                    return new Node(node);
+                    node.leftChild = left;
+                    node.rightChild = right;
+                    return node;
                 }
             }
         },
@@ -659,9 +650,9 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
                     let left = $[0] as Node;
                     let right = $[3] as Node;
                     let node = new Node('>=');
-                    node.children.push(left.root);
-                    node.children.push(right.root);
-                    return new Node(node);
+                    node.leftChild = left;
+                    node.rightChild = right;
+                    return node;
                 }
             }
         },
@@ -671,9 +662,9 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
                     let left = $[0] as Node;
                     let right = $[3] as Node;
                     let node = new Node('==');
-                    node.children.push(left.root);
-                    node.children.push(right.root);
-                    return new Node(node);
+                    node.leftChild = left;
+                    node.rightChild = right;
+                    return node;
                 }
             }
         },
@@ -683,9 +674,9 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
                     let left = $[0] as Node;
                     let right = $[3] as Node;
                     let node = new Node('||');
-                    node.children.push(left.root);
-                    node.children.push(right.root);
-                    return new Node(node);
+                    node.leftChild = left;
+                    node.rightChild = right;
+                    return node;
                 }
             }
         },
@@ -695,9 +686,9 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
                     let left = $[0] as Node;
                     let right = $[3] as Node;
                     let node = new Node('&&');
-                    node.children.push(left.root);
-                    node.children.push(right.root);
-                    return new Node(node);
+                    node.leftChild = left;
+                    node.rightChild = right;
+                    return node;
                 }
             }
         },
@@ -708,8 +699,8 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
                     let type = $[2] as Type;
                     let node = new Node('instanceof');
                     node.tag = type;
-                    node.children.push(obj.root);
-                    return new Node(node);
+                    node.leftChild = obj;
+                    return obj;
                 }
             }
         },
@@ -718,8 +709,8 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
                 action: function ($, s): Node {
                     let obj = $[2] as Node;
                     let node = new Node('!');
-                    node.children.push(obj.root);
-                    return new Node(node);
+                    node.leftChild = obj;
+                    return node;
                 }
             }
         },//单目运算符-非
@@ -728,8 +719,8 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
                 action: function ($, s): Node {
                     let obj = $[0] as Node;
                     let node = new Node('++');
-                    node.children.push(obj.root);
-                    return new Node(node);
+                    node.leftChild = obj
+                    return node;
                 }
             }
         },//单目运算符++
@@ -738,8 +729,8 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
                 action: function ($, s): Node {
                     let obj = $[0] as Node;
                     let node = new Node('--');
-                    node.children.push(obj.root);
-                    return new Node(node);
+                    node.leftChild = obj
+                    return node;
                 }
             }
         },//单目运算符--
@@ -749,9 +740,9 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
                     let obj = $[0] as Node;
                     let index = $[2] as Node;
                     let node = new Node('index');
-                    node.children.push(obj.root);
-                    node.children.push(index.root);
-                    return new Node(node);
+                    node.leftChild = obj;
+                    node.rightChild = index;
+                    return node;
                 }
             }
         },//[]运算符
@@ -763,10 +754,10 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
                     let obj1 = $[2] as Node;
                     let obj2 = $[4] as Node;
                     let node = new Node('?');
-                    node.children.push(obj0.root);
-                    node.children.push(obj1.root);
-                    node.children.push(obj2.root);
-                    return new Node(node);
+                    node.additionalChild = obj0;
+                    node.leftChild = obj1;
+                    node.rightChild = obj2;
+                    return node;
                 }
             }
         },//三目运算
@@ -776,7 +767,7 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
                     let id = $[0] as string;
                     let node = new Node('load');
                     node.value = id;
-                    return new Node(node);
+                    return node;
                 }
             }
         },//id是一个对象
@@ -787,23 +778,21 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
                     let node = new Node('immediate');
                     node.value = immediate_val.value;
                     node.type = immediate_val.type;
-                    return new Node(node);
+                    return node;
                 }
             }
         },//立即数是一个object
         {
             "object:super": {
                 action: function ($, s): Node {
-                    let node = new Node('super');
-                    return new Node(node);
+                    return new Node('super');
                 }
             }
         },//super是一个对象
         {
             "object:this": {
                 action: function ($, s): Node {
-                    let node = new Node('this');
-                    return new Node(node);
+                    return new Node('this');
                 }
             }
         },//this是一个object
@@ -822,10 +811,7 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
                     functionType.scope = scope;
                     let node = new Node('immediate');
                     node.type = functionType;
-                    for (let ast of statements) {
-                        node.children.push(ast.root);
-                    }
-                    return new Node(node);
+                    return node;
                 }
             }
         },//模板lambda
@@ -838,10 +824,7 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
                     let functionType = new FunctionType(parameter_declare, undefined, undefined);
                     functionType.scope = scope;
                     node.type = functionType;
-                    for (let ast of statements) {
-                        node.children.push(ast.root);
-                    }
-                    return new Node(node);
+                    return node;
                 }
             }
         },//lambda
@@ -853,8 +836,8 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
                     let obj = $[4] as Node;
                     let node = new Node('cast');
                     node.tag = type;
-                    node.children.push(obj.root);
-                    return new Node(node);
+                    node.leftChild = obj;
+                    return node;
                 }
             }
         },//强制转型
@@ -864,13 +847,9 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
                     let type = $[1] as Type;
                     let _arguments = $[4] as Node[] | undefined;
                     let node = new Node('new');
-                    node.tag = type;
-                    if (_arguments != undefined) {
-                        for (let arg of _arguments) {
-                            node.children.push(arg.root);
-                        }
-                    }
-                    return new Node(node);
+                    node.tag = _arguments;
+                    node.tag2 = type;
+                    return node;
                 }
             }
         },//new 对象
@@ -880,11 +859,10 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
                     let type = $[1] as Type;
                     let array_init_list = $[2] as { initialize: Node[], placeholder: number }
                     let node = new Node('new_array');
-                    node.tag = { type: type, placeholder: array_init_list.placeholder };
-                    for (let init of array_init_list.initialize) {
-                        node.children.push(init.root);
-                    }
-                    return new Node(node);
+                    node.tag = type;
+                    node.tag2 = array_init_list.initialize;
+                    node.tag3 = array_init_list.placeholder
+                    return node;
                 }
             }
         },//创建数组
