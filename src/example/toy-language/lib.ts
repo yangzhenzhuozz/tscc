@@ -1,7 +1,9 @@
 class Type {
     public fields: Map<string, Address> = new Map();//属性列表
+    public getFields: Map<string, FunctionType> = new Map();//get列表
+    public setFields: Map<string, FunctionType> = new Map();//get列表
     private allocated = 0;//分配的地址位置
-    public operatorOverload: Map<string, AbstracSyntaxTree[]> = new Map();//操作符重载列表
+    public operatorOverload: Map<string, FunctionType> = new Map();//操作符重载列表
     public modifier: "valuetype" | "sealed" | "referentialType";
     public parentType: Type | undefined;//父对象,为undefined表示这是object
     public genericParadigm: string[] | undefined;
@@ -13,20 +15,41 @@ class Type {
         this.name = name;
         this.modifier = modifier;
     }
+    public add_get(name: string, fun: FunctionType) {
+        if (this.fields.has(name)) {
+            throw new SemanticException(`属性${name}已经存在,不能设置get`);
+        }
+        if (this.getFields.has(name)) {
+            throw new SemanticException(`get属性${name}已经存在,不能设置get`);
+        }
+        if (!fun.scope!.hasReturn) {
+            throw new SemanticException(`get属性${name}必须拥有返回值`);
+        }
+        this.getFields.set(name, fun);
+    }
+    public add_set(name: string, fun: FunctionType) {
+        if (this.fields.has(name)) {
+            throw new SemanticException(`属性${name}已经存在,不能设置set`);
+        }
+        if (this.setFields.has(name)) {
+            throw new SemanticException(`get属性${name}已经存在,不能设置set`);
+        }
+        this.getFields.set(name, fun);
+    }
+    public setOperatorOverload(op: '+', fun: FunctionType) {
+        if (this.operatorOverload.has(op)) {
+            throw new SemanticException(`重载操作符${op}重复定义`);
+        }
+        this.operatorOverload.set(op, fun);
+    }
     public setParent(parentType: Type) {
         this.parentType = parentType;
     }
-    public registerField(name: string, type: Type | undefined, initAST: AbstracSyntaxTree | undefined, vari: 'var' | 'val') {
+    public registerField(name: string, type: Type | undefined, initAST: Node | undefined, vari: 'var' | 'val') {
         if (this.fields.has(name)) {
             throw new SemanticException(`属性:${name}重复定义`);
         }
         this.fields.set(name, new Address(type, initAST, this.allocated++, vari));
-    }
-    public registerOperatorOverload(name: string, instructions: AbstracSyntaxTree[]) {
-        if (this.operatorOverload.has(name)) {
-            throw new SemanticException(`重载符号:${name}重复定义`);
-        }
-        this.operatorOverload.set(name, instructions);
     }
     //检查循环继承
     private checkRecursiveExtend() {
@@ -112,9 +135,9 @@ class FunctionType extends Type {
 class Address {
     public variable: 'var' | 'val';
     public type: Type | undefined;
-    public initAST: AbstracSyntaxTree | undefined;
+    public initAST: Node | undefined;
     public add: number;//地址
-    constructor(type: Type | undefined, initAST: AbstracSyntaxTree | undefined, add: number, vari: 'var' | 'val') {
+    constructor(type: Type | undefined, initAST: Node | undefined, add: number, vari: 'var' | 'val') {
         this.type = type;
         this.initAST = initAST;
         this.add = add;
@@ -129,8 +152,11 @@ class SemanticException extends Error {
 }
 //functionScope或者blockScope
 class Scope {
-    public instruction: AbstracSyntaxTree[] = [];//语法树序列
+    public instruction: (Node | Scope)[] = [];//语法树序列
     public parent: Scope | undefined;//父scope
+    public get hasReturn(): boolean {
+        return this.instruction.slice(-1)[0].hasReturn;
+    }
 }
 class ProgramScope {
     public userTypes = new Map<string, Type>();
@@ -179,17 +205,25 @@ class ProgramScope {
 };
 type operator = '+' | '-' | '*' | '/' | '=' | '<' | '>' | '<=' | '>=' | '&&' | '==' | '||' | '!'
     | '++' | '--' | 'index' | '?' | 'immediate' | 'load' | 'super' | 'this' | 'field' | 'call'
-    | 'instanceof' | 'cast' | 'new' | 'new_array' | 'return' | 'register_local_variable' | 'register_local_value';
+    | 'instanceof' | 'cast' | 'new' | 'new_array' | 'return' | 'register_local_variable' | 'register_local_value' | 'if-else';
 class Node {
     public op: operator;
     public tag: any;
-    public children: Node[] = [];
+    public leftChild: Node | Scope | undefined;
+    public rightChild: Node | Scope | undefined;
     public type: Type | undefined;
     public value: unknown;
     public isleft = false;//是否为左值
-    public hasReturn = false;//是否为return语句
     constructor(op: operator) {
         this.op = op;
+    }
+    public get hasReturn(): boolean {
+        if (this.op == "return") {
+            return true;
+        } else if (this.op == 'if-else') {
+            return this.leftChild!.hasReturn && this.rightChild!.hasReturn;//if分支和else分支都return才算是return;
+        }
+        return false;
     }
     postorderTraversal() {
         switch (this.op) {
@@ -197,14 +231,14 @@ class Node {
                 console.log(`load ${this.value}`);
                 break;
             case 'field':
-                this.children[0].postorderTraversal();
+                (this.leftChild as Node).postorderTraversal();
                 console.log(`get field ${this.tag}`);
                 break;
             case 'call':
-                this.children[0].postorderTraversal();
+                (this.leftChild as Node).postorderTraversal();
                 console.log(`call`);
-                for (let i = 1; i < this.children.length; i++) {
-                    this.children[i].postorderTraversal()
+                for (let i = 0; i < (this.tag as Node[]).length; i++) {
+                    (this.tag as Node[])[i].postorderTraversal()
                 }
                 break;
             default: console.log(`还未实现打印的操作符${this.op}`);
@@ -212,15 +246,5 @@ class Node {
         }
     }
 }
-//为类型推导服务的抽象语法树
-class AbstracSyntaxTree {
-    public root: Node;
-    constructor(root: Node) {
-        this.root = root;
-    }
-    traversal() {
-        this.root.postorderTraversal();
-    }
-}
 const program = new ProgramScope();
-export { Type, ArrayType, FunctionType, Address, Scope, SemanticException, ProgramScope, Node, AbstracSyntaxTree, program }
+export { Type, ArrayType, FunctionType, Address, Scope, SemanticException, ProgramScope, Node, program }

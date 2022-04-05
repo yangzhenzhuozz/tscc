@@ -2,11 +2,11 @@ import fs from "fs";
 import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
 import { userTypeDictionary } from './lexrule.js';
-import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, ProgramScope, Node, AbstracSyntaxTree, program } from "./lib.js";
+import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, ProgramScope, Node, program } from "./lib.js";
 let grammar: Grammar = {
     userCode: `
 import { userTypeDictionary } from './lexrule.js';
-import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, ProgramScope, Node, AbstracSyntaxTree, program } from "./lib.js";
+import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, ProgramScope, Node,  program } from "./lib.js";
     `,
     tokens: ['var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'throw', 'super', 'basic_type', 'instanceof'],
     association: [
@@ -61,7 +61,7 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
                         let node = new Node('register_local_variable');
                         node.value = id;
                         node.type = type;
-                        head.instruction.push(new AbstracSyntaxTree(node));
+                        head.instruction.push(node);
                     }
                 }
             }
@@ -72,7 +72,7 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
                     let head = s.slice(-1)[0] as ProgramScope | Type | Scope;
                     let id = $[1] as string;
                     let type = $[3] as Type;
-                    let obj = $[6] as AbstracSyntaxTree;
+                    let obj = $[6] as Node;
                     if (head instanceof ProgramScope) {//在程序空间中声明的变量
                         head.type.registerField(id, type, obj, 'var');
                     } else if (head instanceof Type) {//在class中声明的变量
@@ -82,7 +82,7 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
                         node.value = id;
                         node.type = type;
                         node.tag = obj;
-                        head.instruction.push(new AbstracSyntaxTree(node));
+                        head.instruction.push(node);
                     }
                 }
             }
@@ -92,7 +92,7 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
                 action: function ($, s) {
                     let head = s.slice(-1)[0] as ProgramScope | Type | Scope;
                     let id = $[1] as string;
-                    let obj = $[4] as AbstracSyntaxTree;
+                    let obj = $[4] as Node;
                     if (head instanceof ProgramScope) {//在程序空间中声明的变量
                         head.type.registerField(id, undefined, obj, 'var');
                     } else if (head instanceof Type) {//在class中声明的变量
@@ -101,7 +101,7 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
                         let node = new Node('register_local_variable');
                         node.value = id;
                         node.tag = obj;
-                        head.instruction.push(new AbstracSyntaxTree(node));
+                        head.instruction.push(node);
                     }
                 }
             }
@@ -120,7 +120,7 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
                         let node = new Node('register_local_value');
                         node.value = id;
                         node.type = type;
-                        head.instruction.push(new AbstracSyntaxTree(node));
+                        head.instruction.push(node);
                     }
                 }
             }
@@ -131,7 +131,7 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
                     let head = s.slice(-1)[0] as ProgramScope | Type | Scope;
                     let id = $[1] as string;
                     let type = $[3] as Type;
-                    let obj = $[6] as AbstracSyntaxTree;
+                    let obj = $[6] as Node;
                     if (head instanceof ProgramScope) {//在程序空间中声明的变量
                         head.type.registerField(id, type, obj, 'var');
                     } else if (head instanceof Type) {//在class中声明的变量
@@ -141,7 +141,7 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
                         node.value = id;
                         node.type = type;
                         node.tag = obj;
-                        head.instruction.push(new AbstracSyntaxTree(node));
+                        head.instruction.push(node);
                     }
                 }
             }
@@ -151,7 +151,7 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
                 action: function ($, s) {
                     let head = s.slice(-1)[0] as ProgramScope | Type | Scope;
                     let id = $[1] as string;
-                    let obj = $[4] as AbstracSyntaxTree;
+                    let obj = $[4] as Node;
                     if (head instanceof ProgramScope) {//在程序空间中声明的变量
                         head.type.registerField(id, undefined, obj, 'val');
                     } else if (head instanceof Type) {//在class中声明的变量
@@ -160,7 +160,7 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
                         let node = new Node('register_local_value');
                         node.value = id;
                         node.tag = obj;
-                        head.instruction.push(new AbstracSyntaxTree(node));
+                        head.instruction.push(node);
                     }
                 }
             }
@@ -230,7 +230,7 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
                         let node = new Node('register_local_value');
                         node.value = id;
                         node.type = functionType;
-                        head.instruction.push(new AbstracSyntaxTree(node));
+                        head.instruction.push(node);
                     }
                 }
             }
@@ -424,8 +424,14 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
         { "class_units:": {} },//class_units可以为空
         { "class_unit:declare ;": {} },//class_unit可以是一个声明语句
         { "class_unit:operator_overload": {} },//class_unit可以是一个运算符重载
-        { "class_unit:get id ( ) : type { statements }": {} },//get
-        { "class_unit:set id ( id : type ) { statements }": {} },//set
+        {
+            "class_unit:get id ( ) : type { create_scope statements }": {
+                action: function ($, s) {
+
+                }
+            }
+        },//get
+        { "class_unit:set id ( id : type ) { create_scope statements }": {} },//set
         { "class_unit:basic_type ( parameter_declare )  { statements }": {} },//构造函数
         { "class_unit:default ( )  { statements }": {} },//default函数,用于初始化值类型
         {
@@ -435,31 +441,34 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
                     let id = $[3] as string;
                     let parameter_type = $[5] as Type;
                     let ret_type = $[8] as Type;
-                    let statements = $[11] as AbstracSyntaxTree[];
+                    let statements = $[11] as Scope;
                     debugger;
-                    if (statements.length < 1 || !statements.slice(-1)[0].root.hasReturn) {
+                    if (!statements.hasReturn) {
                         throw new SemanticException(`get必须有返回值`);
                     }
+                    let fun = new FunctionType([{ name: id, type: parameter_type }], ret_type, undefined);
+                    fun.scope = statements;
+                    head.setOperatorOverload(`+`, fun);
                 }
             }
         },//运算符重载,运算符重载实在是懒得做泛型了,以后要是有需求再讲,比起C#和java的残废泛型，已经很好了
         {
             "statements:statements W2_0 statement": {
-                action: function ($, s): AbstracSyntaxTree[] {
-                    let statements = $[0] as AbstracSyntaxTree[];
-                    let statement = $[2] as AbstracSyntaxTree;
-                    if (statements.slice(-1)[0].root.hasReturn) {
+                action: function ($, s): Scope {
+                    let statements = $[0] as Scope;
+                    let statement = $[2] as Node;
+                    if (statements.hasReturn) {
                         throw new SemanticException('return 之后不能有语句');
                     }
-                    statements.push(statement);
+                    statements.instruction.push(statement);
                     return statements;
                 }
             }
         },//statements可以由多个statement组成
         {
             "statements:": {
-                action: function ($, s): AbstracSyntaxTree[] {
-                    return [];
+                action: function ($, s): Scope {
+                    return s.slice(-1)[0] as Scope;
                 }
             }
         },//statements可以为空
@@ -496,45 +505,46 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
         { "switch_body:default : statement": {} },//default语句
         {
             "object:( W2_0 object )": {
-                action: function ($, s): AbstracSyntaxTree {
-                    return $[2] as AbstracSyntaxTree;
+                action: function ($, s): Node {
+                    return $[2] as Node;
                 }
             }
         },//括号括住的object还是一个object
         {
             "object:object . id": {
-                action: function ($, s): AbstracSyntaxTree {
-                    let obj = $[0] as AbstracSyntaxTree;
+                action: function ($, s): Node {
+                    let obj = $[0] as Node;
                     let id = $[2] as string;
                     let node = new Node('field');
                     node.tag = id;
-                    node.children.push(obj.root);
-                    return new AbstracSyntaxTree(node);
+                    node.leftChild = obj;
+                    return node;
                 }
             }
         },//取成员
         {
             "object:object  ( arguments )": {
-                action: function ($, s): AbstracSyntaxTree {
-                    let obj = $[0] as AbstracSyntaxTree;
-                    let _arguments = $[2] as AbstracSyntaxTree[] | undefined;
+                action: function ($, s): Node {
+                    let obj = $[0] as Node;
+                    let _arguments = $[2] as Node[] | undefined;
                     let node = new Node('call');
-                    node.children.push(obj.root);
+                    node.leftChild = obj;
+                    (node.tag as Node[]) = [];
                     if (_arguments != undefined) {
                         for (let a of _arguments) {
-                            node.children.push(a.root);
+                            (node.tag as Node[]).push(a);
                         }
                     }
-                    return new AbstracSyntaxTree(node);
+                    return node;
                 }
             }
         },//函数调用
         {
             "object:object < W3_0 template_instance_list > ( arguments )": {
-                action: function ($, s): AbstracSyntaxTree {
-                    let obj = $[0] as AbstracSyntaxTree;
+                action: function ($, s): Node {
+                    let obj = $[0] as Node;
                     let template_instance_list = $[3] as Type[];
-                    let _arguments = $[6] as AbstracSyntaxTree[] | undefined;
+                    let _arguments = $[6] as Node[] | undefined;
                     let node = new Node('call');
                     node.children.push(obj.root);
                     if (_arguments != undefined) {
@@ -543,263 +553,263 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
                         }
                     }
                     node.tag = template_instance_list;
-                    return new AbstracSyntaxTree(node);
+                    return new Node(node);
                 }
             }
         },//模板函数调用
         {
             "object:object = W3_0 object": {
-                action: function ($, s): AbstracSyntaxTree {
-                    let left = $[0] as AbstracSyntaxTree;
-                    let right = $[3] as AbstracSyntaxTree;
+                action: function ($, s): Node {
+                    let left = $[0] as Node;
+                    let right = $[3] as Node;
                     let node = new Node('=');
                     node.children.push(left.root);
                     node.children.push(right.root);
-                    return new AbstracSyntaxTree(node);
+                    return new Node(node);
                 }
             }
         },
         {
             "object:object + W3_0 object": {
-                action: function ($, s): AbstracSyntaxTree {
-                    let left = $[0] as AbstracSyntaxTree;
-                    let right = $[3] as AbstracSyntaxTree;
+                action: function ($, s): Node {
+                    let left = $[0] as Node;
+                    let right = $[3] as Node;
                     let node = new Node('+');
                     node.children.push(left.root);
                     node.children.push(right.root);
-                    return new AbstracSyntaxTree(node);
+                    return new Node(node);
                 }
             }
         },
         {
             "object:object - W3_0 object": {
-                action: function ($, s): AbstracSyntaxTree {
-                    let left = $[0] as AbstracSyntaxTree;
-                    let right = $[3] as AbstracSyntaxTree;
+                action: function ($, s): Node {
+                    let left = $[0] as Node;
+                    let right = $[3] as Node;
                     let node = new Node('-');
                     node.children.push(left.root);
                     node.children.push(right.root);
-                    return new AbstracSyntaxTree(node);
+                    return new Node(node);
                 }
             }
         },
         {
             "object:object * W3_0 object": {
-                action: function ($, s): AbstracSyntaxTree {
-                    let left = $[0] as AbstracSyntaxTree;
-                    let right = $[3] as AbstracSyntaxTree;
+                action: function ($, s): Node {
+                    let left = $[0] as Node;
+                    let right = $[3] as Node;
                     let node = new Node('*');
                     node.children.push(left.root);
                     node.children.push(right.root);
-                    return new AbstracSyntaxTree(node);
+                    return new Node(node);
                 }
             }
         },
         {
             "object:object / W3_0 object": {
-                action: function ($, s): AbstracSyntaxTree {
-                    let left = $[0] as AbstracSyntaxTree;
-                    let right = $[3] as AbstracSyntaxTree;
+                action: function ($, s): Node {
+                    let left = $[0] as Node;
+                    let right = $[3] as Node;
                     let node = new Node('/');
                     node.children.push(left.root);
                     node.children.push(right.root);
-                    return new AbstracSyntaxTree(node);
+                    return new Node(node);
                 }
             }
         },
         {
             "object:object < W3_0 object": {
-                action: function ($, s): AbstracSyntaxTree {
-                    let left = $[0] as AbstracSyntaxTree;
-                    let right = $[3] as AbstracSyntaxTree;
+                action: function ($, s): Node {
+                    let left = $[0] as Node;
+                    let right = $[3] as Node;
                     let node = new Node('<');
                     node.children.push(left.root);
                     node.children.push(right.root);
-                    return new AbstracSyntaxTree(node);
+                    return new Node(node);
                 }
             }
         },
         {
             "object:object <= W3_0 object": {
-                action: function ($, s): AbstracSyntaxTree {
-                    let left = $[0] as AbstracSyntaxTree;
-                    let right = $[3] as AbstracSyntaxTree;
+                action: function ($, s): Node {
+                    let left = $[0] as Node;
+                    let right = $[3] as Node;
                     let node = new Node('<=');
                     node.children.push(left.root);
                     node.children.push(right.root);
-                    return new AbstracSyntaxTree(node);
+                    return new Node(node);
                 }
             }
         },
         {
             "object:object > W3_0 object": {
-                action: function ($, s): AbstracSyntaxTree {
-                    let left = $[0] as AbstracSyntaxTree;
-                    let right = $[3] as AbstracSyntaxTree;
+                action: function ($, s): Node {
+                    let left = $[0] as Node;
+                    let right = $[3] as Node;
                     let node = new Node('>');
                     node.children.push(left.root);
                     node.children.push(right.root);
-                    return new AbstracSyntaxTree(node);
+                    return new Node(node);
                 }
             }
         },
         {
             "object:object >= W3_0 object": {
-                action: function ($, s): AbstracSyntaxTree {
-                    let left = $[0] as AbstracSyntaxTree;
-                    let right = $[3] as AbstracSyntaxTree;
+                action: function ($, s): Node {
+                    let left = $[0] as Node;
+                    let right = $[3] as Node;
                     let node = new Node('>=');
                     node.children.push(left.root);
                     node.children.push(right.root);
-                    return new AbstracSyntaxTree(node);
+                    return new Node(node);
                 }
             }
         },
         {
             "object:object == W3_0 object": {
-                action: function ($, s): AbstracSyntaxTree {
-                    let left = $[0] as AbstracSyntaxTree;
-                    let right = $[3] as AbstracSyntaxTree;
+                action: function ($, s): Node {
+                    let left = $[0] as Node;
+                    let right = $[3] as Node;
                     let node = new Node('==');
                     node.children.push(left.root);
                     node.children.push(right.root);
-                    return new AbstracSyntaxTree(node);
+                    return new Node(node);
                 }
             }
         },
         {
             "object:object || W3_0 object": {
-                action: function ($, s): AbstracSyntaxTree {
-                    let left = $[0] as AbstracSyntaxTree;
-                    let right = $[3] as AbstracSyntaxTree;
+                action: function ($, s): Node {
+                    let left = $[0] as Node;
+                    let right = $[3] as Node;
                     let node = new Node('||');
                     node.children.push(left.root);
                     node.children.push(right.root);
-                    return new AbstracSyntaxTree(node);
+                    return new Node(node);
                 }
             }
         },
         {
             "object:object && W3_0 object": {
-                action: function ($, s): AbstracSyntaxTree {
-                    let left = $[0] as AbstracSyntaxTree;
-                    let right = $[3] as AbstracSyntaxTree;
+                action: function ($, s): Node {
+                    let left = $[0] as Node;
+                    let right = $[3] as Node;
                     let node = new Node('&&');
                     node.children.push(left.root);
                     node.children.push(right.root);
-                    return new AbstracSyntaxTree(node);
+                    return new Node(node);
                 }
             }
         },
         {
             "object:object instanceof type": {
-                action: function ($, s): AbstracSyntaxTree {
-                    let obj = $[0] as AbstracSyntaxTree;
+                action: function ($, s): Node {
+                    let obj = $[0] as Node;
                     let type = $[2] as Type;
                     let node = new Node('instanceof');
                     node.tag = type;
                     node.children.push(obj.root);
-                    return new AbstracSyntaxTree(node);
+                    return new Node(node);
                 }
             }
         },
         {
             "object:! W2_0 object": {
-                action: function ($, s): AbstracSyntaxTree {
-                    let obj = $[2] as AbstracSyntaxTree;
+                action: function ($, s): Node {
+                    let obj = $[2] as Node;
                     let node = new Node('!');
                     node.children.push(obj.root);
-                    return new AbstracSyntaxTree(node);
+                    return new Node(node);
                 }
             }
         },//单目运算符-非
         {
             "object:object ++": {
-                action: function ($, s): AbstracSyntaxTree {
-                    let obj = $[0] as AbstracSyntaxTree;
+                action: function ($, s): Node {
+                    let obj = $[0] as Node;
                     let node = new Node('++');
                     node.children.push(obj.root);
-                    return new AbstracSyntaxTree(node);
+                    return new Node(node);
                 }
             }
         },//单目运算符++
         {
             "object:object --": {
-                action: function ($, s): AbstracSyntaxTree {
-                    let obj = $[0] as AbstracSyntaxTree;
+                action: function ($, s): Node {
+                    let obj = $[0] as Node;
                     let node = new Node('--');
                     node.children.push(obj.root);
-                    return new AbstracSyntaxTree(node);
+                    return new Node(node);
                 }
             }
         },//单目运算符--
         {
             "object:object [ W3_0 object ]": {
-                action: function ($, s): AbstracSyntaxTree {
-                    let obj = $[0] as AbstracSyntaxTree;
-                    let index = $[2] as AbstracSyntaxTree;
+                action: function ($, s): Node {
+                    let obj = $[0] as Node;
+                    let index = $[2] as Node;
                     let node = new Node('index');
                     node.children.push(obj.root);
                     node.children.push(index.root);
-                    return new AbstracSyntaxTree(node);
+                    return new Node(node);
                 }
             }
         },//[]运算符
         {
             "object:object ? W3_0 object : W6_0 object": {
                 priority: "?",
-                action: function ($, s): AbstracSyntaxTree {
-                    let obj0 = $[0] as AbstracSyntaxTree;
-                    let obj1 = $[2] as AbstracSyntaxTree;
-                    let obj2 = $[4] as AbstracSyntaxTree;
+                action: function ($, s): Node {
+                    let obj0 = $[0] as Node;
+                    let obj1 = $[2] as Node;
+                    let obj2 = $[4] as Node;
                     let node = new Node('?');
                     node.children.push(obj0.root);
                     node.children.push(obj1.root);
                     node.children.push(obj2.root);
-                    return new AbstracSyntaxTree(node);
+                    return new Node(node);
                 }
             }
         },//三目运算
         {
             "object:id": {
-                action: function ($, s): AbstracSyntaxTree {
+                action: function ($, s): Node {
                     let id = $[0] as string;
                     let node = new Node('load');
                     node.value = id;
-                    return new AbstracSyntaxTree(node);
+                    return new Node(node);
                 }
             }
         },//id是一个对象
         {
             "object:immediate_val": {
-                action: function ($, s): AbstracSyntaxTree {
+                action: function ($, s): Node {
                     let immediate_val = $[0] as { value: unknown, type: Type };
                     let node = new Node('immediate');
                     node.value = immediate_val.value;
                     node.type = immediate_val.type;
-                    return new AbstracSyntaxTree(node);
+                    return new Node(node);
                 }
             }
         },//立即数是一个object
         {
             "object:super": {
-                action: function ($, s): AbstracSyntaxTree {
+                action: function ($, s): Node {
                     let node = new Node('super');
-                    return new AbstracSyntaxTree(node);
+                    return new Node(node);
                 }
             }
         },//super是一个对象
         {
             "object:this": {
-                action: function ($, s): AbstracSyntaxTree {
+                action: function ($, s): Node {
                     let node = new Node('this');
-                    return new AbstracSyntaxTree(node);
+                    return new Node(node);
                 }
             }
         },//this是一个object
         {
             "object:template_definition ( parameter_declare ) => { create_scope statements }": {
-                action: function ($, s): AbstracSyntaxTree {
+                action: function ($, s): Node {
                     let template_definition = $[0] as string[];
                     for (let t of template_definition) {
                         program.unregisterType(t);
@@ -808,7 +818,6 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
                     let head = s.slice(-1)[0] as ProgramScope | Type | Scope;
                     let parameter_declare = $[2] as { name: string, type: Type }[] | undefined;
                     let scope = $[6] as Scope;
-                    let statements = $[7] as AbstracSyntaxTree[];
                     let functionType = new FunctionType(parameter_declare, undefined, undefined);
                     functionType.scope = scope;
                     let node = new Node('immediate');
@@ -816,16 +825,15 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
                     for (let ast of statements) {
                         node.children.push(ast.root);
                     }
-                    return new AbstracSyntaxTree(node);
+                    return new Node(node);
                 }
             }
         },//模板lambda
         {
             "object:( W2_0 parameter_declare ) => { create_scope statements }": {
-                action: function ($, s): AbstracSyntaxTree {
+                action: function ($, s): Node {
                     let parameter_declare = $[2] as { name: string, type: Type }[] | undefined;
                     let scope = $[6] as Scope;
-                    let statements = $[7] as AbstracSyntaxTree[];
                     let node = new Node('immediate');
                     let functionType = new FunctionType(parameter_declare, undefined, undefined);
                     functionType.scope = scope;
@@ -833,28 +841,28 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
                     for (let ast of statements) {
                         node.children.push(ast.root);
                     }
-                    return new AbstracSyntaxTree(node);
+                    return new Node(node);
                 }
             }
         },//lambda
         {
             "object:( W2_0 type ) object": {
                 priority: "cast_priority",
-                action: function ($, s): AbstracSyntaxTree {
+                action: function ($, s): Node {
                     let type = $[2] as Type;
-                    let obj = $[4] as AbstracSyntaxTree;
+                    let obj = $[4] as Node;
                     let node = new Node('cast');
                     node.tag = type;
                     node.children.push(obj.root);
-                    return new AbstracSyntaxTree(node);
+                    return new Node(node);
                 }
             }
         },//强制转型
         {
             "object:new type  ( W4_0 arguments )": {
-                action: function ($, s): AbstracSyntaxTree {
+                action: function ($, s): Node {
                     let type = $[1] as Type;
-                    let _arguments = $[4] as AbstracSyntaxTree[] | undefined;
+                    let _arguments = $[4] as Node[] | undefined;
                     let node = new Node('new');
                     node.tag = type;
                     if (_arguments != undefined) {
@@ -862,36 +870,36 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
                             node.children.push(arg.root);
                         }
                     }
-                    return new AbstracSyntaxTree(node);
+                    return new Node(node);
                 }
             }
         },//new 对象
         {
             "object:new type array_init_list": {
-                action: function ($, s): AbstracSyntaxTree {
+                action: function ($, s): Node {
                     let type = $[1] as Type;
-                    let array_init_list = $[2] as { initialize: AbstracSyntaxTree[], placeholder: number }
+                    let array_init_list = $[2] as { initialize: Node[], placeholder: number }
                     let node = new Node('new_array');
                     node.tag = { type: type, placeholder: array_init_list.placeholder };
                     for (let init of array_init_list.initialize) {
                         node.children.push(init.root);
                     }
-                    return new AbstracSyntaxTree(node);
+                    return new Node(node);
                 }
             }
         },//创建数组
         {
             "array_init_list:array_inits array_placeholder": {
-                action: function ($, s): { initialize: AbstracSyntaxTree[], placeholder: number } {
-                    return { initialize: $[0] as AbstracSyntaxTree[], placeholder: $[1] as number };
+                action: function ($, s): { initialize: Node[], placeholder: number } {
+                    return { initialize: $[0] as Node[], placeholder: $[1] as number };
                 }
             }
         },//new 数组的时候是可以这样写的 new int [2][3][][],其中[2][3]对应了array_inits,后面的[][]对应了array_placeholder(数组占位符)
         {
             "array_inits:array_inits [ object ]": {
-                action: function ($, s): AbstracSyntaxTree[] {
-                    let array_inits = $[0] as AbstracSyntaxTree[];
-                    let obj = $[2] as AbstracSyntaxTree;
+                action: function ($, s): Node[] {
+                    let array_inits = $[0] as Node[];
+                    let obj = $[2] as Node;
                     array_inits.push(obj);
                     return array_inits;
                 }
@@ -899,8 +907,8 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
         },//见array_init_list一条的解释
         {
             "array_inits:[ object ]": {
-                action: function ($, s): AbstracSyntaxTree[] {
-                    return [$[1] as AbstracSyntaxTree];
+                action: function ($, s): Node[] {
+                    return [$[1] as Node];
                 }
             }
         },//见array_init_list一条的解释
@@ -961,23 +969,23 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
         { "arguments:": {} },//实参可以为空
         {
             "arguments:argument_list": {
-                action: function ($, s): AbstracSyntaxTree[] {
-                    return $[0] as AbstracSyntaxTree[];
+                action: function ($, s): Node[] {
+                    return $[0] as Node[];
                 }
             }
         },//实参可以是argument_list
         {
             "argument_list:object": {
-                action: function ($, s): AbstracSyntaxTree[] {
-                    return [$[0] as AbstracSyntaxTree]
+                action: function ($, s): Node[] {
+                    return [$[0] as Node]
                 }
             }
         },//参数列表可以是一个object
         {
             "argument_list:argument_list , object": {
-                action: function ($, s): AbstracSyntaxTree[] {
-                    let argument_list = $[0] as AbstracSyntaxTree[];
-                    let obj = $[2] as AbstracSyntaxTree;
+                action: function ($, s): Node[] {
+                    let argument_list = $[0] as Node[];
+                    let obj = $[2] as Node;
                     argument_list.push(obj);
                     return argument_list;
                 }
