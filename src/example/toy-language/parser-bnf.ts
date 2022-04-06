@@ -206,39 +206,42 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
             }
         },//继承,虽然文法是允许继承任意类型,但是在语义分析的时候再具体决定该class能不能被继承
         {
-            "function_definition:function id template_declare ( parameter_declare ) ret_type { create_scope statements }": {
+            "function_definition:function id template_declare ( parameter_declare ) ret_type { create_function_scope_in_definition statements }": {
                 action: function ($, s) {
-                    let template_declare = $[2] as string[] | undefined;
+
+                }
+            }
+        },//函数定义语句，同样太长，不列表
+        {
+            "create_function_scope_in_definition:": {
+                action: function ($a, s): Scope {
+                    let stack = s.slice(9);
+                    let template_declare = stack[3] as string[] | undefined;
                     if (template_declare != undefined) {
                         for (let t of template_declare) {
                             program.unregisterType(t);
                             userTypeDictionary.delete(t);
                         }
                     }
-                    let head = s.slice(-1)[0] as ProgramScope | Type | Scope;
-                    let id = $[1] as string;
-                    let parameter_declare = $[4] as { name: string, type: Type }[] | undefined;
-                    let ret_type = $[6] as Type | undefined;
-                    let scope = $[8] as Scope;
+                    let head = stack[0] as ProgramScope | Type | Scope;
+                    let id = stack[2] as string;
+                    let parameter_declare = stack[5] as { name: string, type: Type }[] | undefined;
+                    let ret_type = stack[7] as Type | undefined;
                     let functionType = new FunctionType(parameter_declare, ret_type, undefined);
-                    functionType.scope = scope;
                     if (head instanceof ProgramScope) {//在程序空间中声明的变量
                         head.type.registerField(id, functionType, undefined, 'val');
+                        functionType.scope = new Scope(undefined, functionType);
                     } else if (head instanceof Type) {//在class中声明的变量
                         head.registerField(id, functionType, undefined, 'val');
+                        functionType.scope = new Scope(undefined, functionType);
                     } else {
+                        functionType.scope = new Scope(head, functionType);
                         let node = new Node('register_local_value');
                         node.value = id;
                         node.type = functionType;
                         head.instruction.push(node);
                     }
-                }
-            }
-        },//函数定义语句，同样太长，不列表
-        {
-            "create_scope:": {
-                action: function (): Scope {
-                    return new Scope();
+                    return functionType.scope;
                 }
             }
         },
@@ -346,7 +349,7 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
                     }
                     let parameter_declare = $[2] as { name: string, type: Type }[];
                     let ret_type = $[5] as Type;
-                    let ret = new FunctionType(parameter_declare, ret_type, template_definition);
+                    let ret = new FunctionType(parameter_declare, ret_type, template_definition, undefined);
                     return ret;
                 }
             }
@@ -357,7 +360,7 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
                 action: function ($, s): Type {
                     let parameter_declare = $[2] as { name: string, type: Type }[];
                     let ret_type = $[5] as Type;
-                    let ret = new FunctionType(parameter_declare, ret_type, undefined);
+                    let ret = new FunctionType(parameter_declare, ret_type, undefined, undefined);
                     return ret;
                 }
             }
@@ -425,7 +428,7 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
         { "class_unit:declare ;": {} },//class_unit可以是一个声明语句
         { "class_unit:operator_overload": {} },//class_unit可以是一个运算符重载
         {
-            "class_unit:get id ( ) : type { create_scope statements }": {
+            "class_unit:get id ( ) : type { W8_0 create_scope statements }": {
                 action: function ($, s) {
                     let head = s.slice(-1)[0] as Type;
                     let statements = $[8] as Scope;
@@ -434,12 +437,12 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
                     if (!statements.hasReturn) {
                         throw new SemanticException(`get属性${id}必须有返回值`);
                     }
-                    head.add_get(id, new FunctionType(undefined, type, undefined));
+                    head.add_get(id, new FunctionType(undefined, type, undefined, head));
                 }
             }
         },//get
         {
-            "class_unit:set id ( id : type ) { create_scope statements }": {
+            "class_unit:set id ( id : type ) { W9_0 create_scope statements }": {
                 action: function ($, s) {
                     let head = s.slice(-1)[0] as Type;
                     let statements = $[9] as Scope;
@@ -450,12 +453,12 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
                     if (!statements.hasReturn) {
                         throw new SemanticException(`get属性${id}必须有返回值`);
                     }
-                    head.add_set(id, new FunctionType([{ name: parameter_id, type: parameter_type }], type, undefined));
+                    head.add_set(id, new FunctionType([{ name: parameter_id, type: parameter_type }], type, undefined, head));
                 }
             }
         },//set
         {
-            "class_unit:basic_type ( parameter_declare )  { create_scope statements }": {
+            "class_unit:basic_type ( parameter_declare )  { W6_0 create_scope statements }": {
                 action: function ($, s) {
                     let basic_type = $[0] as Type;
                     let head = s.slice(-1)[0] as Type;
@@ -463,22 +466,22 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
                     if (basic_type.name != head.name) {
                         throw new SemanticException(`构造函数必须和class名字一致`);
                     }
-                    let _constructor = new FunctionType(parameter_declare, undefined, undefined);
+                    let _constructor = new FunctionType(parameter_declare, undefined, undefined, head);
                     head._constructor = _constructor;
                 }
             }
         },//构造函数
         {
-            "class_unit:default ( )  { create_scope statements }": {
+            "class_unit:default ( )  { W5_0 create_scope statements }": {
                 action: function ($, s) {
                     let head = s.slice(-1)[0] as Type;
-                    let _default = new FunctionType(undefined, undefined, undefined);
+                    let _default = new FunctionType(undefined, undefined, undefined, head);
                     head._default = _default;
                 }
             }
         },//default函数,用于初始化值类型
         {
-            "operator_overload:operator + ( id : type ) : type { create_scope statements }": {
+            "operator_overload:operator + ( id : type ) : type { W11_0 create_scope statements }": {
                 action: function ($, s) {
                     let head = s.slice(-1)[0] as Type;
                     let id = $[3] as string;
@@ -489,7 +492,7 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
                     if (!statements.hasReturn) {
                         throw new SemanticException(`get必须有返回值`);
                     }
-                    let fun = new FunctionType([{ name: id, type: parameter_type }], ret_type, undefined);
+                    let fun = new FunctionType([{ name: id, type: parameter_type }], ret_type, undefined, head);
                     fun.scope = statements;
                     head.setOperatorOverload(`+`, fun);
                 }
@@ -516,7 +519,7 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
             }
         },//statements可以为空
         { "statement:declare ;": {} },//statement可以是一条声明语句
-        { "statement:try { statement } catch ( id : type ) { statement }": {} },//try catch语句，允许捕获任意类型的异常
+        { "statement:try { W3_0 create_scope statements } catch ( id : type ) { W14_0 create_scope statements }": {} },//try catch语句，允许捕获任意类型的异常
         { "statement:throw object ;": {} },//抛异常语句
         { "statement:return object ;": {} },//带返回值的返回语句
         { "statement:return ;": {} },//不带返回值的语句
@@ -539,7 +542,7 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
         { "for_condition:object": {} },//condition可以是一个对象(必须是bool对象)
         { "for_step:": {} },//step可以为空
         { "for_step:object": {} },//step可以是一个对象
-        { "block:{ statements }": {} },//代码块是一对花括号中间包裹着statements
+        { "block:{ W2_0 create_scope statements }": {} },//代码块是一对花括号中间包裹着statements
         { "lable_use:": {} },//在break和continue中被使用
         { "lable_use:id": {} },//在break和continue中被使用
         { "switch_bodys:": {} },//switch_bodys可为空
@@ -840,7 +843,7 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
             }
         },//this是一个object
         {
-            "object:template_definition ( parameter_declare ) => { create_scope statements }": {
+            "object:template_definition ( parameter_declare ) => { W7_0 create_scope statements }": {
                 action: function ($, s): Node {
                     let template_definition = $[0] as string[];
                     for (let t of template_definition) {
@@ -850,7 +853,7 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
                     let head = s.slice(-1)[0] as ProgramScope | Type | Scope;
                     let parameter_declare = $[2] as { name: string, type: Type }[] | undefined;
                     let scope = $[6] as Scope;
-                    let functionType = new FunctionType(parameter_declare, undefined, undefined);
+                    let functionType = new FunctionType(parameter_declare, undefined, undefined, head);
                     functionType.scope = scope;
                     let node = new Node('immediate');
                     node.type = functionType;
@@ -859,12 +862,13 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
             }
         },//模板lambda
         {
-            "object:( W2_0 parameter_declare ) => { create_scope statements }": {
+            "object:( W2_0 parameter_declare ) => { W7_0 create_scope statements }": {
                 action: function ($, s): Node {
+                    let head = s.slice(-1)[0] as ProgramScope | Type | Scope;
                     let parameter_declare = $[2] as { name: string, type: Type }[] | undefined;
                     let scope = $[6] as Scope;
                     let node = new Node('immediate');
-                    let functionType = new FunctionType(parameter_declare, undefined, undefined);
+                    let functionType = new FunctionType(parameter_declare, undefined, undefined, head);
                     functionType.scope = scope;
                     node.type = functionType;
                     return node;
@@ -1034,12 +1038,54 @@ import { Type, ArrayType, FunctionType, Address, Scope, SemanticException, Progr
             }
         },
         {
+            "W5_0:": {
+                action: function ($, s) {
+                    return s.slice(-5)[0];
+                }
+            }
+        },
+        {
             "W6_0:": {
                 action: function ($, s) {
                     return s.slice(-6)[0];
                 }
             }
-        }
+        },
+        {
+            "W7_0:": {
+                action: function ($, s) {
+                    return s.slice(-7)[0];
+                }
+            }
+        },
+        {
+            "W8_0:": {
+                action: function ($, s) {
+                    return s.slice(-8)[0];
+                }
+            }
+        },
+        {
+            "W9_0:": {
+                action: function ($, s) {
+                    return s.slice(-9)[0];
+                }
+            }
+        },
+        {
+            "W11_0:": {
+                action: function ($, s) {
+                    return s.slice(-11)[0];
+                }
+            }
+        },
+        {
+            "W14_0:": {
+                action: function ($, s) {
+                    return s.slice(-14)[0];
+                }
+            }
+        },
     ]
 }
 let tscc = new TSCC(grammar, { language: "zh-cn", debug: false });

@@ -10,8 +10,8 @@ class Type {
     public templateInstances: Type[] | undefined;
     public name: string;
     public programScope: ProgramScope | undefined;
-    public _constructor:FunctionType|undefined;//只允许一个构造函数
-    public _default:FunctionType|undefined;//只允许一个default
+    public _constructor: FunctionType | undefined;//只允许一个构造函数
+    public _default: FunctionType | undefined;//只允许一个default
     constructor(name: string, modifier: "valuetype" | "sealed" | "referentialType", templateInstances: Type[] | undefined) {
         this.templateInstances = templateInstances;
         this.name = name;
@@ -155,14 +155,19 @@ class SemanticException extends Error {
 //functionScope或者blockScope
 class Scope {
     public instruction: (Node | Scope)[] = [];//语法树序列
-    public parent: Scope | undefined;//父scope
+    public parentScope: Scope|undefined;//函数层级的Scope没有parent,即在program和class中定义的函数不需要parentScope
+    public functionScope:FunctionType;//用来做闭包处理的
+    constructor(parentScope: Scope|undefined,functionScope:FunctionType) {
+        this.parentScope = parentScope;
+        this.functionScope=functionScope;
+    }
     public get hasReturn(): boolean {
         return this.instruction.slice(-1)[0].hasReturn;
     }
 }
 class ProgramScope {
     public userTypes = new Map<string, Type>();
-    public type = new Type('$program', 'referentialType', undefined);//program是一个引用类型
+    public type: Type = new Type('$program', 'referentialType', undefined);;//program是一个引用类型
     constructor() {
         this.userTypes.set("int", new Type('int', 'valuetype', undefined));
     }

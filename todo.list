@@ -144,3 +144,49 @@ valueType class A {
 valueType class B {
     var value:A;
 }
+
+
+推翻以前的东西，所有东西都基于AST和Scope来做,第一遍解析得到Scope和AST信息，然后第二遍只处理这个数据结构
+class myClass{
+    val a=(){
+        val b=1;
+        val c=(){
+            b++;
+        }
+        c();
+    }
+}
+
+{
+    "programScope": {
+        "classScope": {
+            "name": "myClass",
+            "field": [
+                {
+                    "a": {
+                        "functionScope": [
+                            {
+                                "declare": {
+                                    "b": {
+                                        "init": {
+                                            "ast": 1
+                                        }
+                                    }
+                                }
+                            },
+                            {
+                                "declare": {
+                                    "c": {
+                                        "init":{
+                                            ?????//把整个程序解析的数据结构先设计出来
+                                        }
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+    }
+}

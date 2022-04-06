@@ -103,7 +103,7 @@ let grammar: Grammar = {
         { "statements:statements statement": {} },//statements可以由多个statement组成
         { "statements:": {} },//statements可以为空
         { "statement:declare ;": {} },//statement可以是一条声明语句
-        { "statement:try { statement } catch ( id : type ) { statement }": {} },//try catch语句，允许捕获任意类型的异常
+        { "statement:try { statements } catch ( id : type ) { statements }": {} },//try catch语句，允许捕获任意类型的异常
         { "statement:throw object ;": {} },//抛异常语句
         { "statement:return object ;": {} },//带返回值的返回语句
         { "statement:return ;": {} },//不带返回值的语句
