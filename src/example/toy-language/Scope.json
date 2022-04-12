@@ -1,4 +1,65 @@
 {
-    "src": "",
-    "program": {}
+    "comment": "创建一个.d.ts文件描述这个结构",
+    "bulit_in_class": [
+        {
+            "int": {
+                "isNormalClass": true
+            }
+        },
+        {
+            "double": {
+                "isNormalClass": true
+            }
+        },
+        {
+            "test": {
+                "isNormalClass": true,
+                "operatorOverload": [
+                    {
+                        "+": {
+                            "arument": {
+                                "a": {
+                                    "type": {
+                                        "name": "int"
+                                    }
+                                }
+                            },
+                            "body": {}
+                        }
+                    }
+                ]
+            },
+            "Map": {
+                "isGenricParadigm": true,
+                "templates": [
+                    "H",
+                    "I"
+                ]
+            }
+        }
+    ],
+    "property": {
+        "a": {
+            "type": {
+                "name": "Map"
+            }
+        },
+        "b": {
+            "type": {
+                "name": "Map"
+            }
+        },
+        "c": {
+            "type": {
+                "name": "Map",
+                "templateSpecialization": [
+                    "int",
+                    "int"
+                ]
+            }
+        },
+        "d": {
+            "type": {}
+        }
+    }
 }
