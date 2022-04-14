@@ -43,7 +43,9 @@ interface Variable {
 }
 //一条语句就是一个Noe
 interface ASTNode {
-
+    op: 'def' | 'load' | '+';
+    leftChild: ASTNode | undefined;
+    rightChild: ASTNode | undefined;
 }
 //scope留到解析语法树的时候做,好像思路越来越清晰了
 //把test.y的手工生成一遍
