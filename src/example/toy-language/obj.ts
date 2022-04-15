@@ -20,10 +20,10 @@ interface TypeDef {
     operatorOverload?: {
         [key: string]: FunctionType
     };
-    property: { [key: string]: Variable };
+    property: { [key: string]: VariableDescriptor };
 }
 interface FunctionType {
-    arument: { [key: string]: Variable };
+    arument: { [key: string]: VariableDescriptor };
     body: ASTNode[];
 }
 interface ArrayType {
@@ -34,12 +34,15 @@ interface Bulit_In_Class {
 }
 interface Program {
     bulit_in_class: Bulit_In_Class;
-    property: { [key: string]: Variable };
+    property: { [key: string]: VariableDescriptor };
 }
-interface Variable {
+interface VariableDescriptor {
     type?: string;//需要类型推导的变量可以先不设置Type
     initAST?: ASTNode;//当type为undefined的时候,initAST必须存在,否则无法确定类型
     templateSpecialization?: string[];//模板特化
+}
+interface Value {
+    value: unknown;//不允许为undefined
 }
 //一条语句就是一个Noe
 interface ASTNode {
@@ -47,8 +50,8 @@ interface ASTNode {
     leftChild: ASTNode | undefined;
     rightChild: ASTNode | undefined;
 }
-//scope留到解析语法树的时候做,好像思路越来越清晰了
-//把test.y的手工生成一遍
+//仔细考虑一下Value和Node的设计，对于def和load怎么才优雅
+//scope留到解析语法树的时候做
 let program: Program = {
     bulit_in_class: {
         int: {
