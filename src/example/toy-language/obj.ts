@@ -41,16 +41,22 @@ interface VariableDescriptor {
     initAST?: ASTNode;//当type为undefined的时候,initAST必须存在,否则无法确定类型
     templateSpecialization?: string[];//模板特化
 }
-interface Value {
-    value: unknown;//不允许为undefined
-}
 //一条语句就是一个Noe
 interface ASTNode {
-    op: 'def' | 'load' | '+';
-    leftChild: ASTNode | undefined;
-    rightChild: ASTNode | undefined;
+    def?: DefNode;
+    load?: string;
+    "+"?: { rightChild: ASTNode; leftChild: ASTNode; };
+    immediate?: immediateNode;
 }
-//仔细考虑一下Value和Node的设计，对于def和load怎么才优雅
+//定义变量的节点
+interface DefNode {
+    [key: string]: VariableDescriptor
+}
+interface immediateNode {
+    value: any;
+    type: string;
+}
+//把ast设计得优雅一点，后续设计更方便
 //scope留到解析语法树的时候做
 let program: Program = {
     bulit_in_class: {
@@ -68,7 +74,28 @@ let program: Program = {
             operatorOverload: {
                 "+": {
                     arument: { a: { type: "int" }, b: { type: "int " } },
-                    body: []
+                    body: [
+                        {
+                            "+": {
+                                leftChild: {
+                                    def: {
+                                        a: {
+                                            type: "int",
+                                            initAST: {
+                                                immediate: {
+                                                    value: 1,
+                                                    type: "int"
+                                                }
+                                            }
+                                        }
+                                    },
+                                },
+                                rightChild: {
+                                    load: 'b'
+                                }
+                            }
+                        }
+                    ]
                 }
             }
         }
