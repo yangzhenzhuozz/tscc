@@ -3,7 +3,7 @@ import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
 import { userTypeDictionary } from './lexrule.js';
 let grammar: Grammar = {
-    userCode:`
+    userCode: `
 import { userTypeDictionary } from './lexrule.js';
     `,
     tokens: ['var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'throw', 'super', 'basic_type', 'instanceof'],
@@ -50,7 +50,7 @@ import { userTypeDictionary } from './lexrule.js';
         { "declare:function_definition": {} },//声明语句_7，可以是一个函数定义语句
         {
             "class_definition:modifier class basic_type template_declare extends_declare { class_units }": {
-                action: function ($, s) {
+                action: function ($, _s) {
                     let template_declare = $[3] as string[] | undefined;
                     if (template_declare != undefined) {
                         for (let t of template_declare) {
@@ -80,7 +80,13 @@ import { userTypeDictionary } from './lexrule.js';
         { "modifier:sealed": {} },//modifier可以是"sealed"
         { "modifier:": {} },//modifier可以为空
         { "template_declare:": {} },//模板声明可以为空
-        { "template_declare:template_definition": {} },//模板声明可以是一个模板定义
+        {
+            "template_declare:template_definition": {
+                action: function ($, s): string[] {
+                    return $[0] as string[];
+                }
+            }
+        },//模板声明可以是一个模板定义
         {
             "template_definition:< template_definition_list >": {
                 action: function ($, s): string[] {
@@ -91,8 +97,22 @@ import { userTypeDictionary } from './lexrule.js';
                 }
             }
         },//模板定义由一对尖括号<>和内部的template_definition_list组成
-        { "template_definition_list:id": {} },//template_definition_list可以是一个id
-        { "template_definition_list:template_definition_list , id": {} },//template_definition_list可以是一个template_definition_list后面接上 , id
+        {
+            "template_definition_list:id": {
+                action: function ($, s): string[] {
+                    return [$[0] as string];
+                }
+            }
+        },//template_definition_list可以是一个id
+        {
+            "template_definition_list:template_definition_list , id": {
+                action: function ($, s): string[] {
+                    let template_definition_list = $[0] as string[];
+                    template_definition_list.push($[2] as string)
+                    return template_definition_list;
+                }
+            }
+        },//template_definition_list可以是一个template_definition_list后面接上 , id
         { "type:( type )": {} },//type可以用圆括号包裹
         /**
          * type后面的'['会导致如下二义性:
