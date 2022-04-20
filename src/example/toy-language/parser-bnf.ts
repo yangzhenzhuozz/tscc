@@ -41,7 +41,10 @@ import { userTypeDictionary } from './lexrule.js';
         /**
          * var和val的区别就是一个可修改，一个不可修改,val类似于其他语言的const
          */
-        { "declare:var id : type": {} },//声明语句_1，声明一个变量id，其类型为type
+        { "declare:var id : type": {
+            action:function($,s):DefNode{
+            }
+        } },//声明语句_1，声明一个变量id，其类型为type
         { "declare:var id : type = object": {} },//声明语句_2，声明一个变量id，并且将object设置为id的初始值，object的类型要和声明的类型一致
         { "declare:var id = object": {} },//声明语句_3，声明一个变量id，并且将object设置为id的初始值，类型自动推导
         { "declare:val id : type": {} },//声明语句_4，声明一个变量id，其类型为type

@@ -34,7 +34,7 @@ interface Bulit_In_Class {
 }
 interface Program {
     bulit_in_class: Bulit_In_Class;
-    property: { [key: string]: VariableDescriptor };
+    property: DefNode;
 }
 interface VariableDescriptor {
     type?: string;//需要类型推导的变量可以先不设置Type
@@ -54,10 +54,14 @@ interface DefNode {
 }
 interface immediateNode {
     value: any;
-    type: string;
+    type: Type;
 }
+type Type=string|functionType|ArrayType;
+interface functionType{}
+interface ArrayType{}
 //把ast设计得优雅一点，后续设计更方便
 //scope留到解析语法树的时候做
+//还差Type的定义和function定义,function定义成一个immediate节点
 let program: Program = {
     bulit_in_class: {
         int: {
