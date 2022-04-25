@@ -30,27 +30,38 @@ import { userTypeDictionary } from './lexrule.js';
         { 'nonassoc': ['else'] },
     ],
     BNF: [
-        { "program:import_stmts program_units": {} },//整个程序由导入语句组和程序单元组构成
+        { "program:create_program import_stmts W3_1 program_units": {} },//整个程序由导入语句组和程序单元组构成
+        {
+            "create_program:": {
+                action: function ($, s): Program {
+                    return { bulit_in_class: {}, property: {} };
+                }
+            }
+        },
         { "import_stmts:": {} },//导入语句组可以为空
         { "import_stmts:import_stmts import_stmt": {} },//导入语句组由一条或者多条导入语句组成
         { "import_stmt:import id ;": {} },//导入语句语法
         { "program_units:": {} },//程序单元组可以为空
-        { "program_units:program_units program_unit": {} },//程序单元组由一个或者多个程序单元组成
-        { "program_unit:declare ;": {} },//程序单元可以是一条声明语句
+        { "program_units:program_units W2_0 program_unit": {} },//程序单元组由一个或者多个程序单元组成
+        {
+            "program_unit:declare_in_program ;": {
+                action: function ($, s) {
+                    let head = s.slice(-1)[0] as Program;//全局变量、class定义成员、局部变量
+                    //为head.property增加属性
+                }
+            }
+        },//程序单元可以是一条声明语句
         { "program_unit:class_definition": {} },//程序单元可以是一个类定义语句
         /**
          * var和val的区别就是一个可修改，一个不可修改,val类似于其他语言的const
          */
-        { "declare:var id : type": {
-            action:function($,s):DefNode{
-            }
-        } },//声明语句_1，声明一个变量id，其类型为type
-        { "declare:var id : type = object": {} },//声明语句_2，声明一个变量id，并且将object设置为id的初始值，object的类型要和声明的类型一致
-        { "declare:var id = object": {} },//声明语句_3，声明一个变量id，并且将object设置为id的初始值，类型自动推导
-        { "declare:val id : type": {} },//声明语句_4，声明一个变量id，其类型为type
-        { "declare:val id : type = object": {} },//声明语句_5，声明一个变量id，并且将object设置为id的初始值，object的类型要和声明的类型一致
-        { "declare:val id = object": {} },//声明语句_6，声明一个变量id，并且将object设置为id的初始值，类型自动推导
-        { "declare:function_definition": {} },//声明语句_7，可以是一个函数定义语句
+        { "declare_in_program:var id : type": {} },//声明语句_1，声明一个变量id，其类型为type
+        { "declare_in_program:var id : type = object": {} },//声明语句_2，声明一个变量id，并且将object设置为id的初始值，object的类型要和声明的类型一致
+        { "declare_in_program:var id = object": {} },//声明语句_3，声明一个变量id，并且将object设置为id的初始值，类型自动推导
+        { "declare_in_program:val id : type": {} },//声明语句_4，声明一个变量id，其类型为type
+        { "declare_in_program:val id : type = object": {} },//声明语句_5，声明一个变量id，并且将object设置为id的初始值，object的类型要和声明的类型一致
+        { "declare_in_program:val id = object": {} },//声明语句_6，声明一个变量id，并且将object设置为id的初始值，类型自动推导
+        { "declare_in_program:function_definition": {} },//声明语句_7，可以是一个函数定义语句
         {
             "class_definition:modifier class basic_type template_declare extends_declare { class_units }": {
                 action: function ($, _s) {
@@ -161,7 +172,17 @@ import { userTypeDictionary } from './lexrule.js';
         { "parameter_list:parameter_list , id : type": {} },//parameter_list可以是一个parameter_list接上 , id : type
         { "class_units:class_units class_unit": {} },//class_units可以由多个class_unit组成
         { "class_units:": {} },//class_units可以为空
-        { "class_unit:declare ;": {} },//class_unit可以是一个声明语句
+        { "class_unit:declare_in_class ;": {} },//class_unit可以是一个声明语句
+        /**
+         * var和val的区别就是一个可修改，一个不可修改,val类似于其他语言的const
+         */
+        { "declare_in_class:var id : type": {} },//声明语句_1，声明一个变量id，其类型为type
+        { "declare_in_class:var id : type = object": {} },//声明语句_2，声明一个变量id，并且将object设置为id的初始值，object的类型要和声明的类型一致
+        { "declare_in_class:var id = object": {} },//声明语句_3，声明一个变量id，并且将object设置为id的初始值，类型自动推导
+        { "declare_in_class:val id : type": {} },//声明语句_4，声明一个变量id，其类型为type
+        { "declare_in_class:val id : type = object": {} },//声明语句_5，声明一个变量id，并且将object设置为id的初始值，object的类型要和声明的类型一致
+        { "declare_in_class:val id = object": {} },//声明语句_6，声明一个变量id，并且将object设置为id的初始值，类型自动推导
+        { "declare_in_class:function_definition": {} },//声明语句_7，可以是一个函数定义语句
         { "class_unit:operator_overload": {} },//class_unit可以是一个运算符重载
         { "class_unit:get id ( ) : type { statements }": {} },//get
         { "class_unit:set id ( id : type ) { statements }": {} },//set
@@ -170,7 +191,17 @@ import { userTypeDictionary } from './lexrule.js';
         { "operator_overload:operator + ( id : type ) : type { statements }": {} },//运算符重载,运算符重载实在是懒得做泛型了,以后要是有需求再讲,比起C#和java的残废泛型，已经很好了
         { "statements:statements statement": {} },//statements可以由多个statement组成
         { "statements:": {} },//statements可以为空
-        { "statement:declare ;": {} },//statement可以是一条声明语句
+        { "statement:declare_in_stmt ;": {} },//statement可以是一条声明语句
+        /**
+         * var和val的区别就是一个可修改，一个不可修改,val类似于其他语言的const
+         */
+        { "declare_in_stmt:var id : type": {} },//声明语句_1，声明一个变量id，其类型为type
+        { "declare_in_stmt:var id : type = object": {} },//声明语句_2，声明一个变量id，并且将object设置为id的初始值，object的类型要和声明的类型一致
+        { "declare_in_stmt:var id = object": {} },//声明语句_3，声明一个变量id，并且将object设置为id的初始值，类型自动推导
+        { "declare_in_stmt:val id : type": {} },//声明语句_4，声明一个变量id，其类型为type
+        { "declare_in_stmt:val id : type = object": {} },//声明语句_5，声明一个变量id，并且将object设置为id的初始值，object的类型要和声明的类型一致
+        { "declare_in_stmt:val id = object": {} },//声明语句_6，声明一个变量id，并且将object设置为id的初始值，类型自动推导
+        { "declare_in_stmt:function_definition": {} },//声明语句_7，可以是一个函数定义语句
         { "statement:try { statements } catch ( id : type ) { statements }": {} },//try catch语句，允许捕获任意类型的异常
         { "statement:throw object ;": {} },//抛异常语句
         { "statement:return object ;": {} },//带返回值的返回语句
@@ -222,7 +253,17 @@ import { userTypeDictionary } from './lexrule.js';
         { "lable_def:": {} },//lable_def可以为空
         { "lable_def:id :": {} },//label_def为 id : 组成
         { "for_init:": {} },//for_loop的init可以为空
-        { "for_init:declare": {} },//init可以是一个声明
+        { "for_init:declare_in_for_init": {} },//init可以是一个声明
+        /**
+         * var和val的区别就是一个可修改，一个不可修改,val类似于其他语言的const
+         */
+        { "declare_in_for_init:var id : type": {} },//声明语句_1，声明一个变量id，其类型为type
+        { "declare_in_for_init:var id : type = object": {} },//声明语句_2，声明一个变量id，并且将object设置为id的初始值，object的类型要和声明的类型一致
+        { "declare_in_for_init:var id = object": {} },//声明语句_3，声明一个变量id，并且将object设置为id的初始值，类型自动推导
+        { "declare_in_for_init:val id : type": {} },//声明语句_4，声明一个变量id，其类型为type
+        { "declare_in_for_init:val id : type = object": {} },//声明语句_5，声明一个变量id，并且将object设置为id的初始值，object的类型要和声明的类型一致
+        { "declare_in_for_init:val id = object": {} },//声明语句_6，声明一个变量id，并且将object设置为id的初始值，类型自动推导
+        { "declare_in_for_init:function_definition": {} },//声明语句_7，可以是一个函数定义语句
         { "for_init:object": {} },//也可以是一个对象
         { "for_condition:": {} },//condition可以为空
         { "for_condition:object": {} },//condition可以是一个对象(必须是bool对象)
@@ -355,6 +396,20 @@ import { userTypeDictionary } from './lexrule.js';
         { "arguments:argument_list": {} },//实参可以是argument_list
         { "argument_list:object": {} },//参数列表可以是一个object
         { "argument_list:argument_list , object": {} },//参数列表可以是多个object
+        {
+            "W3_1:": {
+                action: function ($, s): any {
+                    return s.slice(-3)[1];
+                }
+            }
+        },
+        {
+            "W2_0:": {
+                action: function ($, s): any {
+                    return s.slice(-2)[0];
+                }
+            }
+        },
     ]
 }
 let tscc = new TSCC(grammar, { language: "zh-cn", debug: false });
