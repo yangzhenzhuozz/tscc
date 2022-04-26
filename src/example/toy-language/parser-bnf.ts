@@ -36,15 +36,32 @@ import { userTypeDictionary } from './lexrule.js';
         { "import_stmt:import id ;": {} },//导入语句语法
         { "program_units:": {} },//程序单元组可以为空
         { "program_units:program_units program_unit": {} },//程序单元组由一个或者多个程序单元组成
-        { "program_unit:declare ;": {} },//程序单元可以是一条声明语句
+        {
+            "program_unit:declare ;": {
+                action: function ($, s) {
+                    let _declare = $[0] as VariableDescriptor;
+                    let head = s.slice(-1)[0] as Program;
+                    let first_key = Object.keys(_declare)[0];//只抽取第一个key里面的内容
+                    head.property[first_key] = _declare[first_key];
+                }
+            }
+        },//程序单元可以是一条声明语句
         { "program_unit:class_definition": {} },//程序单元可以是一个类定义语句
         /**
          * var和val的区别就是一个可修改，一个不可修改,val类似于其他语言的const
+         * 应当保证declare生成的VariableDescriptor只有一个key
          */
-        { "declare:var id : type": {
-            action:function($,s):DefNode{
+        {
+            "declare:var id : type": {
+                action: function ($, s): VariableDescriptor {
+                    let id = $[1] as string;
+                    let type = $[3] as TypeUse;
+                    let ret = JSON.parse("{}") as VariableDescriptor;//为了生成的解析器不报红
+                    ret[id] = { type: type };
+                    return ret;
+                }
             }
-        } },//声明语句_1，声明一个变量id，其类型为type
+        },//声明语句_1，声明一个变量id，其类型为type
         { "declare:var id : type = object": {} },//声明语句_2，声明一个变量id，并且将object设置为id的初始值，object的类型要和声明的类型一致
         { "declare:var id = object": {} },//声明语句_3，声明一个变量id，并且将object设置为id的初始值，类型自动推导
         { "declare:val id : type": {} },//声明语句_4，声明一个变量id，其类型为type
