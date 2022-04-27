@@ -15,6 +15,7 @@ Reflect.ownKeys({
 */
 //定义的类型
 interface TypeDef {
+    modifier?: 'valuetype' | 'sealed';
     templates?: string[];//模板列表
     operatorOverload?: {//重载列表
         [key: string]: FunctionType
@@ -37,15 +38,16 @@ interface SimpleType {
     name: string;//使用的类型
     templateSpecialization?: TypeUse[];//实例化模板的类型
 }
+interface ArrayType {
+    innerType?: TypeUse;
+}
 interface FunctionType {
     argument: VariableDescriptor;
     body: block;//函数体
     retType?: TypeUse;//返回类型，可选，如果为undefined则需要进行类型推导
+    templates?: string[];//模板列表
 }
 type block = (ASTNode | block)[];
-interface ArrayType {
-    innerType?: TypeUse;
-}
 interface Program {
     bulit_in_class: {
         [key: string]: TypeDef
