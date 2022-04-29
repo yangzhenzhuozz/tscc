@@ -62,8 +62,29 @@ import { userTypeDictionary } from './lexrule.js';
                 }
             }
         },//声明语句_1，声明一个变量id，其类型为type
-        { "declare:var id : type = object": {} },//声明语句_2，声明一个变量id，并且将object设置为id的初始值，object的类型要和声明的类型一致
-        { "declare:var id = object": {} },//声明语句_3，声明一个变量id，并且将object设置为id的初始值，类型自动推导
+        {
+            "declare:var id : type = object": {
+                action: function ($, s): VariableDescriptor {
+                    let id = $[1] as string;
+                    let type = $[3] as TypeUse;
+                    let obj = $[5] as ASTNode;
+                    let ret = JSON.parse("{}") as VariableDescriptor;//为了生成的解析器不报红
+                    ret[id] = { type: type, initAST: obj };
+                    return ret;
+                }
+            }
+        },//声明语句_2，声明一个变量id，并且将object设置为id的初始值，object的类型要和声明的类型一致
+        {
+            "declare:var id = object": {
+                action: function ($, s): VariableDescriptor {
+                    let id = $[1] as string;
+                    let obj = $[3] as ASTNode;
+                    let ret = JSON.parse("{}") as VariableDescriptor;//为了生成的解析器不报红
+                    ret[id] = { initAST: obj };
+                    return ret;
+                }
+            }
+        },//声明语句_3，声明一个变量id，并且将object设置为id的初始值，类型自动推导
         { "declare:val id : type": {} },//声明语句_4，声明一个变量id，其类型为type
         { "declare:val id : type = object": {} },//声明语句_5，声明一个变量id，并且将object设置为id的初始值，object的类型要和声明的类型一致
         { "declare:val id = object": {} },//声明语句_6，声明一个变量id，并且将object设置为id的初始值，类型自动推导

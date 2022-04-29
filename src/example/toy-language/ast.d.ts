@@ -26,6 +26,7 @@ interface TypeDef {
 type VariableDescriptor = { [key: string]: VariableProperties };
 //变量属性
 interface VariableProperties {
+    variable: 'var' | 'val';
     type?: TypeUse;//需要类型推导的变量可以先不设置Type
     initAST?: ASTNode;//当type为undefined的时候,initAST必须存在,否则无法确定类型
 }
