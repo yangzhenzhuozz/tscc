@@ -8,16 +8,17 @@ let program: Program = {
         },
         map: { templates: ["K", "V"], property: {} },
         test: {
-            property: { a: { type: { SimpleType: { name: 'int' } } } },
+            property: { a: { variable: 'var', type: { SimpleType: { name: 'int' } } } },
             operatorOverload: {
                 "+": {
-                    argument: { a: { type: { SimpleType: { name: 'int' } } }, b: { type: { SimpleType: { name: 'int' } } } },
+                    argument: { a: { variable: 'var', type: { SimpleType: { name: 'int' } } }, b: { variable: 'var', type: { SimpleType: { name: 'int' } } } },
                     body: [
                         {
                             "+": {
                                 leftChild: {
                                     def: {
                                         a: {
+                                            variable: 'var',
                                             type: { SimpleType: { name: 'int' } },
                                             initAST: {
                                                 immediate: {
@@ -38,6 +39,7 @@ let program: Program = {
                                     leftChild: {
                                         def: {
                                             a: {
+                                                variable: 'var',
                                                 type: { SimpleType: { name: 'int' } },
                                                 initAST: {
                                                     immediate: {
@@ -60,9 +62,11 @@ let program: Program = {
     },
     property: {
         a: {
+            variable: 'var',
             type: { SimpleType: { name: 'int', templateSpecialization: [{ SimpleType: { name: "int" } }, { SimpleType: { name: "int" } }] } }
         },
         b: {
+            variable: 'var',
             initAST: {
                 immediate: {
                     numberVal: 1
@@ -70,6 +74,7 @@ let program: Program = {
             }
         },
         c: {
+            variable: 'var',
             initAST: {
                 immediate: {
                     functionVal: { argument: {}, body: [], retType: { SimpleType: { name: "int" } } },//空函数体(一行代码也没有),但是返回值类型已经声明为int了，在推导的时候应该报错
