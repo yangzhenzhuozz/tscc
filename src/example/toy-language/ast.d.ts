@@ -27,25 +27,25 @@ type VariableDescriptor = { [key: string]: VariableProperties };
 //变量属性
 interface VariableProperties {
     variable: 'var' | 'val';
-    type?: TypeUse;//需要类型推导的变量可以先不设置Type
+    type?: TypeUsed;//需要类型推导的变量可以先不设置Type
     initAST?: ASTNode;//当type为undefined的时候,initAST必须存在,否则无法确定类型
 }
-interface TypeUse {
+interface TypeUsed {
     SimpleType?: SimpleType;
     FunctionType?: FunctionType;
     ArrayType?: ArrayType;
 }
 interface SimpleType {
     name: string;//使用的类型
-    templateSpecialization?: TypeUse[];//实例化模板的类型
+    templateSpecialization?: TypeUsed[];//实例化模板的类型
 }
 interface ArrayType {
-    innerType?: TypeUse;
+    innerType?: TypeUsed;
 }
 interface FunctionType {
     argument: VariableDescriptor;
     body: block;//函数体
-    retType?: TypeUse;//返回类型，可选，如果为undefined则需要进行类型推导
+    retType?: TypeUsed;//返回类型，可选，如果为undefined则需要进行类型推导
     templates?: string[];//模板列表
 }
 type block = (ASTNode | block)[];

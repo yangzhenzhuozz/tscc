@@ -81,7 +81,7 @@ let grammar: Grammar = {
          * 合法的输入应该是new int[][][][](),当然这只是符合文法而已,在语义检查的时候我们会进行错误处理,有的type是不允许被new的(说的就是array_type)
          */
         { "type:basic_type": { priority: "low_priority_for_[" } },//type可以是一个base_type
-        { "type:basic_type template_instances": { priority: "low_priority_for_[" } },//type可以是一个base_type template_instances
+        { "type:basic_type templateSpecialization": { priority: "low_priority_for_[" } },//type可以是一个base_type templateSpecialization
         { "type:template_definition ( parameter_declare ) => type": { priority: "low_priority_for_[" } },//泛型函数类型
         { "type:( parameter_declare ) => type": { priority: "low_priority_for_[" } },//函数类型
         { "type:type array_type_list": { priority: "low_priority_for_[" } },//数组类型
@@ -181,7 +181,7 @@ let grammar: Grammar = {
         * 也采用方案2，令函数调用优先级高于强制转型
         */
         { "object:object  ( arguments )": {} },//函数调用
-        { "object:object < template_instance_list > ( arguments )": {} },//模板函数调用
+        { "object:object < templateSpecialization_list > ( arguments )": {} },//模板函数调用
         /**
          * 一系列的双目运算符,二义性如下:
          * a+b*c
@@ -271,9 +271,9 @@ let grammar: Grammar = {
         { "array_placeholder:": { priority: "low_priority_for_array_placeholder" } },//array_placeholder可以为空
         { "array_placeholder_list:array_placeholder_list [ ]": {} },//见array_init_list一条的解释
         { "array_placeholder_list:[ ]": {} },//见array_init_list一条的解释
-        { "template_instances:< template_instance_list >": {} },//模板实例化可以实例化为一个<template_instance_list>
-        { "template_instance_list:type": {} },//template_instance_list可以为一个type
-        { "template_instance_list:template_instance_list , type": {} },//template_instance_list可以为多个type
+        { "templateSpecialization:< templateSpecialization_list >": {} },//模板实例化可以实例化为一个<templateSpecialization_list>
+        { "templateSpecialization_list:type": {} },//templateSpecialization_list可以为一个type
+        { "templateSpecialization_list:templateSpecialization_list , type": {} },//templateSpecialization_list可以为多个type
         { "arguments:": {} },//实参可以为空
         { "arguments:argument_list": {} },//实参可以是argument_list
         { "argument_list:object": {} },//参数列表可以是一个object
