@@ -132,6 +132,9 @@ import { userTypeDictionary } from './lexrule.js';
             "template_definition:< template_definition_list >": {
                 action: function ($, s): string[] {
                     for (let t of $[1] as string[]) {
+                        if(userTypeDictionary.has(t)){
+                            throw new Error(`不能使用已有类型作为模板类型声明`);
+                        }
                         userTypeDictionary.add(t);
                     }
                     return $[1] as string[];
