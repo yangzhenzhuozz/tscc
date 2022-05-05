@@ -20,15 +20,18 @@ interface TypeDef {
     operatorOverload?: {//重载列表
         [key: string]: FunctionType
     };
+    extends?: TypeUsed;//基类
     property: VariableDescriptor;//属性列表
 }
 //变量描述符，包含变量的名字、类型以及初始化使用的语法树
 type VariableDescriptor = { [key: string]: VariableProperties };
 //变量属性
 interface VariableProperties {
-    variable: 'var' | 'val';
+    variable: 'var' | 'val' | 'g-set';
     type?: TypeUsed;//需要类型推导的变量可以先不设置Type
     initAST?: ASTNode;//当type为undefined的时候,initAST必须存在,否则无法确定类型
+    getter?: FunctionType;//getter
+    setter?: FunctionType;//setter
 }
 interface TypeUsed {
     SimpleType?: SimpleType;
@@ -50,7 +53,7 @@ interface FunctionType {
 }
 type block = (ASTNode | block)[];
 interface Program {
-    bulit_in_class: {
+    definedType: {//已经定义了的类型
         [key: string]: TypeDef
     };
     property: VariableDescriptor;

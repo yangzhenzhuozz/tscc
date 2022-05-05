@@ -4,6 +4,7 @@ interface Token {
 }
 interface YYTOKEN extends Token {
     yytext: string;
+    lineNumber:number;
 }
 //当成功将字符串解析到一个规则之后调用的处理器，处理器返回值将会被设置到yytype,如果没有定义resolver，则表示本规则被忽略
 type ruleResolver = ((arg: YYTOKEN) => string) | undefined;

@@ -1,14 +1,15 @@
 let program: Program = {
-    bulit_in_class: {
+    definedType: {
         int: {
             property: {}
         },
         double: {
             property: {}
         },
-        map: { templates: ["K", "V"], property: {} },
+        Map: { templates: ["K", "V"], property: {} },
+        HashMap: { templates: ["K", "V"], property: {}, extends: { SimpleType: { name: "Map" } } },
         test: {
-            property: { a: { variable: 'var', type: { SimpleType: { name: 'int' } } } },
+            property: { a: { variable: 'var', type: { SimpleType: { name: 'int' } } }, b: { variable: 'g-set', getter: { argument: {}, body: [] } } },
             operatorOverload: {
                 "+": {
                     argument: { a: { variable: 'var', type: { SimpleType: { name: 'int' } } }, b: { variable: 'var', type: { SimpleType: { name: 'int' } } } },

@@ -85,10 +85,48 @@ import { userTypeDictionary } from './lexrule.js';
                 }
             }
         },//声明语句_3，声明一个变量id，并且将object设置为id的初始值，类型自动推导
-        { "declare:val id : type": {} },//声明语句_4，声明一个变量id，其类型为type
-        { "declare:val id : type = object": {} },//声明语句_5，声明一个变量id，并且将object设置为id的初始值，object的类型要和声明的类型一致
-        { "declare:val id = object": {} },//声明语句_6，声明一个变量id，并且将object设置为id的初始值，类型自动推导
-        { "declare:function_definition": {} },//声明语句_7，可以是一个函数定义语句
+        {
+            "declare:val id : type": {
+                action: function ($, s): VariableDescriptor {
+                    let id = $[1] as string;
+                    let type = $[3] as TypeUsed;
+                    let ret = JSON.parse("{}") as VariableDescriptor;//为了生成的解析器不报红
+                    ret[id] = { variable: 'val', type: type };
+                    return ret;
+                }
+            }
+        },//声明语句_4，声明一个变量id，其类型为type
+        {
+            "declare:val id : type = object": {
+                action: function ($, s): VariableDescriptor {
+                    let id = $[1] as string;
+                    let type = $[3] as TypeUsed;
+                    let obj = $[5] as ASTNode;
+                    let ret = JSON.parse("{}") as VariableDescriptor;//为了生成的解析器不报红
+                    ret[id] = { variable: 'val', type: type, initAST: obj };
+                    return ret;
+                }
+            }
+        },//声明语句_5，声明一个变量id，并且将object设置为id的初始值，object的类型要和声明的类型一致
+        {
+            "declare:val id = object": {
+                action: function ($, s): VariableDescriptor {
+                    let id = $[1] as string;
+                    let type = $[3] as TypeUsed;
+                    let obj = $[5] as ASTNode;
+                    let ret = JSON.parse("{}") as VariableDescriptor;//为了生成的解析器不报红
+                    ret[id] = { variable: 'val', type: type, initAST: obj };
+                    return ret;
+                }
+            }
+        },//声明语句_6，声明一个变量id，并且将object设置为id的初始值，类型自动推导
+        {
+            "declare:function_definition": {
+                action: function ($, s): VariableDescriptor {
+                    return $[0] as VariableDescriptor;
+                }
+            }
+        },//声明语句_7，可以是一个函数定义语句
         {
             "class_definition:modifier class basic_type template_declare extends_declare { class_units }": {
                 action: function ($, _s) {
@@ -98,11 +136,19 @@ import { userTypeDictionary } from './lexrule.js';
                             userTypeDictionary.delete(t);
                         }
                     }
+                    let modifier = $[0] as 'valuetype' | 'sealed' | undefined;
+                    let extends_declare = $[4] as TypeUsed | undefined;
                 }
             }
         },//class定义语句由修饰符等组成(太长了我就不一一列举)
         { "extends_declare:": {} },//继承可以为空
-        { "extends_declare:extends type": {} },//继承,虽然文法是允许继承任意类型,但是在语义分析的时候再具体决定该class能不能被继承
+        {
+            "extends_declare:extends type": {
+                action: function ($, s): TypeUsed {
+                    return $[1] as TypeUsed;
+                }
+            }
+        },//继承,虽然文法是允许继承任意类型,但是在语义分析的时候再具体决定该class能不能被继承
         {
             "function_definition:function id template_declare ( parameter_declare ) ret_type { statements }": {
                 action: function ($, s) {
@@ -116,9 +162,27 @@ import { userTypeDictionary } from './lexrule.js';
             }
         },//函数定义语句，同样太长，不列表
         { "ret_type:": {} },//返回值类型可以不声明，自动推导,lambda就不用写返回值声明
-        { "ret_type: : type": {} },//可以声明返回值类型,function fun() : int {codes}
-        { "modifier:valuetype": {} },//modifier可以是"valuetype"
-        { "modifier:sealed": {} },//modifier可以是"sealed"
+        {
+            "ret_type: : type": {
+                action: function ($, s): TypeUsed {
+                    return $[1] as TypeUsed;
+                }
+            }
+        },//可以声明返回值类型,function fun() : int {codes}
+        {
+            "modifier:valuetype": {
+                action: function ($, s): string {
+                    return 'valuetype';
+                }
+            }
+        },//modifier可以是"valuetype"
+        {
+            "modifier:sealed": {
+                action: function ($, s): string {
+                    return 'sealed';
+                }
+            }
+        },//modifier可以是"sealed"
         { "modifier:": {} },//modifier可以为空
         { "template_declare:": {} },//模板声明可以为空
         {
@@ -132,7 +196,7 @@ import { userTypeDictionary } from './lexrule.js';
             "template_definition:< template_definition_list >": {
                 action: function ($, s): string[] {
                     for (let t of $[1] as string[]) {
-                        if(userTypeDictionary.has(t)){
+                        if (userTypeDictionary.has(t)) {
                             throw new Error(`不能使用已有类型作为模板类型声明`);
                         }
                         userTypeDictionary.add(t);

@@ -4,6 +4,7 @@ import { YYTOKEN, State, Automaton, ruleResolver } from './automaton.js'
 class LexForREG {
     private source: string = '';
     private char_index = 0;
+    private lineNumber = 1;//行号
     private keyWord = new Set<string>(['(', ')', '|', '*']);
     public setSource(src: string) {
         this.char_index = 0;
@@ -18,15 +19,20 @@ class LexForREG {
             return {
                 type: "$",
                 value: "",
-                yytext: ""
+                yytext: "",
+                lineNumber: this.lineNumber
             };
         }
         let ch = this.source.charAt(this.char_index++);
+        if (ch == '\n') {
+            this.lineNumber++;
+        }
         if (this.keyWord.has(ch)) {
             return {
                 type: ch,
                 value: ch,
-                yytext: ch
+                yytext: ch,
+                lineNumber: this.lineNumber
             };
         }
         else if (ch == '\\') {//遇到反斜杠，需要对后面字符进行转义
@@ -37,13 +43,15 @@ class LexForREG {
             return {
                 type: "normal_ch",
                 value: ch,
-                yytext: ch
+                yytext: ch,
+                lineNumber: this.lineNumber
             };
         } else {
             return {
                 type: "normal_ch",
                 value: ch,
-                yytext: ch
+                yytext: ch,
+                lineNumber: this.lineNumber
             };
         }
     }
@@ -60,6 +68,7 @@ class Lexer {
     private lastWord = '';//上次解析的单词,用于错误提示
     private lastWordIndex = 0;//上次解析的单词下标
     private errorTipsWidth = 50;//错误提示的字符数量(最后要*2)
+    private lineNumber = 1;//行号
     public yyerror(msg: string) {
         let left = Math.max(0, this.lastWordIndex - this.errorTipsWidth);
         let right = Math.min(this.source.length - 1, this.lastWordIndex + this.errorTipsWidth);
@@ -82,7 +91,8 @@ class Lexer {
         let result = {
             type: "",
             value: "",
-            yytext: ""
+            yytext: "",
+            lineNumber: 1
         };
         do {
             if (this.DFAStartState == undefined) {
@@ -99,6 +109,9 @@ class Lexer {
             this.lastWordIndex = this.charIndex;
             for (; this.charIndex < this.source.length; this.charIndex++) {
                 ch = this.source.charAt(this.charIndex);
+                if (ch == '\n') {
+                    this.lineNumber++;
+                }
                 let targets = nowState.gotoTable.get(ch);
                 if (targets == undefined) {
                     break;
@@ -121,6 +134,7 @@ class Lexer {
                 throw `词法分析器:无法解析的字符:${ch}`;
             }
         } while (true)
+        result.lineNumber = this.lineNumber;
         return result;
     }
     public setSource(src: string) {
