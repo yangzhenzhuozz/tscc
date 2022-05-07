@@ -22,6 +22,7 @@ interface TypeDef {
     };
     extends?: TypeUsed;//基类
     property: VariableDescriptor;//属性列表
+    constructor?:FunctionType[];
 }
 //变量描述符，包含变量的名字、类型以及初始化使用的语法树
 type VariableDescriptor = { [key: string]: VariableProperties };

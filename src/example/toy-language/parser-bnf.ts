@@ -147,14 +147,21 @@ import { userTypeDictionary } from './lexrule.js';
                     }
                     let basic_type = $[2] as TypeUsed;
                     let modifier = $[0] as 'valuetype' | 'sealed' | undefined;
+                    if (modifier == undefined) {
+                        modifier = 'valuetype';
+                    }
                     let extends_declare = $[4] as TypeUsed | undefined;
                     let class_units = $[6] as {
                         operatorOverload?: { [key: string]: FunctionType },
                         property: { [key: string]: VariableDescriptor }
                     };
+                    if (class_units.operatorOverload == undefined) {
+                        class_units.operatorOverload = {};
+                    }
                     let ret = {} as { [key: string]: TypeDef };
+                    let typedef: TypeDef = { property: class_units.property };
                     //处理返回值
-                    return ret[basic_type.SimpleType!.name] = {};
+                    return ret[basic_type.SimpleType!.name] = { modifier: modifier, property: class_units.property, operatorOverload: class_units.operatorOverload };
                 }
             }
         },//class定义语句由修饰符等组成(太长了我就不一一列举)
@@ -295,14 +302,78 @@ import { userTypeDictionary } from './lexrule.js';
                 }
             }
         },//泛型函数类型
-        { "type:( parameter_declare ) => type": { priority: "low_priority_for_[" } },//函数类型
-        { "type:type array_type_list": { priority: "low_priority_for_[" } },//数组类型
-        { "array_type_list:[ ]": {} },//array_type_list可以是一对方括号
-        { "array_type_list:array_type_list [ ]": {} },//array_type_list可以是array_type_list后面再接一对方括号
+        {
+            "type:( parameter_declare ) => type": {
+                priority: "low_priority_for_[",
+                action: function ($, s): FunctionType {
+                    let parameter_declare = $[1] as VariableDescriptor;
+                    let ret_type = $[4] as TypeUsed;
+                    return { argument: parameter_declare, body: [], retType: ret_type };
+                }
+            }
+        },//函数类型
+        {
+            "type:type array_type_list": {
+                priority: "low_priority_for_[",
+                action: function ($, s): ArrayType {
+                    let type = $[0] as TypeUsed;
+                    let array_type_list = $[1] as number;
+                    let ret: ArrayType = { innerType: type };
+                    for (let i = 0; i < array_type_list; i++) {
+                        ret = { innerType: { ArrayType: ret } };
+                    }
+                    return ret;
+                }
+            }
+        },//数组类型
+        {
+            "array_type_list:[ ]": {
+                action: function ($, s): number {
+                    return 1;
+                }
+            }
+        },//array_type_list可以是一对方括号
+        {
+            "array_type_list:array_type_list [ ]": {
+                action: function ($, s): number {
+                    let array_type_list = $[0] as number;
+                    return array_type_list++;
+                }
+            }
+        },//array_type_list可以是array_type_list后面再接一对方括号
         { "parameter_declare:parameter_list": {} },//parameter_declare可以由parameter_list组成
-        { "parameter_declare:": {} },//parameter_declare可以为空
-        { "parameter_list:id : type": {} },//parameter_list可以是一个 id : type
-        { "parameter_list:parameter_list , id : type": {} },//parameter_list可以是一个parameter_list接上 , id : type
+        {
+            "parameter_declare:": {
+                action: function ($, s): VariableDescriptor {
+                    return {};
+                }
+            }
+        },//parameter_declare可以为空
+        {
+            "parameter_list:id : type": {
+                action: function ($, s): VariableDescriptor {
+                    let id = $[2] as string;
+                    let type = $[4] as TypeUsed;
+                    let ret: VariableDescriptor = {};
+                    ret[id] = { variable: 'var', type: type };
+                    return ret;
+                }
+            }
+        },//parameter_list可以是一个 id : type
+        {
+            "parameter_list:parameter_list , id : type": {
+                action: function ($, s): VariableDescriptor {
+                    let parameter_list = $[0] as VariableDescriptor;
+                    let id = $[2] as string;
+                    let type = $[4] as TypeUsed;
+                    if (parameter_list[id] != undefined) {
+                        throw new Error(`参数${id}重复定义`);
+                    }
+                    parameter_list[id] = { variable: 'var', type: type };
+                    return parameter_list;
+                }
+            }
+        },//parameter_list可以是一个parameter_list接上 , id : type
         { "class_units:class_units class_unit": {} },//class_units可以由多个class_unit组成
         { "class_units:": {} },//class_units可以为空
         { "class_unit:declare ;": {} },//class_unit可以是一个声明语句
