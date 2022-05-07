@@ -35,7 +35,7 @@ import { userTypeDictionary } from './lexrule.js';
         { "import_stmts:import_stmts import_stmt": {} },//导入语句组由一条或者多条导入语句组成
         { "import_stmt:import id ;": {} },//导入语句语法
         { "program_units:": {} },//程序单元组可以为空
-        { "program_units:program_units program_unit": {} },//程序单元组由一个或者多个程序单元组成
+        { "program_units:program_units W2_0 program_unit": {} },//程序单元组由一个或者多个程序单元组成
         {
             "program_unit:declare ;": {
                 action: function ($, s) {
@@ -46,7 +46,16 @@ import { userTypeDictionary } from './lexrule.js';
                 }
             }
         },//程序单元可以是一条声明语句
-        { "program_unit:class_definition": {} },//程序单元可以是一个类定义语句
+        {
+            "program_unit:class_definition": {
+                action: function ($, s) {
+                    let class_definition = $[0] as { [key: string]: TypeDef };
+                    let head = s.slice(-1)[0] as Program;
+                    let first_key = Object.keys(class_definition)[0];//只抽取第一个key里面的内容
+                    head.definedType[first_key] = class_definition[first_key];
+                }
+            }
+        },//程序单元可以是一个类定义语句
         /**
          * var和val的区别就是一个可修改，一个不可修改,val类似于其他语言的const
          * 应当保证declare生成的VariableDescriptor只有一个key
@@ -129,15 +138,23 @@ import { userTypeDictionary } from './lexrule.js';
         },//声明语句_7，可以是一个函数定义语句
         {
             "class_definition:modifier class basic_type template_declare extends_declare { class_units }": {
-                action: function ($, _s) {
+                action: function ($, _s): { [key: string]: TypeDef } {
                     let template_declare = $[3] as string[] | undefined;
                     if (template_declare != undefined) {
                         for (let t of template_declare) {
                             userTypeDictionary.delete(t);
                         }
                     }
+                    let basic_type = $[2] as TypeUsed;
                     let modifier = $[0] as 'valuetype' | 'sealed' | undefined;
                     let extends_declare = $[4] as TypeUsed | undefined;
+                    let class_units = $[6] as {
+                        operatorOverload?: { [key: string]: FunctionType },
+                        property: { [key: string]: VariableDescriptor }
+                    };
+                    let ret = {} as { [key: string]: TypeDef };
+                    //处理返回值
+                    return ret[basic_type.SimpleType!.name] = {};
                 }
             }
         },//class定义语句由修饰符等组成(太长了我就不一一列举)
