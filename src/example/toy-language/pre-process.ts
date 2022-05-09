@@ -3,7 +3,7 @@
  */
 import { userTypeDictionary } from './lexrule.js';
 function pre_process(source: string) {
-    let regularExpression: RegExp = /class\s+([a-zA-Z_][a-zA-Z_0-9]+)/g;
+    let regularExpression: RegExp = /class\s+([a-zA-Z_][a-zA-Z_0-9]*)/g;
     for (let group: RegExpExecArray | null; (group = regularExpression.exec(source)) != null;) {
         let str = group[1]!;
         userTypeDictionary.add(str);

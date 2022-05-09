@@ -30,29 +30,60 @@ import { userTypeDictionary } from './lexrule.js';
         { 'nonassoc': ['else'] },
     ],
     BNF: [
-        { "program:import_stmts program_units": {} },//整个程序由导入语句组和程序单元组构成
+        {
+            "program:import_stmts program_units": {
+                action: function ($, s): Program {
+                    let program_units = $[1] as VariableDescriptor | { [key: string]: TypeDef };
+                    let ret: Program = JSON.parse("{}");
+                    ret.definedType = {};
+                    ret.property = {};
+                    for (let k in program_units) {
+                        if (program_units[k].hasOwnProperty("modifier")) {//是类型定义
+                            ret.definedType[k] = program_units[k] as TypeDef;
+                        } else {//是变量定义
+                            ret.property[k] = program_units[k] as VariableProperties;
+                        }
+                    }
+                    console.log(JSON.stringify(ret, null, 4));
+                    return ret;
+                }
+            }
+        },//整个程序由导入语句组和程序单元组构成
         { "import_stmts:": {} },//导入语句组可以为空
         { "import_stmts:import_stmts import_stmt": {} },//导入语句组由一条或者多条导入语句组成
         { "import_stmt:import id ;": {} },//导入语句语法
-        { "program_units:": {} },//程序单元组可以为空
-        { "program_units:program_units program_unit": {} },//程序单元组由一个或者多个程序单元组成
+        {
+            "program_units:": {
+                action: function ($, s): VariableDescriptor | { [key: string]: TypeDef } {
+                    return {} as VariableDescriptor | { [key: string]: TypeDef };
+                }
+            }
+        },//程序单元组可以为空
+        {
+            "program_units:program_units program_unit": {
+                action: function ($, s): VariableDescriptor | { [key: string]: TypeDef } {
+                    let program_units = $[0] as VariableDescriptor | { [key: string]: TypeDef };
+                    let program_unit = $[1] as VariableDescriptor | { [key: string]: TypeDef };
+                    if (program_units[Object.keys(program_unit)[0]] != undefined) {
+                        throw new Error(`重复定义变量或者类型${Object.keys(program_unit)[0]}`);
+                    } else {
+                        program_units[Object.keys(program_unit)[0]] = program_unit[Object.keys(program_unit)[0]];
+                    }
+                    return program_units;
+                }
+            }
+        },//程序单元组由一个或者多个程序单元组成
         {
             "program_unit:declare ;": {
-                action: function ($, s) {
-                    let _declare = $[0] as VariableDescriptor;
-                    let head = s.slice(-1)[0] as Program;
-                    let first_key = Object.keys(_declare)[0];//只抽取第一个key里面的内容
-                    head.property[first_key] = _declare[first_key];
+                action: function ($, s): VariableDescriptor {
+                    return $[0] as VariableDescriptor;
                 }
             }
         },//程序单元可以是一条声明语句
         {
             "program_unit:class_definition": {
-                action: function ($, s) {
-                    let class_definition = $[0] as { [key: string]: TypeDef };
-                    let head = s.slice(-1)[0] as Program;
-                    let first_key = Object.keys(class_definition)[0];//只抽取第一个key里面的内容
-                    head.definedType[first_key] = class_definition[first_key];
+                action: function ($, s): { [key: string]: TypeDef } {
+                    return $[0] as { [key: string]: TypeDef };
                 }
             }
         },//程序单元可以是一个类定义语句
@@ -153,15 +184,15 @@ import { userTypeDictionary } from './lexrule.js';
                     let extends_declare = $[4] as TypeUsed | undefined;
                     let class_units = $[6] as {
                         operatorOverload?: { [key: string]: FunctionType },
-                        property: { [key: string]: VariableDescriptor }
+                        property: VariableDescriptor
                     };
                     if (class_units.operatorOverload == undefined) {
                         class_units.operatorOverload = {};
                     }
-                    let ret = {} as { [key: string]: TypeDef };
-                    let typedef: TypeDef = { property: class_units.property };
-                    //处理返回值
-                    return ret[basic_type.SimpleType!.name] = { modifier: modifier, property: class_units.property, operatorOverload: class_units.operatorOverload };
+                    class_units.property = { a: { variable: 'val' } };
+                    let ret: { [key: string]: TypeDef } = JSON.parse("{}");//为了生成的解析器不报红
+                    ret[basic_type.SimpleType!.name] = { modifier: modifier, property: class_units.property, operatorOverload: class_units.operatorOverload, extends: extends_declare };
+                    return ret;
                 }
             }
         },//class定义语句由修饰符等组成(太长了我就不一一列举)
@@ -175,13 +206,20 @@ import { userTypeDictionary } from './lexrule.js';
         },//继承,虽然文法是允许继承任意类型,但是在语义分析的时候再具体决定该class能不能被继承
         {
             "function_definition:function id template_declare ( parameter_declare ) ret_type { statements }": {
-                action: function ($, s) {
+                action: function ($, s): { [key: string]: FunctionType } {
                     let template_declare = $[2] as string[] | undefined;
                     if (template_declare != undefined) {
                         for (let t of template_declare) {
                             userTypeDictionary.delete(t);
                         }
                     }
+                    let id = $[1] as string;
+                    let parameter_declare = $[4] as VariableDescriptor;
+                    let ret_type = $[6] as TypeUsed | undefined;
+                    let statements = $[8] as block;
+                    let ret: { [key: string]: FunctionType } = JSON.parse("{}");//为了生成的解析器不报红
+                    ret[id] = { argument: parameter_declare, body: statements, templates: template_declare, retType: ret_type };
+                    return ret;
                 }
             }
         },//函数定义语句，同样太长，不列表
@@ -341,7 +379,13 @@ import { userTypeDictionary } from './lexrule.js';
                 }
             }
         },//array_type_list可以是array_type_list后面再接一对方括号
-        { "parameter_declare:parameter_list": {} },//parameter_declare可以由parameter_list组成
+        {
+            "parameter_declare:parameter_list": {
+                action: function ($, s): VariableDescriptor {
+                    return $[0] as VariableDescriptor;
+                }
+            }
+        },//parameter_declare可以由parameter_list组成
         {
             "parameter_declare:": {
                 action: function ($, s): VariableDescriptor {
@@ -354,7 +398,7 @@ import { userTypeDictionary } from './lexrule.js';
                 action: function ($, s): VariableDescriptor {
                     let id = $[2] as string;
                     let type = $[4] as TypeUsed;
-                    let ret: VariableDescriptor = {};
+                    let ret: VariableDescriptor = JSON.parse("{}");//为了生成的解析器不报红
                     ret[id] = { variable: 'var', type: type };
                     return ret;
                 }
@@ -375,7 +419,13 @@ import { userTypeDictionary } from './lexrule.js';
             }
         },//parameter_list可以是一个parameter_list接上 , id : type
         { "class_units:class_units class_unit": {} },//class_units可以由多个class_unit组成
-        { "class_units:": {} },//class_units可以为空
+        {
+            "class_units:": {
+                action: function ($, s): { operatorOverload?: { [key: string]: FunctionType }, property: VariableDescriptor } {
+                    return { property: {} };
+                }
+            }
+        },//class_units可以为空
         { "class_unit:declare ;": {} },//class_unit可以是一个声明语句
         { "class_unit:operator_overload": {} },//class_unit可以是一个运算符重载
         { "class_unit:get id ( ) : type { statements }": {} },//get
