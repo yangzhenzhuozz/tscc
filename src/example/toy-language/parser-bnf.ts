@@ -35,7 +35,7 @@ import { userTypeDictionary } from './lexrule.js';
         { "import_stmts:import_stmts import_stmt": {} },//导入语句组由一条或者多条导入语句组成
         { "import_stmt:import id ;": {} },//导入语句语法
         { "program_units:": {} },//程序单元组可以为空
-        { "program_units:program_units W2_0 program_unit": {} },//程序单元组由一个或者多个程序单元组成
+        { "program_units:program_units program_unit": {} },//程序单元组由一个或者多个程序单元组成
         {
             "program_unit:declare ;": {
                 action: function ($, s) {
