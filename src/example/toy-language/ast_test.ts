@@ -1,14 +1,30 @@
 let program: Program = {
     definedType: {
         int: {
-            property: {}
+            property: {},
+            operatorOverload: {},
+            _constructor: []
         },
         double: {
-            property: {}
+            property: {},
+            operatorOverload: {},
+            _constructor: []
         },
-        Map: { templates: ["K", "V"], property: {} },
-        HashMap: { templates: ["K", "V"], property: {}, extends: { SimpleType: { name: "Map" } } },
+        Map: {
+            templates: ["K", "V"],
+            property: {},
+            operatorOverload: {},
+            _constructor: []
+        },
+        HashMap: {
+            templates: ["K", "V"],
+            property: {},
+            extends: { SimpleType: { name: "Map" } },
+            operatorOverload: {},
+            _constructor: []
+        },
         test: {
+            _constructor: [],
             property: { a: { variable: 'var', type: { SimpleType: { name: 'int' } } }, b: { variable: 'g-set', getter: { argument: {}, body: [] } } },
             operatorOverload: {
                 "+": {

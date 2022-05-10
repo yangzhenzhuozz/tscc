@@ -183,15 +183,12 @@ import { userTypeDictionary } from './lexrule.js';
                     }
                     let extends_declare = $[4] as TypeUsed | undefined;
                     let class_units = $[6] as {
-                        operatorOverload?: { [key: string]: FunctionType },
-                        property: VariableDescriptor
+                        operatorOverload: { [key: string]: FunctionType },
+                        property: VariableDescriptor,
+                        _constructor: FunctionType[];
                     };
-                    if (class_units.operatorOverload == undefined) {
-                        class_units.operatorOverload = {};
-                    }
-                    class_units.property = { a: { variable: 'val' } };
                     let ret: { [key: string]: TypeDef } = JSON.parse("{}");//为了生成的解析器不报红
-                    ret[basic_type.SimpleType!.name] = { modifier: modifier, property: class_units.property, operatorOverload: class_units.operatorOverload, extends: extends_declare };
+                    ret[basic_type.SimpleType!.name] = { modifier: modifier, property: class_units.property, operatorOverload: class_units.operatorOverload, extends: extends_declare, _constructor: class_units._constructor };
                     return ret;
                 }
             }
@@ -418,15 +415,50 @@ import { userTypeDictionary } from './lexrule.js';
                 }
             }
         },//parameter_list可以是一个parameter_list接上 , id : type
-        { "class_units:class_units class_unit": {} },//class_units可以由多个class_unit组成
+        {
+            "class_units:class_units class_unit": {
+                action: function ($, s): { operatorOverload: { [key: string]: FunctionType }, property: VariableDescriptor, _constructor: FunctionType[] } {
+                    let class_units = $[0] as { operatorOverload: { [key: string]: FunctionType }, property: VariableDescriptor, _constructor: FunctionType[] };
+                    let class_unit = $[1] as { [key: string]: FunctionType } | VariableDescriptor | FunctionType[];
+                    if (Array.isArray(class_unit)) {
+                        //是_constructor
+                        console.error(`需要检查构造函数的签名，防止重复定义构造函数`);
+                        class_units._constructor.push(class_unit[0]);
+                    } else {
+                        for (let k in class_unit) {
+                            if (class_unit[k].hasOwnProperty("argument")) {//是操作符重载
+                                if (class_units.operatorOverload[k] != undefined) {
+                                    throw new Error(`重复定义重载操作符${k}`);
+                                } else {
+                                    class_units.operatorOverload[k] = (class_unit as { [key: string]: FunctionType })[k];
+                                }
+                            } else {//是普通成员
+                                if (class_units.operatorOverload[k] != undefined) {
+                                    throw new Error(`重复定义成员${k}`);
+                                } else {
+                                    class_units.property[k] = (class_unit as VariableDescriptor)[k];
+                                }
+                            }
+                        }
+                    }
+                    return class_units;
+                }
+            }
+        },//class_units可以由多个class_unit组成
         {
             "class_units:": {
-                action: function ($, s): { operatorOverload?: { [key: string]: FunctionType }, property: VariableDescriptor } {
-                    return { property: {} };
+                action: function ($, s): { operatorOverload: { [key: string]: FunctionType }, property: VariableDescriptor, _constructor: FunctionType[] } {
+                    return { property: {}, operatorOverload: {}, _constructor: [] };
                 }
             }
         },//class_units可以为空
-        { "class_unit:declare ;": {} },//class_unit可以是一个声明语句
+        {
+            "class_unit:declare ;": {
+                action: function ($, s): VariableDescriptor {
+                    return $[0] as VariableDescriptor;
+                }
+            }
+        },//class_unit可以是一个声明语句
         { "class_unit:operator_overload": {} },//class_unit可以是一个运算符重载
         { "class_unit:get id ( ) : type { statements }": {} },//get
         { "class_unit:set id ( id : type ) { statements }": {} },//set

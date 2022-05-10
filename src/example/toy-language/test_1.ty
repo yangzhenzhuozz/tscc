@@ -1,5 +1,5 @@
 var a:int;
 var b:int;
 class c{
-
+    var a:int;
 }
