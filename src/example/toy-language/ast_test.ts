@@ -3,28 +3,28 @@ let program: Program = {
         int: {
             property: {},
             operatorOverload: {},
-            _constructor: []
+            _constructor: {}
         },
         double: {
             property: {},
             operatorOverload: {},
-            _constructor: []
+            _constructor: {}
         },
         Map: {
             templates: ["K", "V"],
             property: {},
             operatorOverload: {},
-            _constructor: []
+            _constructor: {}
         },
         HashMap: {
             templates: ["K", "V"],
             property: {},
             extends: { SimpleType: { name: "Map" } },
             operatorOverload: {},
-            _constructor: []
+            _constructor: {}
         },
         test: {
-            _constructor: [],
+            _constructor: {},
             property: { a: { variable: 'var', type: { SimpleType: { name: 'int' } } }, b: { variable: 'g-set', getter: { argument: {}, body: [] } } },
             operatorOverload: {
                 "+": {

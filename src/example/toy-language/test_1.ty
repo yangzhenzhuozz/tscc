@@ -2,4 +2,8 @@ var a:int;
 var b:int;
 class c{
     var a:int;
+    c(a:int){}
+    c(a:(a:int)=>int){}
+    c(){}
 }
+class d{}

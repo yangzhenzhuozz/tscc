@@ -22,7 +22,7 @@ interface TypeDef {
         [key: string]: FunctionType
     };
     property: VariableDescriptor;//属性列表
-    _constructor: FunctionType[];
+    _constructor: { [key: string]: FunctionType };
 }
 //变量描述符，包含变量的名字、类型以及初始化使用的语法树
 type VariableDescriptor = { [key: string]: VariableProperties };
@@ -44,14 +44,14 @@ interface SimpleType {
     templateSpecialization?: TypeUsed[];//实例化模板的类型
 }
 interface ArrayType {
-    innerType?: TypeUsed;
+    innerType: TypeUsed;
 }
 class FunctionType {
     argument: VariableDescriptor;
     body: block;//函数体
     retType?: TypeUsed;//返回类型，可选，如果为undefined则需要进行类型推导
     templates?: string[];//模板列表
-    single?:string;//函数签名
+    _construct?:string;//是什么类型的构造函数
 }
 type block = (ASTNode | block)[];
 interface Program {

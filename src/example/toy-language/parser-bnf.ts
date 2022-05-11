@@ -2,9 +2,11 @@ import fs from "fs";
 import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
 import { userTypeDictionary } from './lexrule.js';
+import { FunctionSingle } from "./lib.js"
 let grammar: Grammar = {
     userCode: `
 import { userTypeDictionary } from './lexrule.js';
+import { FunctionSingle } from "./lib.js"
     `,
     tokens: ['var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'throw', 'super', 'basic_type', 'instanceof'],
     association: [
@@ -185,8 +187,13 @@ import { userTypeDictionary } from './lexrule.js';
                     let class_units = $[6] as {
                         operatorOverload: { [key: string]: FunctionType },
                         property: VariableDescriptor,
-                        _constructor: FunctionType[];
+                        _constructor: { [key: string]: FunctionType };
                     };
+                    for(let k in class_units._constructor){
+                        if(class_units._constructor[k]._construct!=basic_type.SimpleType!.name){
+                            throw new Error(`类型${basic_type.SimpleType!.name}内部不能定义非${basic_type.SimpleType!.name}的构造函数${class_units._constructor[k]._construct}`);
+                        }
+                    }
                     let ret: { [key: string]: TypeDef } = JSON.parse("{}");//为了生成的解析器不报红
                     ret[basic_type.SimpleType!.name] = { modifier: modifier, property: class_units.property, operatorOverload: class_units.operatorOverload, extends: extends_declare, _constructor: class_units._constructor };
                     return ret;
@@ -393,8 +400,8 @@ import { userTypeDictionary } from './lexrule.js';
         {
             "parameter_list:id : type": {
                 action: function ($, s): VariableDescriptor {
-                    let id = $[2] as string;
-                    let type = $[4] as TypeUsed;
+                    let id = $[0] as string;
+                    let type = $[2] as TypeUsed;
                     let ret: VariableDescriptor = JSON.parse("{}");//为了生成的解析器不报红
                     ret[id] = { variable: 'var', type: type };
                     return ret;
@@ -417,13 +424,15 @@ import { userTypeDictionary } from './lexrule.js';
         },//parameter_list可以是一个parameter_list接上 , id : type
         {
             "class_units:class_units class_unit": {
-                action: function ($, s): { operatorOverload: { [key: string]: FunctionType }, property: VariableDescriptor, _constructor: FunctionType[] } {
-                    let class_units = $[0] as { operatorOverload: { [key: string]: FunctionType }, property: VariableDescriptor, _constructor: FunctionType[] };
-                    let class_unit = $[1] as { [key: string]: FunctionType } | VariableDescriptor | FunctionType[];
-                    if (Array.isArray(class_unit)) {
-                        //是_constructor
-                        console.error(`需要检查构造函数的签名，防止重复定义构造函数`);
-                        class_units._constructor.push(class_unit[0]);
+                action: function ($, s): { operatorOverload: { [key: string]: FunctionType }, property: VariableDescriptor, _constructor: { [key: string]: FunctionType } } {
+                    let class_units = $[0] as { operatorOverload: { [key: string]: FunctionType }, property: VariableDescriptor, _constructor: { [key: string]: FunctionType } };
+                    let class_unit = $[1] as { [key: string]: FunctionType } | VariableDescriptor | [{ [key: string]: FunctionType }];
+                    if (Array.isArray(class_unit)) {//是_constructor
+                        let single = Object.keys(class_unit[0])[0];
+                        if (class_units._constructor[single] != undefined) {
+                            throw new Error(`构造函数签名${single}重复`);
+                        }
+                        class_units._constructor[single] = class_unit[0][single];
                     } else {
                         for (let k in class_unit) {
                             if (class_unit[k].hasOwnProperty("argument")) {//是操作符重载
@@ -447,8 +456,8 @@ import { userTypeDictionary } from './lexrule.js';
         },//class_units可以由多个class_unit组成
         {
             "class_units:": {
-                action: function ($, s): { operatorOverload: { [key: string]: FunctionType }, property: VariableDescriptor, _constructor: FunctionType[] } {
-                    return { property: {}, operatorOverload: {}, _constructor: [] };
+                action: function ($, s): { operatorOverload: { [key: string]: FunctionType }, property: VariableDescriptor, _constructor: { [key: string]: FunctionType } } {
+                    return { property: {}, operatorOverload: {}, _constructor: {} };
                 }
             }
         },//class_units可以为空
@@ -462,7 +471,19 @@ import { userTypeDictionary } from './lexrule.js';
         { "class_unit:operator_overload": {} },//class_unit可以是一个运算符重载
         { "class_unit:get id ( ) : type { statements }": {} },//get
         { "class_unit:set id ( id : type ) { statements }": {} },//set
-        { "class_unit:basic_type ( parameter_declare )  { statements }": {} },//构造函数
+        {
+            "class_unit:basic_type ( parameter_declare )  { statements }": {
+                action: function ($, s): [{ [key: string]: FunctionType }] {
+                    let basic_type = $[0] as TypeUsed;
+                    let parameter_declare = $[2] as VariableDescriptor;
+                    let statements = $[5] as block;
+                    let ret: { [key: string]: FunctionType } = JSON.parse("{}");//为了生成的解析器不报红
+                    let single: string = FunctionSingle(parameter_declare);
+                    ret[single] = { _construct: basic_type.SimpleType!.name, argument: parameter_declare, body: statements };
+                    return [ret];
+                }
+            }
+        },//构造函数
         { "class_unit:default ( )  { statements }": {} },//default函数,用于初始化值类型
         { "operator_overload:operator + ( id : type ) : type { statements }": {} },//运算符重载,运算符重载实在是懒得做泛型了,以后要是有需求再讲,比起C#和java的残废泛型，已经很好了
         { "statements:statements statement": {} },//statements可以由多个statement组成
