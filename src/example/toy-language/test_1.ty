@@ -5,5 +5,8 @@ class c{
     c(a:int){}
     c(a:(a:int)=>int){}
     c(){}
+    set a(a:int){}
+    get a():int{}
+    operator + (a:int):int{}
 }
 class d{}
