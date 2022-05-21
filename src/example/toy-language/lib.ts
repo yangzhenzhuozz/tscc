@@ -1,10 +1,10 @@
 //函数签名
-export function FunctionSingle(argument: VariableDescriptor, templates?: string[]): string {
+export function FunctionSingle(functionType: FunctionType): string {
     let types: string[] = [];
-    for (let k in argument) {
-        types.push(TypeUsedSingle(argument[k].type!));
+    for (let k in functionType.argument) {
+        types.push(TypeUsedSingle(functionType.argument[k].type!));
     }
-    return `(${types.length > 0 ? types.reduce((p, c) => `${p},${c}`) : ''})[${templates != undefined ? templates.length : 0}]`;
+    return `args:(${types.length > 0 ? types.reduce((p, c) => `${p},${c}`) : ''}) templateLentgh:${functionType.templates != undefined ? functionType.templates.length : 0} retType:${functionType.retType == undefined ? '' : TypeUsedSingle(functionType.retType)}`;
 }
 //类型签名
 export function TypeUsedSingle(type: TypeUsed): string {
@@ -14,6 +14,6 @@ export function TypeUsedSingle(type: TypeUsed): string {
         return `Array<${TypeUsedSingle(type.ArrayType.innerType)}>`;
     } else {
         //函数类型
-        return `${FunctionSingle(type.FunctionType!.argument, type.FunctionType?.templates)}`;
+        return `${FunctionSingle(type.FunctionType!)}`;
     }
 }

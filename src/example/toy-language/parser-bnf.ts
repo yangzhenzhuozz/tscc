@@ -189,9 +189,9 @@ import { FunctionSingle } from "./lib.js"
                         property: VariableDescriptor,
                         _constructor: { [key: string]: FunctionType };
                     };
-                    for(let k in class_units._constructor){
-                        if(class_units._constructor[k]._construct!=basic_type.SimpleType!.name){
-                            throw new Error(`类型${basic_type.SimpleType!.name}内部不能定义非${basic_type.SimpleType!.name}的构造函数${class_units._constructor[k]._construct}`);
+                    for (let k in class_units._constructor) {
+                        if (class_units._constructor[k]._construct_for_type != basic_type.SimpleType!.name) {
+                            throw new Error(`类型${basic_type.SimpleType!.name}内部不能定义非${basic_type.SimpleType!.name}的构造函数${class_units._constructor[k]._construct_for_type}`);
                         }
                     }
                     let ret: { [key: string]: TypeDef } = JSON.parse("{}");//为了生成的解析器不报红
@@ -336,35 +336,38 @@ import { FunctionSingle } from "./lib.js"
         {
             "type:template_definition ( parameter_declare ) => type": {
                 priority: "low_priority_for_[",
-                action: function ($, s) {
+                action: function ($, s): TypeUsed {
                     let template_definition = $[0] as string[];
                     for (let t of template_definition) {
                         userTypeDictionary.delete(t);
                     }
+                    let parameter_declare = $[2] as VariableDescriptor;
+                    let ret_type = $[5] as TypeUsed;
+                    return { FunctionType: { templates: template_definition, argument: parameter_declare, body: [], retType: ret_type } };
                 }
             }
         },//泛型函数类型
         {
             "type:( parameter_declare ) => type": {
                 priority: "low_priority_for_[",
-                action: function ($, s): FunctionType {
+                action: function ($, s): TypeUsed {
                     let parameter_declare = $[1] as VariableDescriptor;
                     let ret_type = $[4] as TypeUsed;
-                    return { argument: parameter_declare, body: [], retType: ret_type };
+                    return { FunctionType: { argument: parameter_declare, body: [], retType: ret_type } };
                 }
             }
         },//函数类型
         {
             "type:type array_type_list": {
                 priority: "low_priority_for_[",
-                action: function ($, s): ArrayType {
+                action: function ($, s): TypeUsed {
                     let type = $[0] as TypeUsed;
                     let array_type_list = $[1] as number;
                     let ret: ArrayType = { innerType: type };
                     for (let i = 0; i < array_type_list; i++) {
                         ret = { innerType: { ArrayType: ret } };
                     }
-                    return ret;
+                    return { ArrayType: ret };
                 }
             }
         },//数组类型
@@ -426,7 +429,7 @@ import { FunctionSingle } from "./lib.js"
             "class_units:class_units class_unit": {
                 action: function ($, s): { operatorOverload: { [key: string]: FunctionType }, property: VariableDescriptor, _constructor: { [key: string]: FunctionType } } {
                     let class_units = $[0] as { operatorOverload: { [key: string]: FunctionType }, property: VariableDescriptor, _constructor: { [key: string]: FunctionType } };
-                    let class_unit = $[1] as { [key: string]: FunctionType } | VariableDescriptor | [{ [key: string]: FunctionType }];
+                    let class_unit = $[1] as { [key: string]: FunctionType } | VariableDescriptor | [{ [key: string]: FunctionType }];//{ [key: string]: FunctionType }是为了表示一个操作符重载
                     if (Array.isArray(class_unit)) {//是_constructor
                         let single = Object.keys(class_unit[0])[0];
                         if (class_units._constructor[single] != undefined) {
@@ -435,18 +438,33 @@ import { FunctionSingle } from "./lib.js"
                         class_units._constructor[single] = class_unit[0][single];
                     } else {
                         for (let k in class_unit) {
-                            if (class_unit[k].hasOwnProperty("argument")) {//是操作符重载
+                            if (class_unit[k].hasOwnProperty("argument")) {//是操作符重载,VariableDescriptor没有argument属性
                                 if (class_units.operatorOverload[k] != undefined) {
                                     throw new Error(`重复定义重载操作符${k}`);
                                 } else {
                                     class_units.operatorOverload[k] = (class_unit as { [key: string]: FunctionType })[k];
                                 }
                             } else {//是普通成员
-                                if (class_units.operatorOverload[k] != undefined) {
-                                    throw new Error(`重复定义成员${k}`);
-                                } else {
+                                if (class_units.property[k] == undefined) {//之前没有定义过这个成员
                                     class_units.property[k] = (class_unit as VariableDescriptor)[k];
+                                } else {//可能是定义了同名的getter或者setter，检查是否为重复定义
+                                    if ((class_unit as VariableDescriptor)[k].getter != undefined) {//class_unit是一个getter
+                                        if (class_units.property[k].getter != undefined) {
+                                            throw new Error(`${k}:getter重复定义`);
+                                        } else {
+                                            class_units.property[k].getter = (class_unit as VariableDescriptor)[k].getter;
+                                        }
+                                    } else if ((class_unit as VariableDescriptor)[k].setter != undefined) {//class_unit是一个setter
+                                        if (class_units.property[k].setter != undefined) {
+                                            throw new Error(`${k}:setter重复定义`);
+                                        } else {
+                                            class_units.property[k].setter = (class_unit as VariableDescriptor)[k].setter;
+                                        }
+                                    } else {
+                                        throw new Error(`重复定义成员${k}`);
+                                    }
                                 }
+
                             }
                         }
                     }
@@ -468,9 +486,61 @@ import { FunctionSingle } from "./lib.js"
                 }
             }
         },//class_unit可以是一个声明语句
-        { "class_unit:operator_overload": {} },//class_unit可以是一个运算符重载
-        { "class_unit:get id ( ) : type { statements }": {} },//get
-        { "class_unit:set id ( id : type ) { statements }": {} },//set
+        {
+            "class_unit:operator_overload": {
+                action: function ($, s): { [key: string]: FunctionType } {
+                    return $[0] as { [key: string]: FunctionType };
+                }
+            }
+        },//class_unit可以是一个运算符重载
+        {
+            "class_unit:get id ( ) : type { statements }": {
+                action: function ($, s): VariableDescriptor {
+                    let id = $[1] as string;
+                    let retType = $[5] as TypeUsed;
+                    let statements = $[7] as block;
+                    let ret: VariableDescriptor = JSON.parse("{}");//为了生成的解析器不报红
+                    ret[id] = {
+                        variable: 'val',
+                        getter: {
+                            argument: {},
+                            body: statements,
+                            retType: retType
+                        }
+                    };
+                    return ret;
+                }
+            }
+        },//get
+        {
+            "class_unit:set id ( id : type ) { statements }": {
+                action: function ($, s): VariableDescriptor {
+                    let id = $[1] as string;
+                    let argumentId = $[3] as string;
+                    let argumentIdType = $[5] as TypeUsed;
+                    let statements = $[8] as block;
+                    let ret: VariableDescriptor = JSON.parse("{}");//为了生成的解析器不报红
+                    let argument: VariableDescriptor = JSON.parse("{}");//为了生成的解析器不报红
+                    argument[argumentId] = {
+                        variable: 'var',
+                        type: argumentIdType
+                    };
+                    ret[id] = {
+                        variable: 'val',
+                        setter: {
+                            argument: argument,
+                            body: statements,
+                            retType: {
+                                SimpleType: {
+                                    name: 'void'
+                                }
+                            }
+                        }
+                    };
+                    return ret;
+                }
+            }
+        },//set
         {
             "class_unit:basic_type ( parameter_declare )  { statements }": {
                 action: function ($, s): [{ [key: string]: FunctionType }] {
@@ -478,14 +548,36 @@ import { FunctionSingle } from "./lib.js"
                     let parameter_declare = $[2] as VariableDescriptor;
                     let statements = $[5] as block;
                     let ret: { [key: string]: FunctionType } = JSON.parse("{}");//为了生成的解析器不报红
-                    let single: string = FunctionSingle(parameter_declare);
-                    ret[single] = { _construct: basic_type.SimpleType!.name, argument: parameter_declare, body: statements };
+                    let functionType: FunctionType = { _construct_for_type: basic_type.SimpleType!.name, argument: parameter_declare, body: statements };
+                    let single: string = FunctionSingle(functionType);
+                    ret[single] = functionType;
                     return [ret];
                 }
             }
         },//构造函数
         { "class_unit:default ( )  { statements }": {} },//default函数,用于初始化值类型
-        { "operator_overload:operator + ( id : type ) : type { statements }": {} },//运算符重载,运算符重载实在是懒得做泛型了,以后要是有需求再讲,比起C#和java的残废泛型，已经很好了
+        {
+            "operator_overload:operator + ( id : type ) : type { statements }": {
+                action: function ($, s): { [key: string]: FunctionType } {
+                    let id = $[3] as string;
+                    let parameterType = $[5] as TypeUsed;
+                    let statements = $[10] as block;
+                    let retType = $[8] as TypeUsed;
+                    let argument: VariableDescriptor = JSON.parse("{}");//为了生成的解析器不报红
+                    argument[id] = {
+                        variable: 'var',
+                        type: parameterType
+                    };
+                    return {
+                        "+": {
+                            argument: argument,
+                            body: statements,
+                            retType: retType
+                        }
+                    };
+                }
+            }
+        },//运算符重载,运算符重载实在是懒得做泛型了,以后要是有需求再讲,比起C#和java的残废泛型，已经很好了
         { "statements:statements statement": {} },//statements可以由多个statement组成
         { "statements:": {} },//statements可以为空
         { "statement:declare ;": {} },//statement可以是一条声明语句

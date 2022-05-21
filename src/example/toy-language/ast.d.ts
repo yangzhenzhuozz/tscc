@@ -19,10 +19,10 @@ interface TypeDef {
     templates?: string[];//模板列表
     extends?: TypeUsed;//基类
     operatorOverload: {//重载列表
-        [key: string]: FunctionType
+        [key: string]: FunctionType//key为操作符
     };
     property: VariableDescriptor;//属性列表
-    _constructor: { [key: string]: FunctionType };
+    _constructor: { [key: string]: FunctionType };//key为函数签名
 }
 //变量描述符，包含变量的名字、类型以及初始化使用的语法树
 type VariableDescriptor = { [key: string]: VariableProperties };
@@ -51,7 +51,7 @@ class FunctionType {
     body: block;//函数体
     retType?: TypeUsed;//返回类型，可选，如果为undefined则需要进行类型推导
     templates?: string[];//模板列表
-    _construct?:string;//是什么类型的构造函数
+    _construct_for_type?: string;//是某个类型的构造函数
 }
 type block = (ASTNode | block)[];
 interface Program {
