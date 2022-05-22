@@ -1,12 +1,8 @@
-var a:int;
-var b:int;
-class c{
+function a():void{
     var a:int;
-    c(a:int){}
-    c(a:(a:int)=>int){}
-    c(){}
-    set a(a:int){}
-    get a():int{}
-    operator + (a:int):int{}
-}
-class d{}
+    try{
+        var a:int;
+    }catch(e:int){
+        var a:int;
+    }
+};

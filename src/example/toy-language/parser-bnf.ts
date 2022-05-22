@@ -578,10 +578,42 @@ import { FunctionSingle } from "./lib.js"
                 }
             }
         },//运算符重载,运算符重载实在是懒得做泛型了,以后要是有需求再讲,比起C#和java的残废泛型，已经很好了
-        { "statements:statements statement": {} },//statements可以由多个statement组成
-        { "statements:": {} },//statements可以为空
-        { "statement:declare ;": {} },//statement可以是一条声明语句
-        { "statement:try { statements } catch ( id : type ) { statements }": {} },//try catch语句，允许捕获任意类型的异常
+        {
+            "statements:statements statement": {
+                action: function ($, s): block {
+                    let statements = $[0] as block;
+                    let statement = $[1] as ASTNode;
+                    statements.push(statement);
+                    return statements;
+                }
+            }
+        },//statements可以由多个statement组成
+        {
+            "statements:": {
+                action: function ($, s): block {
+                    return [] as block;
+                }
+            }
+        },//statements可以为空
+        {
+            "statement:declare ;": {
+                action: function ($, s): ASTNode {
+                    let declare: VariableDescriptor = $[0];
+                    return { def: declare };
+                }
+            }
+        },//statement可以是一条声明语句
+        {
+            "statement:try { statements } catch ( id : type ) { statements }": {
+                action: function ($, s): ASTNode {
+                    let tryBlock = $[2] as block;
+                    let catchVariable = $[6] as string;
+                    let catchType = $[8] as TypeUsed;
+                    let catchBlock = $[11] as block;
+                    return { trycatch: { tryBlock: tryBlock, catchVariable: catchVariable, catchType: catchType, catchBlock: catchBlock } };
+                }
+            }
+        },//try catch语句，允许捕获任意类型的异常
         { "statement:throw object ;": {} },//抛异常语句
         { "statement:return object ;": {} },//带返回值的返回语句
         { "statement:return ;": {} },//不带返回值的语句

@@ -579,7 +579,7 @@ class ParseException extends Error{
 }
 class Parser {
     public parse(lexer: Lex):any {
-        let state: { [key: string]: string | undefined }[] = JSON.parse(\`${JSON.stringify(gotoTable)}\`);
+        let state: { [key: string]: string | undefined }[] = ${JSON.stringify(gotoTable)};
         let syntaxHead: string[] = [`;
         for (let i = 0; i < this.syntaxs.length; i++) {
             if (i != 0) {
