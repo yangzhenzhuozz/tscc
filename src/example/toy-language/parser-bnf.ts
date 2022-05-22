@@ -220,7 +220,7 @@ import { FunctionSingle } from "./lib.js"
                     let id = $[1] as string;
                     let parameter_declare = $[4] as VariableDescriptor;
                     let ret_type = $[6] as TypeUsed | undefined;
-                    let statements = $[8] as block;
+                    let statements = $[8] as Block;
                     let ret: { [key: string]: FunctionType } = JSON.parse("{}");//为了生成的解析器不报红
                     ret[id] = { argument: parameter_declare, body: statements, templates: template_declare, retType: ret_type };
                     return ret;
@@ -498,7 +498,7 @@ import { FunctionSingle } from "./lib.js"
                 action: function ($, s): VariableDescriptor {
                     let id = $[1] as string;
                     let retType = $[5] as TypeUsed;
-                    let statements = $[7] as block;
+                    let statements = $[7] as Block;
                     let ret: VariableDescriptor = JSON.parse("{}");//为了生成的解析器不报红
                     ret[id] = {
                         variable: 'val',
@@ -518,7 +518,7 @@ import { FunctionSingle } from "./lib.js"
                     let id = $[1] as string;
                     let argumentId = $[3] as string;
                     let argumentIdType = $[5] as TypeUsed;
-                    let statements = $[8] as block;
+                    let statements = $[8] as Block;
                     let ret: VariableDescriptor = JSON.parse("{}");//为了生成的解析器不报红
                     let argument: VariableDescriptor = JSON.parse("{}");//为了生成的解析器不报红
                     argument[argumentId] = {
@@ -546,7 +546,7 @@ import { FunctionSingle } from "./lib.js"
                 action: function ($, s): [{ [key: string]: FunctionType }] {
                     let basic_type = $[0] as TypeUsed;
                     let parameter_declare = $[2] as VariableDescriptor;
-                    let statements = $[5] as block;
+                    let statements = $[5] as Block;
                     let ret: { [key: string]: FunctionType } = JSON.parse("{}");//为了生成的解析器不报红
                     let functionType: FunctionType = { _construct_for_type: basic_type.SimpleType!.name, argument: parameter_declare, body: statements };
                     let single: string = FunctionSingle(functionType);
@@ -561,7 +561,7 @@ import { FunctionSingle } from "./lib.js"
                 action: function ($, s): { [key: string]: FunctionType } {
                     let id = $[3] as string;
                     let parameterType = $[5] as TypeUsed;
-                    let statements = $[10] as block;
+                    let statements = $[10] as Block;
                     let retType = $[8] as TypeUsed;
                     let argument: VariableDescriptor = JSON.parse("{}");//为了生成的解析器不报红
                     argument[id] = {
@@ -580,8 +580,8 @@ import { FunctionSingle } from "./lib.js"
         },//运算符重载,运算符重载实在是懒得做泛型了,以后要是有需求再讲,比起C#和java的残废泛型，已经很好了
         {
             "statements:statements statement": {
-                action: function ($, s): block {
-                    let statements = $[0] as block;
+                action: function ($, s): Block {
+                    let statements = $[0] as Block;
                     let statement = $[1] as ASTNode;
                     statements.push(statement);
                     return statements;
@@ -590,8 +590,8 @@ import { FunctionSingle } from "./lib.js"
         },//statements可以由多个statement组成
         {
             "statements:": {
-                action: function ($, s): block {
-                    return [] as block;
+                action: function ($, s): Block {
+                    return [] as Block;
                 }
             }
         },//statements可以为空
@@ -606,18 +606,45 @@ import { FunctionSingle } from "./lib.js"
         {
             "statement:try { statements } catch ( id : type ) { statements }": {
                 action: function ($, s): ASTNode {
-                    let tryBlock = $[2] as block;
+                    let tryBlock = $[2] as Block;
                     let catchVariable = $[6] as string;
                     let catchType = $[8] as TypeUsed;
-                    let catchBlock = $[11] as block;
+                    let catchBlock = $[11] as Block;
                     return { trycatch: { tryBlock: tryBlock, catchVariable: catchVariable, catchType: catchType, catchBlock: catchBlock } };
                 }
             }
         },//try catch语句，允许捕获任意类型的异常
-        { "statement:throw object ;": {} },//抛异常语句
-        { "statement:return object ;": {} },//带返回值的返回语句
-        { "statement:return ;": {} },//不带返回值的语句
-        { "statement:if ( object ) statement": { priority: "low_priority_for_if_stmt" } },//if语句
+        {
+            "statement:throw object ;": {
+                action: function ($, s): ASTNode {
+                    return { throwStmt: $[1] as ASTNode };
+                }
+            }
+        },//抛异常语句
+        {
+            "statement:return object ;": {
+                action: function ($, s): ASTNode {
+                    return { ret: $[1] as ASTNode };
+                }
+            }
+        },//带返回值的返回语句
+        {
+            "statement:return ;": {
+                action: function ($, s): ASTNode {
+                    return { ret: "" };
+                }
+            }
+        },//不带返回值的语句
+        {
+            "statement:if ( object ) statement": {
+                priority: "low_priority_for_if_stmt",
+                action: function ($, s): ASTNode {
+                    let condition = $[2] as ASTNode;
+                    let stmt = $[4] as Block | ASTNode;
+                    return { ifStmt: { condition: condition, stmt: stmt } };
+                }
+            }
+        },//if语句
         /**
          * 本规则会导致如下二义性:
          * if(obj)      ---1
@@ -652,11 +679,20 @@ import { FunctionSingle } from "./lib.js"
          * 为了和大部分的现有编程语言兼容，采用第二种抽象语法树进行规约
          * 定义两个优先级规则low_priority_for_if_stmt和else,使else的优先级高于low_priority_for_if_stmt,在产生冲突时选择移入
          */
-        { "statement:if ( object ) statement else statement": {} },//if else语句
+        {
+            "statement:if ( object ) statement else statement": {
+                action: function ($, s): ASTNode {
+                    let condition = $[2] as ASTNode;
+                    let stmt1 = $[4] as Block | ASTNode;
+                    let stmt2 = $[6] as Block | ASTNode;
+                    return { ifElseStmt: { condition: condition, stmt1: stmt1, stmt2: stmt2 } };
+                }
+            }
+        },//if else语句
         { "statement:lable_def do statement while ( object ) ;": {} },//do-while语句，其实我是想删除while语句的，我觉得for_loop可以完全替代while,一句话,为了看起来没这么怪
         { "statement:lable_def while ( object ) statement": {} },//while语句
         { "statement:lable_def for ( for_init ; for_condition ; for_step ) statement": {} },//for_loop
-        { "statement:block": { action: ($, s) => $[0] } },//代码块
+        { "statement:Block": { action: ($, s) => $[0] } },//代码块
         { "statement:break lable_use ;": {} },//break语句
         { "statement:continue lable_use ;": {} },//continue语句
         { "statement:switch ( object ) { switch_bodys }": {} },//switch语句,因为switch在C/C++等语言中可以用跳转表处理,gcc在处理switch语句时,如果各个case的值连续,也会生成一个jum_table,所以我也考虑过移除switch语句,还是为了让其他语言的使用者感觉没那么怪
@@ -670,7 +706,7 @@ import { FunctionSingle } from "./lib.js"
         { "for_condition:object": {} },//condition可以是一个对象(必须是bool对象)
         { "for_step:": {} },//step可以为空
         { "for_step:object": {} },//step可以是一个对象
-        { "block:{ statements }": {} },//代码块是一对花括号中间包裹着statements
+        { "Block:{ statements }": {} },//代码块是一对花括号中间包裹着statements
         { "lable_use:": {} },//在break和continue中被使用
         { "lable_use:id": {} },//在break和continue中被使用
         { "switch_bodys:": {} },//switch_bodys可为空

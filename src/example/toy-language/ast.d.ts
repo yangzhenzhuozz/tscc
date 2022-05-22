@@ -48,12 +48,12 @@ interface ArrayType {
 }
 class FunctionType {
     argument: VariableDescriptor;
-    body: block;//函数体
+    body: Block;//函数体
     retType?: TypeUsed;//返回类型，可选，如果为undefined则需要进行类型推导
     templates?: string[];//模板列表
     _construct_for_type?: string;//是某个类型的构造函数
 }
-type block = (ASTNode | block)[];
+type Block = (ASTNode | Block)[];
 interface Program {
     definedType: {//已经定义了的类型
         [key: string]: TypeDef
@@ -66,7 +66,11 @@ interface ASTNode {
     load?: string;
     "+"?: { rightChild: ASTNode; leftChild: ASTNode; };
     immediate?: immediateNode;
-    trycatch?: { tryBlock: block, catchVariable: string, catchType: TypeUsed, catchBlock: block }
+    trycatch?: { tryBlock: Block, catchVariable: string, catchType: TypeUsed, catchBlock: Block };
+    throwStmt?: ASTNode;
+    ret?: ASTNode | "";
+    ifStmt?: { condition: ASTNode, stmt: ASTNode | Block };
+    ifElseStmt?: { condition: ASTNode, stmt1: ASTNode | Block, stmt2: ASTNode | Block };
 }
 interface immediateNode {
     //immediate只可以是数字、字符串、函数,对应了 1、"string"、()=>{console.log("aaa")}这几种情况
