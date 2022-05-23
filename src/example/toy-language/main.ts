@@ -16,5 +16,8 @@ try {
     parser.parse(lexer);
     console.timeEnd("解析源码耗时");
 } catch (e: unknown) {
+    if(e instanceof Error){
+        console.error(e.stack);
+    }
     console.error(`${e}`);
 }

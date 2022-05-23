@@ -18,4 +18,20 @@ function a():void{
     }catch(e:int){
         var a:int;
     }
+    {
+        a;
+        b;
+        c;
+        d;
+    }
+    switch(a){
+        case a:
+            {
+                a;
+                b;
+                c;
+                (d);
+            }
+        default:d;
+    }
 };

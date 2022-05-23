@@ -79,6 +79,7 @@ interface ASTNode {
     "-"?: { rightChild: ASTNode; leftChild: ASTNode; };
     "*"?: { rightChild: ASTNode; leftChild: ASTNode; };
     "/"?: { rightChild: ASTNode; leftChild: ASTNode; };
+    _switch?: { pattern: ASTNode, defalutStmt?: ASTNode | Block, matchList: { matchObj: ASTNode | null, stmt: ASTNode | Block }[] };//default没有matchObj
 }
 interface immediateNode {
     //immediate只可以是数字、字符串、函数,对应了 1、"string"、()=>{console.log("aaa")}这几种情况

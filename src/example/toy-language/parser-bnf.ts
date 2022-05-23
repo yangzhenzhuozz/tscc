@@ -746,9 +746,23 @@ import { FunctionSingle } from "./lib.js"
         },//continue语句
         {
             "statement:switch ( object ) { switch_bodys }": {
-
+                action: function ($, s): ASTNode {
+                    let pattern = $[2] as ASTNode;
+                    let switch_bodys = $[5] as { matchObj: ASTNode | null, stmt: ASTNode | Block, isDefault: boolean }[];
+                    let defalutStmt: ASTNode | Block | undefined;
+                    for (let i = 0; i < switch_bodys.length; i++) {
+                        if (switch_bodys[i].isDefault) {
+                            if (i != switch_bodys.length - 1) {
+                                throw new Error(`switch body只允许最后一个分支为default`);
+                            } else {
+                                defalutStmt = switch_bodys.pop()?.stmt;//此处会更改数组长度，正常结束循环
+                            }
+                        }
+                    }
+                    return { _switch: { pattern: pattern, defalutStmt: defalutStmt, matchList: switch_bodys } };
+                }
             }
-        },//switch语句,因为switch在C/C++等语言中可以用跳转表处理,gcc在处理switch语句时,如果各个case的值连续,也会生成一个jum_table,所以我也考虑过移除switch语句,还是为了让其他语言的使用者感觉没那么怪
+        },//switch语句,因为switch在C/C++等语言中可以用跳转表处理,gcc在处理switch语句时,如果各个case的值连续,也会生成一个jum_table,这里我就稍微扩展一下switch的用法
         {
             "statement:object ;": {
                 action: function ($, s): ASTNode {
@@ -799,7 +813,7 @@ import { FunctionSingle } from "./lib.js"
         {
             "Block:{ statements }": {
                 action: function ($, s): Block {
-                    return $[0] as Block;
+                    return $[1] as Block;
                 }
             }
         },//代码块是一对花括号中间包裹着statements
@@ -811,11 +825,44 @@ import { FunctionSingle } from "./lib.js"
                 }
             }
         },//在break和continue中被使用
-        { "switch_bodys:": {} },//switch_bodys可为空
-        { "switch_bodys:switch_bodys switch_body": {} },//switch_bodys可以由多个switch_body组成
-        { "switch_body:case immediate_val : statement": {} },//case 语句
-        { "switch_body:default : statement": {} },//default语句
-        { "object:( object )": {} },//括号括住的object还是一个object
+        {
+            "switch_bodys:": {
+                action: function ($, s): { matchObj: ASTNode | null, stmt: ASTNode | Block, isDefault: boolean }[] {
+                    return [];
+                }
+            }
+        },//switch_bodys可为空
+        {
+            "switch_bodys:switch_bodys switch_body": {
+                action: function ($, s): { matchObj: ASTNode | null, stmt: ASTNode | Block, isDefault: boolean }[] {
+                    let switch_bodys = $[0] as { matchObj: ASTNode | null, stmt: ASTNode | Block, isDefault: boolean }[];
+                    let switch_body = $[1] as { matchObj: ASTNode | null, stmt: ASTNode | Block, isDefault: boolean };
+                    switch_bodys.push(switch_body);
+                    return switch_bodys;
+                }
+            }
+        },//switch_bodys可以由多个switch_body组成
+        {
+            "switch_body:case object : statement": {
+                action: function ($, s): { matchObj: ASTNode | null, stmt: ASTNode | Block, isDefault: boolean } {
+                    return { matchObj: $[1] as ASTNode, stmt: $[3] as ASTNode | Block, isDefault: false };
+                }
+            }
+        },//case 语句
+        {
+            "switch_body:default : statement": {
+                action: function ($, s): { matchObj: ASTNode | null, stmt: ASTNode | Block, isDefault: boolean } {
+                    return { matchObj: null, stmt: $[2] as ASTNode | Block, isDefault: true };
+                }
+            }
+        },//default语句
+        {
+            "object:( object )": {
+                action: function ($, s): ASTNode {
+                    return $[1] as ASTNode;
+                }
+            }
+        },//括号括住的object还是一个object
         { "object:object . id": {} },//取成员
         /**
         * obj_1 + obj_2  ( obj_3 )  ,中间的+可以换成 - * / < > || 等等双目运算符
@@ -881,7 +928,14 @@ import { FunctionSingle } from "./lib.js"
          * 2.因为?为右结合,所以情况2会选择2.2这种语法树进行解析
          */
         { "object:object ? object : object": { priority: "?" } },//三目运算
-        { "object:id": {} },//id是一个对象
+        {
+            "object:id": {
+                action: function ($, s): ASTNode {
+                    let id = $[0] as string;
+                    return { load: id };
+                }
+            }
+        },//id是一个对象
         { "object:immediate_val": {} },//立即数是一个object
         { "object:super": {} },//super是一个对象
         { "object:this": {} },//this是一个object

@@ -149,7 +149,7 @@ let grammar: Grammar = {
         { "statement:block": { action: ($, s) => $[0] } },//代码块
         { "statement:break label_use ;": {} },//break语句
         { "statement:continue label_use ;": {} },//continue语句
-        { "statement:switch ( object ) { switch_bodys }": {} },//switch语句,因为switch在C/C++等语言中可以用跳转表处理,gcc在处理switch语句时,如果各个case的值连续,也会生成一个jum_table,所以我也考虑过移除switch语句,还是为了让其他语言的使用者感觉没那么怪
+        { "statement:switch ( object ) { switch_bodys }": {} },//switch语句,因为switch在C/C++等语言中可以用跳转表处理,gcc在处理switch语句时,如果各个case的值连续,也会生成一个jum_table,这里我就稍微扩展一下switch的用法
         { "statement:object ;": {} },//类似C/C++中的   1; 这种语句,java好像不支持这种写法
         { "label_def:": {} },//label_def可以为空
         { "label_def:id :": {} },//label_def为 id : 组成
@@ -165,7 +165,7 @@ let grammar: Grammar = {
         { "label_use:id": {} },//在break和continue中被使用
         { "switch_bodys:": {} },//switch_bodys可为空
         { "switch_bodys:switch_bodys switch_body": {} },//switch_bodys可以由多个switch_body组成
-        { "switch_body:case immediate_val : statement": {} },//case 语句
+        { "switch_body:case object : statement": {} },//case 语句
         { "switch_body:default : statement": {} },//default语句
         { "object:( object )": {} },//括号括住的object还是一个object
         { "object:object . id": {} },//取成员
