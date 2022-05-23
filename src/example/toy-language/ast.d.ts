@@ -64,7 +64,6 @@ interface Program {
 interface ASTNode {
     def?: VariableDescriptor;
     load?: string;
-    "+"?: { rightChild: ASTNode; leftChild: ASTNode; };
     immediate?: immediateNode;
     trycatch?: { tryBlock: Block, catchVariable: string, catchType: TypeUsed, catchBlock: Block };
     throwStmt?: ASTNode;
@@ -76,6 +75,10 @@ interface ASTNode {
     _for?: { init: ASTNode, condition: ASTNode, step: ASTNode, stmt: ASTNode | Block, label: string | undefined };
     _break?: { label: string }
     _continue?: { label: string }
+    "+"?: { rightChild: ASTNode; leftChild: ASTNode; };
+    "-"?: { rightChild: ASTNode; leftChild: ASTNode; };
+    "*"?: { rightChild: ASTNode; leftChild: ASTNode; };
+    "/"?: { rightChild: ASTNode; leftChild: ASTNode; };
 }
 interface immediateNode {
     //immediate只可以是数字、字符串、函数,对应了 1、"string"、()=>{console.log("aaa")}这几种情况
