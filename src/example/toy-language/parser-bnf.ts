@@ -757,7 +757,13 @@ import { FunctionSingle } from "./lib.js"
             }
         },//类似C/C++中的   1; 这种语句,java好像不支持这种写法
         { "label_def:": {} },//label_def可以为空
-        { "label_def:id :": {} },//label_def为 id : 组成
+        {
+            "label_def:id :": {
+                action: function ($, s): string {
+                    return $[0] as string;
+                }
+            }
+        },//label_def为 id : 组成
         { "for_init:": {} },//for_loop的init可以为空
         {
             "for_init:declare": {
@@ -798,7 +804,13 @@ import { FunctionSingle } from "./lib.js"
             }
         },//代码块是一对花括号中间包裹着statements
         { "label_use:": {} },//在break和continue中被使用
-        { "label_use:id": {} },//在break和continue中被使用
+        {
+            "label_use:id": {
+                action: function ($, s): string {
+                    return $[0] as string;
+                }
+            }
+        },//在break和continue中被使用
         { "switch_bodys:": {} },//switch_bodys可为空
         { "switch_bodys:switch_bodys switch_body": {} },//switch_bodys可以由多个switch_body组成
         { "switch_body:case immediate_val : statement": {} },//case 语句
