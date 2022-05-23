@@ -143,16 +143,16 @@ let grammar: Grammar = {
          * 定义两个优先级规则low_priority_for_if_stmt和else,使else的优先级高于low_priority_for_if_stmt,在产生冲突时选择移入
          */
         { "statement:if ( object ) statement else statement": {} },//if else语句
-        { "statement:lable_def do statement while ( object ) ;": {} },//do-while语句，其实我是想删除while语句的，我觉得for_loop可以完全替代while,一句话,为了看起来没这么怪
-        { "statement:lable_def while ( object ) statement": {} },//while语句
-        { "statement:lable_def for ( for_init ; for_condition ; for_step ) statement": {} },//for_loop
+        { "statement:label_def do statement while ( object ) ;": {} },//do-while语句，其实我是想删除while语句的，我觉得for_loop可以完全替代while,一句话,为了看起来没这么怪
+        { "statement:label_def while ( object ) statement": {} },//while语句
+        { "statement:label_def for ( for_init ; for_condition ; for_step ) statement": {} },//for_loop
         { "statement:block": { action: ($, s) => $[0] } },//代码块
-        { "statement:break lable_use ;": {} },//break语句
-        { "statement:continue lable_use ;": {} },//continue语句
+        { "statement:break label_use ;": {} },//break语句
+        { "statement:continue label_use ;": {} },//continue语句
         { "statement:switch ( object ) { switch_bodys }": {} },//switch语句,因为switch在C/C++等语言中可以用跳转表处理,gcc在处理switch语句时,如果各个case的值连续,也会生成一个jum_table,所以我也考虑过移除switch语句,还是为了让其他语言的使用者感觉没那么怪
         { "statement:object ;": {} },//类似C/C++中的   1; 这种语句,java好像不支持这种写法
-        { "lable_def:": {} },//lable_def可以为空
-        { "lable_def:id :": {} },//label_def为 id : 组成
+        { "label_def:": {} },//label_def可以为空
+        { "label_def:id :": {} },//label_def为 id : 组成
         { "for_init:": {} },//for_loop的init可以为空
         { "for_init:declare": {} },//init可以是一个声明
         { "for_init:object": {} },//也可以是一个对象
@@ -161,8 +161,8 @@ let grammar: Grammar = {
         { "for_step:": {} },//step可以为空
         { "for_step:object": {} },//step可以是一个对象
         { "block:{ statements }": {} },//代码块是一对花括号中间包裹着statements
-        { "lable_use:": {} },//在break和continue中被使用
-        { "lable_use:id": {} },//在break和continue中被使用
+        { "label_use:": {} },//在break和continue中被使用
+        { "label_use:id": {} },//在break和continue中被使用
         { "switch_bodys:": {} },//switch_bodys可为空
         { "switch_bodys:switch_bodys switch_body": {} },//switch_bodys可以由多个switch_body组成
         { "switch_body:case immediate_val : statement": {} },//case 语句

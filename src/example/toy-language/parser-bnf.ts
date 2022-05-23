@@ -689,26 +689,116 @@ import { FunctionSingle } from "./lib.js"
                 }
             }
         },//if else语句
-        { "statement:lable_def do statement while ( object ) ;": {} },//do-while语句，其实我是想删除while语句的，我觉得for_loop可以完全替代while,一句话,为了看起来没这么怪
-        { "statement:lable_def while ( object ) statement": {} },//while语句
-        { "statement:lable_def for ( for_init ; for_condition ; for_step ) statement": {} },//for_loop
-        { "statement:Block": { action: ($, s) => $[0] } },//代码块
-        { "statement:break lable_use ;": {} },//break语句
-        { "statement:continue lable_use ;": {} },//continue语句
-        { "statement:switch ( object ) { switch_bodys }": {} },//switch语句,因为switch在C/C++等语言中可以用跳转表处理,gcc在处理switch语句时,如果各个case的值连续,也会生成一个jum_table,所以我也考虑过移除switch语句,还是为了让其他语言的使用者感觉没那么怪
-        { "statement:object ;": {} },//类似C/C++中的   1; 这种语句,java好像不支持这种写法
-        { "lable_def:": {} },//lable_def可以为空
-        { "lable_def:id :": {} },//label_def为 id : 组成
+        {
+            "statement:label_def do statement while ( object ) ;": {
+                action: function ($, s): ASTNode {
+                    let label_def = $[0] as string | undefined;
+                    let stmt = $[2] as Block | ASTNode;
+                    let condition = $[5] as ASTNode;
+                    return { do_while: { condition: condition, stmt: stmt, label: label_def } };
+                }
+            }
+        },//do-while语句，其实我是想删除while语句的，我觉得for_loop可以完全替代while,一句话,为了看起来没这么怪
+        {
+            "statement:label_def while ( object ) statement": {
+                action: function ($, s): ASTNode {
+                    let label_def = $[0] as string | undefined;
+                    let condition = $[3] as ASTNode;
+                    let stmt = $[5] as Block | ASTNode;
+                    return { _while: { condition: condition, stmt: stmt, label: label_def } };
+                }
+            }
+        },//while语句
+        {
+            "statement:label_def for ( for_init ; for_condition ; for_step ) statement": {
+                action: function ($, s): ASTNode {
+                    let label_def = $[0] as string | undefined;
+                    let init = $[3] as ASTNode;
+                    let condition = $[5] as ASTNode;
+                    let step = $[7] as ASTNode;
+                    let stmt = $[9] as Block | ASTNode;
+                    return { _for: { init: init, condition: condition, step: step, stmt: stmt, label: label_def } };
+                }
+            }
+        },//for_loop
+        {
+            "statement:Block": {
+                action: function ($, s): Block {
+                    return $[0] as Block;
+                }
+            }
+        },//代码块
+        {
+            "statement:break label_use ;": {
+                action: function ($, s): ASTNode {
+                    let label_use = $[1] as string | undefined;
+                    return { _break: { label: label_use == undefined ? "" : label_use } };
+                }
+            }
+        },//break语句
+        {
+            "statement:continue label_use ;": {
+                action: function ($, s): ASTNode {
+                    let label_use = $[1] as string | undefined;
+                    return { _continue: { label: label_use == undefined ? "" : label_use } };
+                }
+            }
+        },//continue语句
+        {
+            "statement:switch ( object ) { switch_bodys }": {
+
+            }
+        },//switch语句,因为switch在C/C++等语言中可以用跳转表处理,gcc在处理switch语句时,如果各个case的值连续,也会生成一个jum_table,所以我也考虑过移除switch语句,还是为了让其他语言的使用者感觉没那么怪
+        {
+            "statement:object ;": {
+                action: function ($, s): ASTNode {
+                    return $[0] as ASTNode;
+                }
+            }
+        },//类似C/C++中的   1; 这种语句,java好像不支持这种写法
+        { "label_def:": {} },//label_def可以为空
+        { "label_def:id :": {} },//label_def为 id : 组成
         { "for_init:": {} },//for_loop的init可以为空
-        { "for_init:declare": {} },//init可以是一个声明
-        { "for_init:object": {} },//也可以是一个对象
+        {
+            "for_init:declare": {
+                action: function ($, s): ASTNode {
+                    let declare: VariableDescriptor = $[0];
+                    return { def: declare };
+                }
+            }
+        },//init可以是一个声明
+        {
+            "for_init:object": {
+                action: function ($, s): ASTNode {
+                    return $[0] as ASTNode;
+                }
+            }
+        },//也可以是一个对象
         { "for_condition:": {} },//condition可以为空
-        { "for_condition:object": {} },//condition可以是一个对象(必须是bool对象)
+        {
+            "for_condition:object": {
+                action: function ($, s): ASTNode {
+                    return $[0] as ASTNode;
+                }
+            }
+        },//condition可以是一个对象(必须是bool对象)
         { "for_step:": {} },//step可以为空
-        { "for_step:object": {} },//step可以是一个对象
-        { "Block:{ statements }": {} },//代码块是一对花括号中间包裹着statements
-        { "lable_use:": {} },//在break和continue中被使用
-        { "lable_use:id": {} },//在break和continue中被使用
+        {
+            "for_step:object": {
+                action: function ($, s): ASTNode {
+                    return $[0] as ASTNode;
+                }
+            }
+        },//step可以是一个对象
+        {
+            "Block:{ statements }": {
+                action: function ($, s): Block {
+                    return $[0] as Block;
+                }
+            }
+        },//代码块是一对花括号中间包裹着statements
+        { "label_use:": {} },//在break和continue中被使用
+        { "label_use:id": {} },//在break和continue中被使用
         { "switch_bodys:": {} },//switch_bodys可为空
         { "switch_bodys:switch_bodys switch_body": {} },//switch_bodys可以由多个switch_body组成
         { "switch_body:case immediate_val : statement": {} },//case 语句

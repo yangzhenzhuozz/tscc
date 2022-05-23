@@ -71,6 +71,11 @@ interface ASTNode {
     ret?: ASTNode | "";
     ifStmt?: { condition: ASTNode, stmt: ASTNode | Block };
     ifElseStmt?: { condition: ASTNode, stmt1: ASTNode | Block, stmt2: ASTNode | Block };
+    do_while?: { condition: ASTNode, stmt: ASTNode | Block, label?: string };
+    _while?: { condition: ASTNode, stmt: ASTNode | Block, label?: string };
+    _for?: { init: ASTNode, condition: ASTNode, step: ASTNode, stmt: ASTNode | Block, label: string | undefined };
+    _break?: { label: string }
+    _continue?: { label: string }
 }
 interface immediateNode {
     //immediate只可以是数字、字符串、函数,对应了 1、"string"、()=>{console.log("aaa")}这几种情况
