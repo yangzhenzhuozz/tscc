@@ -62,6 +62,8 @@ interface Program {
 }
 //一条语句就是一个Noe
 interface ASTNode {
+    accessField?: { node: ASTNode, field: string };
+    call?: { functionObj: ASTNode, _arguments: ASTNode[], templateSpecialization_list?: TypeUsed[] };
     def?: VariableDescriptor;
     load?: string;
     immediate?: immediateNode;
@@ -73,12 +75,21 @@ interface ASTNode {
     do_while?: { condition: ASTNode, stmt: ASTNode | Block, label?: string };
     _while?: { condition: ASTNode, stmt: ASTNode | Block, label?: string };
     _for?: { init: ASTNode, condition: ASTNode, step: ASTNode, stmt: ASTNode | Block, label: string | undefined };
-    _break?: { label: string }
-    _continue?: { label: string }
+    _break?: { label: string };
+    _continue?: { label: string };
+    _instanceof?: { obj: ASTNode, type: TypeUsed };
+    "="?: { rightChild: ASTNode; leftChild: ASTNode; };
     "+"?: { rightChild: ASTNode; leftChild: ASTNode; };
     "-"?: { rightChild: ASTNode; leftChild: ASTNode; };
     "*"?: { rightChild: ASTNode; leftChild: ASTNode; };
     "/"?: { rightChild: ASTNode; leftChild: ASTNode; };
+    "<"?: { rightChild: ASTNode; leftChild: ASTNode; };
+    "<="?: { rightChild: ASTNode; leftChild: ASTNode; };
+    ">"?: { rightChild: ASTNode; leftChild: ASTNode; };
+    ">="?: { rightChild: ASTNode; leftChild: ASTNode; };
+    "=="?: { rightChild: ASTNode; leftChild: ASTNode; };
+    "||"?: { rightChild: ASTNode; leftChild: ASTNode; };
+    "&&"?: { rightChild: ASTNode; leftChild: ASTNode; };
     _switch?: { pattern: ASTNode, defalutStmt?: ASTNode | Block, matchList: { matchObj: ASTNode | null, stmt: ASTNode | Block }[] };//default没有matchObj
 }
 interface immediateNode {

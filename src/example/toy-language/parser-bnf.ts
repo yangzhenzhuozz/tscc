@@ -863,7 +863,15 @@ import { FunctionSingle } from "./lib.js"
                 }
             }
         },//括号括住的object还是一个object
-        { "object:object . id": {} },//取成员
+        {
+            "object:object . id": {
+                action: function ($, s): ASTNode {
+                    let obj = $[0] as ASTNode;
+                    let id = $[2] as string;
+                    return { accessField: { node: obj, field: id } };
+                }
+            }
+        },//取成员
         /**
         * obj_1 + obj_2  ( obj_3 )  ,中间的+可以换成 - * / < > || 等等双目运算符
         * 会出现如下二义性:
@@ -875,8 +883,25 @@ import { FunctionSingle } from "./lib.js"
         * 2. (int) (obj_1(obj_2))
         * 也采用方案2，令函数调用优先级高于强制转型
         */
-        { "object:object  ( arguments )": {} },//函数调用
-        { "object:object < templateSpecialization_list > ( arguments )": {} },//模板函数调用
+        {
+            "object:object  ( arguments )": {
+                action: function ($, s): ASTNode {
+                    let obj = $[0] as ASTNode;
+                    let _arguments = $[2] as ASTNode[];
+                    return { call: { functionObj: obj, _arguments: _arguments } };
+                }
+            }
+        },//函数调用
+        {
+            "object:object < templateSpecialization_list > ( arguments )": {
+                action: function ($, s): ASTNode {
+                    let obj = $[0] as ASTNode;
+                    let templateSpecialization_list = $[2] as TypeUsed[];
+                    let _arguments = $[5] as ASTNode[];
+                    return { call: { functionObj: obj, templateSpecialization_list: templateSpecialization_list, _arguments: _arguments } };
+                }
+            }
+        },//模板函数调用
         /**
          * 一系列的双目运算符,二义性如下:
          * a+b*c
@@ -884,18 +909,114 @@ import { FunctionSingle } from "./lib.js"
          * 2. a+(b*c)
          * 已经把各个操作符的优先级和结合性定义的和C/C++一致，见association中定义的各个符号优先级和结合性,双目运算符都是左结合,且+ - 优先级低于 * /
          */
-        { "object:object = object": {} },
-        { "object:object + object": {} },
-        { "object:object - object": {} },
-        { "object:object * object": {} },
-        { "object:object / object": {} },
-        { "object:object < object": {} },
-        { "object:object <= object": {} },
-        { "object:object > object": {} },
-        { "object:object >= object": {} },
-        { "object:object == object": {} },
-        { "object:object || object": {} },
-        { "object:object && object": {} },
+        {
+            "object:object = object": {
+                action: function ($, s): ASTNode {
+                    let left = $[0] as ASTNode;
+                    let right = $[2] as ASTNode;
+                    return { "=": { leftChild: left, rightChild: right } };
+                }
+            }
+        },
+        {
+            "object:object + object": {
+                action: function ($, s): ASTNode {
+                    let left = $[0] as ASTNode;
+                    let right = $[2] as ASTNode;
+                    return { "+": { leftChild: left, rightChild: right } };
+                }
+            }
+        },
+        {
+            "object:object - object": {
+                action: function ($, s): ASTNode {
+                    let left = $[0] as ASTNode;
+                    let right = $[2] as ASTNode;
+                    return { "-": { leftChild: left, rightChild: right } };
+                }
+            }
+        },
+        {
+            "object:object * object": {
+                action: function ($, s): ASTNode {
+                    let left = $[0] as ASTNode;
+                    let right = $[2] as ASTNode;
+                    return { "*": { leftChild: left, rightChild: right } };
+                }
+            }
+        },
+        {
+            "object:object / object": {
+                action: function ($, s): ASTNode {
+                    let left = $[0] as ASTNode;
+                    let right = $[2] as ASTNode;
+                    return { "/": { leftChild: left, rightChild: right } };
+                }
+            }
+        },
+        {
+            "object:object < object": {
+                action: function ($, s): ASTNode {
+                    let left = $[0] as ASTNode;
+                    let right = $[2] as ASTNode;
+                    return { "<": { leftChild: left, rightChild: right } };
+                }
+            }
+        },
+        {
+            "object:object <= object": {
+                action: function ($, s): ASTNode {
+                    let left = $[0] as ASTNode;
+                    let right = $[2] as ASTNode;
+                    return { "<=": { leftChild: left, rightChild: right } };
+                }
+            }
+        },
+        {
+            "object:object > object": {
+                action: function ($, s): ASTNode {
+                    let left = $[0] as ASTNode;
+                    let right = $[2] as ASTNode;
+                    return { ">": { leftChild: left, rightChild: right } };
+                }
+            }
+        },
+        {
+            "object:object >= object": {
+                action: function ($, s): ASTNode {
+                    let left = $[0] as ASTNode;
+                    let right = $[2] as ASTNode;
+                    return { ">=": { leftChild: left, rightChild: right } };
+                }
+            }
+        },
+        {
+            "object:object == object": {
+                action: function ($, s): ASTNode {
+                    let left = $[0] as ASTNode;
+                    let right = $[2] as ASTNode;
+                    return { "==": { leftChild: left, rightChild: right } };
+                }
+            }
+        },
+        {
+            "object:object || object": {
+                action: function ($, s): ASTNode {
+                    let left = $[0] as ASTNode;
+                    let right = $[2] as ASTNode;
+                    return { "||": { leftChild: left, rightChild: right } };
+                }
+            }
+        },
+        {
+            "object:object && object": {
+                action: function ($, s): ASTNode {
+                    let left = $[0] as ASTNode;
+                    let right = $[2] as ASTNode;
+                    return { "&&": { leftChild: left, rightChild: right } };
+                }
+            }
+        },
         /**
          * instanceof会导致如下冲突:
          * 情况1: ! a instanceof int
@@ -906,7 +1027,15 @@ import { FunctionSingle } from "./lib.js"
          * 2.2 (a+b) instanceof int
          * 我希望instanceof的优先级低于所有的其他运算符,对于上述情况都选择第二种AST进行规约,所以定义了instanceof的优先级低于所有的其他运算符(除了赋值符号)
          */
-        { "object:object instanceof type": {} },
+        {
+            "object:object instanceof type": {
+                action: function ($, s): ASTNode {
+                    let obj = $[0] as ASTNode;
+                    let type = $[2] as TypeUsed;
+                    return { _instanceof: { obj: obj, type: type } };
+                }
+            }
+        },
         /**双目运算符结束 */
         /**单目运算符 */
         { "object:! object": {} },//单目运算符-非
@@ -1006,10 +1135,37 @@ import { FunctionSingle } from "./lib.js"
                 }
             }
         },//templateSpecialization_list可以为多个type
-        { "arguments:": {} },//实参可以为空
-        { "arguments:argument_list": {} },//实参可以是argument_list
-        { "argument_list:object": {} },//参数列表可以是一个object
-        { "argument_list:argument_list , object": {} },//参数列表可以是多个object
+        {
+            "arguments:": {
+                action: function ($, s): ASTNode[] {
+                    return [];
+                }
+            }
+        },//实参可以为空
+        {
+            "arguments:argument_list": {
+                action: function ($, s): ASTNode[] {
+                    return $[0] as ASTNode[];
+                }
+            }
+        },//实参可以是argument_list
+        {
+            "argument_list:object": {
+                action: function ($, s): ASTNode[] {
+                    return [$[0] as ASTNode];
+                }
+            }
+        },//参数列表可以是一个object
+        {
+            "argument_list:argument_list , object": {
+                action: function ($, s): ASTNode[] {
+                    let argument_list = $[0] as ASTNode[];
+                    let obj = $[2] as ASTNode;
+                    argument_list.push(obj);
+                    return argument_list;
+                }
+            }
+        },//参数列表可以是多个object
     ]
 }
 let tscc = new TSCC(grammar, { language: "zh-cn", debug: false });

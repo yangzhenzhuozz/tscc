@@ -1,37 +1,4 @@
 function a():void{
-    var a:int;
-    if(a)
-        return;
-    if(a)
-        return;
-    else
-        return;
-    if(a){
-        var a:int;
-        return;
-    }else{
-        var a:int;
-        return;
-    }
-    try{
-        var a:int;
-    }catch(e:int){
-        var a:int;
-    }
-    {
-        a;
-        b;
-        c;
-        d;
-    }
-    switch(a){
-        case a:
-            {
-                a;
-                b;
-                c;
-                (d);
-            }
-        default:d;
-    }
+    a+a;
+    a instanceof int;
 };
