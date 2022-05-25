@@ -1063,7 +1063,15 @@ import { FunctionSingle } from "./lib.js"
             }
         },//单目运算符--
         /**单目运算符结束 */
-        { "object:object [ object ]": {} },//[]运算符
+        {
+            "object:object [ object ]": {
+                action: function ($, s): ASTNode {
+                    let obj_1 = $[0] as ASTNode;
+                    let obj_2 = $[2] as ASTNode;
+                    return { indexOP: { obj: obj_1, index: obj_2 } };
+                }
+            }
+        },//[]运算符
         /**
          * 三目运算符会导致如下文法二义性
          * 情况1:a+b?c:d
@@ -1077,7 +1085,17 @@ import { FunctionSingle } from "./lib.js"
          * 1.因为?的优先级低于所有双目运算符所对应的产生式,所以情况1会选择1.2这种语法树进行解析
          * 2.因为?为右结合,所以情况2会选择2.2这种语法树进行解析
          */
-        { "object:object ? object : object": { priority: "?" } },//三目运算
+        {
+            "object:object ? object : object": {
+                priority: "?",
+                action: function ($, s): ASTNode {
+                    let condition = $[0] as ASTNode;
+                    let obj1 = $[2] as ASTNode;
+                    let obj2 = $[4] as ASTNode;
+                    return { ternary: { condition: condition, obj1: obj1, obj2: obj2 } };
+                }
+            }
+        },//三目运算
         {
             "object:id": {
                 action: function ($, s): ASTNode {
@@ -1086,12 +1104,31 @@ import { FunctionSingle } from "./lib.js"
                 }
             }
         },//id是一个对象
-        { "object:immediate_val": {} },//立即数是一个object
-        { "object:super": {} },//super是一个对象
-        { "object:this": {} },//this是一个object
+        {
+            "object:immediate_val": {
+                action: function ($, s): ASTNode {
+                    return { immediate: { value: $[0] } };
+                }
+            }
+        },//立即数是一个object
+        {
+            "object:super": {
+                action: function ($, s): ASTNode {
+                    return { _super: "" };
+                }
+            }
+        },//super是一个对象
+        {
+            "object:this": {
+                action: function ($, s): ASTNode {
+                    return { _this: "" };
+                }
+            }
+        },//this是一个object
         {
             "object:template_definition ( parameter_declare ) => { statements }": {
                 action: function ($, s) {
+                    throw new Error(`模板lambda还未实现`);
                     let template_definition = $[0] as string[];
                     for (let t of template_definition) {
                         userTypeDictionary.delete(t);

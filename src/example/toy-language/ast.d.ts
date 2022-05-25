@@ -66,7 +66,9 @@ interface ASTNode {
     call?: { functionObj: ASTNode, _arguments: ASTNode[], templateSpecialization_list?: TypeUsed[] };
     def?: VariableDescriptor;
     load?: string;
-    immediate?: immediateNode;
+    _super?: "";
+    _this?: "";
+    immediate?: { value: FunctionType | string | number };//immediate只可以是数字、字符串、函数,对应了 1、"string"、()=>{console.log("aaa")}这几种情况
     trycatch?: { tryBlock: Block, catchVariable: string, catchType: TypeUsed, catchBlock: Block };
     throwStmt?: ASTNode;
     ret?: ASTNode | "";
@@ -79,8 +81,11 @@ interface ASTNode {
     _continue?: { label: string };
     _instanceof?: { obj: ASTNode, type: TypeUsed };
     not?: { child: ASTNode };
-    increase?:{child: ASTNode};
-    decrease?:{child: ASTNode};
+    increase?: { child: ASTNode };
+    decrease?: { child: ASTNode };
+    indexOP?: { obj: ASTNode, index: ASTNode };
+    ternary?: { condition: ASTNode, obj1: ASTNode, obj2: ASTNode };
+    immediate?: { val: any };
     "="?: { rightChild: ASTNode; leftChild: ASTNode; };
     "+"?: { rightChild: ASTNode; leftChild: ASTNode; };
     "-"?: { rightChild: ASTNode; leftChild: ASTNode; };
@@ -94,12 +99,6 @@ interface ASTNode {
     "||"?: { rightChild: ASTNode; leftChild: ASTNode; };
     "&&"?: { rightChild: ASTNode; leftChild: ASTNode; };
     _switch?: { pattern: ASTNode, defalutStmt?: ASTNode | Block, matchList: { matchObj: ASTNode | null, stmt: ASTNode | Block }[] };//default没有matchObj
-}
-interface immediateNode {
-    //immediate只可以是数字、字符串、函数,对应了 1、"string"、()=>{console.log("aaa")}这几种情况
-    numberVal?: number;
-    stringVal?: string;
-    functionVal?: FunctionType;
 }
 //把ast设计得优雅一点，后续设计更方便
 //scope留到解析语法树的时候做
