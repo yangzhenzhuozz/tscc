@@ -1,4 +1,3 @@
 function a():void{
-    a+a;
-    a instanceof int;
+    !a;
 };

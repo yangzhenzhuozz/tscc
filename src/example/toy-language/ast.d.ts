@@ -78,6 +78,9 @@ interface ASTNode {
     _break?: { label: string };
     _continue?: { label: string };
     _instanceof?: { obj: ASTNode, type: TypeUsed };
+    not?: { child: ASTNode };
+    increase?:{child: ASTNode};
+    decrease?:{child: ASTNode};
     "="?: { rightChild: ASTNode; leftChild: ASTNode; };
     "+"?: { rightChild: ASTNode; leftChild: ASTNode; };
     "-"?: { rightChild: ASTNode; leftChild: ASTNode; };

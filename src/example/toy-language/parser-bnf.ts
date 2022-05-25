@@ -1038,9 +1038,30 @@ import { FunctionSingle } from "./lib.js"
         },
         /**双目运算符结束 */
         /**单目运算符 */
-        { "object:! object": {} },//单目运算符-非
-        { "object:object ++": {} },//单目运算符++
-        { "object:object --": {} },//单目运算符--
+        {
+            "object:! object": {
+                action: function ($, s): ASTNode {
+                    let obj = $[1] as ASTNode;
+                    return { not: { child: obj } };
+                }
+            }
+        },//单目运算符-非
+        {
+            "object:object ++": {
+                action: function ($, s): ASTNode {
+                    let obj = $[0] as ASTNode;
+                    return { increase: { child: obj } };
+                }
+            }
+        },//单目运算符++
+        {
+            "object:object --": {
+                action: function ($, s): ASTNode {
+                    let obj = $[0] as ASTNode;
+                    return { decrease: { child: obj } };
+                }
+            }
+        },//单目运算符--
         /**单目运算符结束 */
         { "object:object [ object ]": {} },//[]运算符
         /**
