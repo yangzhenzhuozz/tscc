@@ -1157,7 +1157,14 @@ import { FunctionSingle } from "./lib.js"
          * 参照java优先级,强制转型优先级高于+ - / * ++ 这些运算符，低于() [] .这三个运算符
          * 为其指定优先级为cast_priority
          */
-        { "object:( type ) object": { priority: "cast_priority" } },//强制转型
+        {
+            "object:( type ) object": {
+                priority: "cast_priority",
+                action: function ($, s): ASTNode {
+                    return { cast: { obj: $[3] as ASTNode, type: $[1] as TypeUsed } };
+                }
+            }
+        },//强制转型
         { "object:new type  ( arguments )": {} },//创建对象
         /**
          * 假设只针对产生式array_init_list:array_inits array_placeholder 会出现如下二义性

@@ -86,6 +86,7 @@ interface ASTNode {
     indexOP?: { obj: ASTNode, index: ASTNode };
     ternary?: { condition: ASTNode, obj1: ASTNode, obj2: ASTNode };
     immediate?: { val: any };
+    cast?: { obj: ASTNode, type: TypeUsed };
     "="?: { rightChild: ASTNode; leftChild: ASTNode; };
     "+"?: { rightChild: ASTNode; leftChild: ASTNode; };
     "-"?: { rightChild: ASTNode; leftChild: ASTNode; };
