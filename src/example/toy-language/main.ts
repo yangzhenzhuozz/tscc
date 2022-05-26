@@ -13,10 +13,11 @@ try {
     console.time("解析源码耗时");
     let parser = new Parser();
     pre_process(source);
-    parser.parse(lexer);
+    let ret = parser.parse(lexer);
     console.timeEnd("解析源码耗时");
+    console.log(JSON.stringify(ret, null, 4));
 } catch (e: unknown) {
-    if(e instanceof Error){
+    if (e instanceof Error) {
         console.error(e.stack);
     }
     console.error(`${e}`);

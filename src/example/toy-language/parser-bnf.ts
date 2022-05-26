@@ -31,12 +31,15 @@ import { FunctionSingle } from "./lib.js"
         { 'nonassoc': ['low_priority_for_if_stmt'] },//这个符号的优先级小于else
         { 'nonassoc': ['else'] },
     ],
+    accept: function ($, s): Program {
+        return $[0] as Program;
+    },
     BNF: [
         {
             "program:import_stmts program_units": {
                 action: function ($, s): Program {
                     let program_units = $[1] as VariableDescriptor | { [key: string]: TypeDef };
-                    let ret: Program = JSON.parse("{}");
+                    let ret: Program = JSON.parse("{}");//为了生成的解析器不报红
                     ret.definedType = {};
                     ret.property = {};
                     for (let k in program_units) {
@@ -46,7 +49,6 @@ import { FunctionSingle } from "./lib.js"
                             ret.property[k] = program_units[k] as VariableProperties;
                         }
                     }
-                    console.log(JSON.stringify(ret, null, 4));
                     return ret;
                 }
             }
@@ -210,7 +212,7 @@ import { FunctionSingle } from "./lib.js"
         },//继承,虽然文法是允许继承任意类型,但是在语义分析的时候再具体决定该class能不能被继承
         {
             "function_definition:function id template_declare ( parameter_declare ) ret_type { statements }": {
-                action: function ($, s): { [key: string]: FunctionType } {
+                action: function ($, s): VariableDescriptor {
                     let template_declare = $[2] as string[] | undefined;
                     if (template_declare != undefined) {
                         for (let t of template_declare) {
@@ -221,8 +223,8 @@ import { FunctionSingle } from "./lib.js"
                     let parameter_declare = $[4] as VariableDescriptor;
                     let ret_type = $[6] as TypeUsed | undefined;
                     let statements = $[8] as Block;
-                    let ret: { [key: string]: FunctionType } = JSON.parse("{}");//为了生成的解析器不报红
-                    ret[id] = { argument: parameter_declare, body: statements, templates: template_declare, retType: ret_type };
+                    let ret: VariableDescriptor = JSON.parse("{}");//为了生成的解析器不报红
+                    ret[id] = { variable: 'val', type: { FunctionType: { argument: parameter_declare, body: statements, templates: template_declare, retType: ret_type } } };
                     return ret;
                 }
             }
@@ -886,9 +888,7 @@ import { FunctionSingle } from "./lib.js"
         {
             "object:object  ( arguments )": {
                 action: function ($, s): ASTNode {
-                    let obj = $[0] as ASTNode;
-                    let _arguments = $[2] as ASTNode[];
-                    return { call: { functionObj: obj, _arguments: _arguments } };
+                    return { call: { functionObj: $[0] as ASTNode, _arguments: $[2] as ASTNode[] } };
                 }
             }
         },//函数调用
@@ -912,108 +912,84 @@ import { FunctionSingle } from "./lib.js"
         {
             "object:object = object": {
                 action: function ($, s): ASTNode {
-                    let left = $[0] as ASTNode;
-                    let right = $[2] as ASTNode;
-                    return { "=": { leftChild: left, rightChild: right } };
+                    return { "=": { leftChild: $[0] as ASTNode, rightChild: $[2] as ASTNode } };
                 }
             }
         },
         {
             "object:object + object": {
                 action: function ($, s): ASTNode {
-                    let left = $[0] as ASTNode;
-                    let right = $[2] as ASTNode;
-                    return { "+": { leftChild: left, rightChild: right } };
+                    return { "+": { leftChild: $[0] as ASTNode, rightChild: $[2] as ASTNode } };
                 }
             }
         },
         {
             "object:object - object": {
                 action: function ($, s): ASTNode {
-                    let left = $[0] as ASTNode;
-                    let right = $[2] as ASTNode;
-                    return { "-": { leftChild: left, rightChild: right } };
+                    return { "-": { leftChild: $[0] as ASTNode, rightChild: $[2] as ASTNode } };
                 }
             }
         },
         {
             "object:object * object": {
                 action: function ($, s): ASTNode {
-                    let left = $[0] as ASTNode;
-                    let right = $[2] as ASTNode;
-                    return { "*": { leftChild: left, rightChild: right } };
+                    return { "*": { leftChild: $[0] as ASTNode, rightChild: $[2] as ASTNode } };
                 }
             }
         },
         {
             "object:object / object": {
                 action: function ($, s): ASTNode {
-                    let left = $[0] as ASTNode;
-                    let right = $[2] as ASTNode;
-                    return { "/": { leftChild: left, rightChild: right } };
+                    return { "/": { leftChild: $[0] as ASTNode, rightChild: $[2] as ASTNode } };
                 }
             }
         },
         {
             "object:object < object": {
                 action: function ($, s): ASTNode {
-                    let left = $[0] as ASTNode;
-                    let right = $[2] as ASTNode;
-                    return { "<": { leftChild: left, rightChild: right } };
+                    return { "<": { leftChild: $[0] as ASTNode, rightChild: $[2] as ASTNode } };
                 }
             }
         },
         {
             "object:object <= object": {
                 action: function ($, s): ASTNode {
-                    let left = $[0] as ASTNode;
-                    let right = $[2] as ASTNode;
-                    return { "<=": { leftChild: left, rightChild: right } };
+                    return { "<=": { leftChild: $[0] as ASTNode, rightChild: $[2] as ASTNode } };
                 }
             }
         },
         {
             "object:object > object": {
                 action: function ($, s): ASTNode {
-                    let left = $[0] as ASTNode;
-                    let right = $[2] as ASTNode;
-                    return { ">": { leftChild: left, rightChild: right } };
+                    return { ">": { leftChild: $[0] as ASTNode, rightChild: $[2] as ASTNode } };
                 }
             }
         },
         {
             "object:object >= object": {
                 action: function ($, s): ASTNode {
-                    let left = $[0] as ASTNode;
-                    let right = $[2] as ASTNode;
-                    return { ">=": { leftChild: left, rightChild: right } };
+                    return { ">=": { leftChild: $[0] as ASTNode, rightChild: $[2] as ASTNode } };
                 }
             }
         },
         {
             "object:object == object": {
                 action: function ($, s): ASTNode {
-                    let left = $[0] as ASTNode;
-                    let right = $[2] as ASTNode;
-                    return { "==": { leftChild: left, rightChild: right } };
+                    return { "==": { leftChild: $[0] as ASTNode, rightChild: $[2] as ASTNode } };
                 }
             }
         },
         {
             "object:object || object": {
                 action: function ($, s): ASTNode {
-                    let left = $[0] as ASTNode;
-                    let right = $[2] as ASTNode;
-                    return { "||": { leftChild: left, rightChild: right } };
+                    return { "||": { leftChild: $[0] as ASTNode, rightChild: $[2] as ASTNode } };
                 }
             }
         },
         {
             "object:object && object": {
                 action: function ($, s): ASTNode {
-                    let left = $[0] as ASTNode;
-                    let right = $[2] as ASTNode;
-                    return { "&&": { leftChild: left, rightChild: right } };
+                    return { "&&": { leftChild: $[0] as ASTNode, rightChild: $[2] as ASTNode } };
                 }
             }
         },
@@ -1030,9 +1006,7 @@ import { FunctionSingle } from "./lib.js"
         {
             "object:object instanceof type": {
                 action: function ($, s): ASTNode {
-                    let obj = $[0] as ASTNode;
-                    let type = $[2] as TypeUsed;
-                    return { _instanceof: { obj: obj, type: type } };
+                    return { _instanceof: { obj: $[0] as ASTNode, type: $[2] as TypeUsed } };
                 }
             }
         },
@@ -1041,24 +1015,21 @@ import { FunctionSingle } from "./lib.js"
         {
             "object:! object": {
                 action: function ($, s): ASTNode {
-                    let obj = $[1] as ASTNode;
-                    return { not: { child: obj } };
+                    return { not: { child: $[1] as ASTNode } };
                 }
             }
         },//单目运算符-非
         {
             "object:object ++": {
                 action: function ($, s): ASTNode {
-                    let obj = $[0] as ASTNode;
-                    return { increase: { child: obj } };
+                    return { increase: { child: $[0] as ASTNode } };
                 }
             }
         },//单目运算符++
         {
             "object:object --": {
                 action: function ($, s): ASTNode {
-                    let obj = $[0] as ASTNode;
-                    return { decrease: { child: obj } };
+                    return { decrease: { child: $[0] as ASTNode } };
                 }
             }
         },//单目运算符--
@@ -1066,9 +1037,7 @@ import { FunctionSingle } from "./lib.js"
         {
             "object:object [ object ]": {
                 action: function ($, s): ASTNode {
-                    let obj_1 = $[0] as ASTNode;
-                    let obj_2 = $[2] as ASTNode;
-                    return { indexOP: { obj: obj_1, index: obj_2 } };
+                    return { indexOP: { obj: $[0] as ASTNode, index: $[2] as ASTNode } };
                 }
             }
         },//[]运算符
@@ -1089,25 +1058,21 @@ import { FunctionSingle } from "./lib.js"
             "object:object ? object : object": {
                 priority: "?",
                 action: function ($, s): ASTNode {
-                    let condition = $[0] as ASTNode;
-                    let obj1 = $[2] as ASTNode;
-                    let obj2 = $[4] as ASTNode;
-                    return { ternary: { condition: condition, obj1: obj1, obj2: obj2 } };
+                    return { ternary: { condition: $[0] as ASTNode, obj1: $[2] as ASTNode, obj2: $[4] as ASTNode } };
                 }
             }
         },//三目运算
         {
             "object:id": {
                 action: function ($, s): ASTNode {
-                    let id = $[0] as string;
-                    return { load: id };
+                    return { load: $[0] as string };
                 }
             }
         },//id是一个对象
         {
             "object:immediate_val": {
                 action: function ($, s): ASTNode {
-                    return { immediate: { value: $[0] } };
+                    return { immediate: { primiviteValue: $[0] } };
                 }
             }
         },//立即数是一个object
@@ -1132,14 +1097,14 @@ import { FunctionSingle } from "./lib.js"
                     for (let t of template_definition) {
                         userTypeDictionary.delete(t);
                     }
-                    return { immediate: { value: { argument: $[2] as VariableDescriptor, body: $[6] as Block, templates: $[0] as string[] } } };
+                    return { immediate: { functionValue: { argument: $[2] as VariableDescriptor, body: $[6] as Block, templates: $[0] as string[] } } };
                 }
             }
         },//模板lambda
         {
             "object:( parameter_declare ) => { statements }": {
                 action: function ($, s): ASTNode {
-                    return { immediate: { value: { argument: $[1] as VariableDescriptor, body: $[5] as Block } } };
+                    return { immediate: { functionValue: { argument: $[1] as VariableDescriptor, body: $[5] as Block } } };
                 }
             }
         },//lambda
@@ -1165,7 +1130,13 @@ import { FunctionSingle } from "./lib.js"
                 }
             }
         },//强制转型
-        { "object:new type  ( arguments )": {} },//创建对象
+        {
+            "object:new type  ( arguments )": {
+                action: function ($, s): ASTNode {
+                    return { _new: { type: $[1] as TypeUsed, argument: $[3] as ASTNode[] } };
+                }
+            }
+        },//创建对象
         /**
          * 假设只针对产生式array_init_list:array_inits array_placeholder 会出现如下二义性
          * new int [10][3]可以有如下两种解释:(把array_placeholder规约成ε)
@@ -1174,14 +1145,67 @@ import { FunctionSingle } from "./lib.js"
          * 我当然希望采取第二种语法树,所以需要设置产生式优先级,即在new一个对象的时候,如果后面跟有方括号[,优先选择移入而不是规约,那么只需要把冲突的产生式优先级设置为比'['低即可
          * 设置array_placeholder作为产生式头的两个产生式优先级低于'['
          */
-        { "object:new type array_init_list": {} },//创建数组
-        { "array_init_list:array_inits array_placeholder": {} },//new 数组的时候是可以这样写的 new int [2][3][][],其中[2][3]对应了array_inits,后面的[][]对应了array_placeholder(数组占位符)
-        { "array_inits:array_inits [ object ]": {} },//见array_init_list一条的解释
-        { "array_inits:[ object ]": {} },//见array_init_list一条的解释
-        { "array_placeholder:array_placeholder_list": { priority: "low_priority_for_array_placeholder" } },//见array_init_list一条的解释
-        { "array_placeholder:": { priority: "low_priority_for_array_placeholder" } },//array_placeholder可以为空
-        { "array_placeholder_list:array_placeholder_list [ ]": {} },//见array_init_list一条的解释
-        { "array_placeholder_list:[ ]": {} },//见array_init_list一条的解释
+        {
+            "object:new type array_init_list": {
+                action: function ($, s): ASTNode {
+                    let init_list = $[2] as { initList: ASTNode[], placeholder: number };
+                    return { _newArray: { type: $[1] as TypeUsed, initList: init_list.initList, placeholder: init_list.placeholder } };
+                }
+            }
+        },//创建数组
+        {
+            "array_init_list:array_inits array_placeholder": {
+                action: function ($, s): { initList: ASTNode[], placeholder: number } {
+                    return { initList: $[0] as ASTNode[], placeholder: $[1] as number };
+                }
+            }
+        },//new 数组的时候是可以这样写的 new int [2][3][][],其中[2][3]对应了array_inits,后面的[][]对应了array_placeholder(数组占位符)
+        {
+            "array_inits:array_inits [ object ]": {
+                action: function ($, s): ASTNode[] {
+                    let array_inits = $[0] as ASTNode[];
+                    array_inits.push($[2] as ASTNode);
+                    return array_inits;
+                }
+            }
+        },//见array_init_list一条的解释
+        {
+            "array_inits:[ object ]": {
+                action: function ($, s): ASTNode[] {
+                    return [$[1] as ASTNode];
+                }
+            }
+        },//见array_init_list一条的解释
+        {
+            "array_placeholder:array_placeholder_list": {
+                priority: "low_priority_for_array_placeholder",
+                action: function ($, s): number {
+                    return $[0] as number;
+                }
+            }
+        },//见array_init_list一条的解释
+        {
+            "array_placeholder:": {
+                priority: "low_priority_for_array_placeholder",
+                action: function ($, s): number {
+                    return 0;
+                }
+            }
+        },//array_placeholder可以为空
+        {
+            "array_placeholder_list:array_placeholder_list [ ]": {
+                action: function ($, s) {
+                    return ($[0] as number) + 1;
+                }
+            }
+        },//见array_init_list一条的解释
+        {
+            "array_placeholder_list:[ ]": {
+                action: function ($, s): number {
+                    return 1;
+                }
+            }
+        },//见array_init_list一条的解释
         {
             "templateSpecialization:< templateSpecialization_list >": {
                 action: function ($, s): TypeUsed[] {

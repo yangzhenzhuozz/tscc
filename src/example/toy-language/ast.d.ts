@@ -68,7 +68,10 @@ interface ASTNode {
     load?: string;
     _super?: "";
     _this?: "";
-    immediate?: { value: FunctionType | string | number };//immediate只可以是数字、字符串、函数,对应了 1、"string"、()=>{console.log("aaa")}这几种情况
+    immediate?: {
+        functionValue?: FunctionType;
+        primiviteValue?: | string | number;
+    };//immediate只可以是数字、字符串、函数,对应了 1、"string"、()=>{console.log("aaa")}这几种情况
     trycatch?: { tryBlock: Block, catchVariable: string, catchType: TypeUsed, catchBlock: Block };
     throwStmt?: ASTNode;
     ret?: ASTNode | "";
@@ -87,6 +90,8 @@ interface ASTNode {
     ternary?: { condition: ASTNode, obj1: ASTNode, obj2: ASTNode };
     immediate?: { val: any };
     cast?: { obj: ASTNode, type: TypeUsed };
+    _new?: { type: TypeUsed, argument: ASTNode[] };
+    _newArray?: { type: TypeUsed, initList: ASTNode[], placeholder: number };
     "="?: { rightChild: ASTNode; leftChild: ASTNode; };
     "+"?: { rightChild: ASTNode; leftChild: ASTNode; };
     "-"?: { rightChild: ASTNode; leftChild: ASTNode; };

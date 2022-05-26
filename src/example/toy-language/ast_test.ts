@@ -39,7 +39,7 @@ let program: Program = {
                                             type: { SimpleType: { name: 'int' } },
                                             initAST: {
                                                 immediate: {
-                                                    value: 1
+                                                    primiviteValue: 1
                                                 }
                                             }
                                         }
@@ -60,7 +60,7 @@ let program: Program = {
                                                 type: { SimpleType: { name: 'int' } },
                                                 initAST: {
                                                     immediate: {
-                                                        value: 1
+                                                        primiviteValue: 1
                                                     }
                                                 }
                                             }
@@ -86,7 +86,7 @@ let program: Program = {
             variable: 'var',
             initAST: {
                 immediate: {
-                    value: 1
+                    primiviteValue: 1
                 }
             }
         },
@@ -94,7 +94,7 @@ let program: Program = {
             variable: 'var',
             initAST: {
                 immediate: {
-                    value: { argument: {}, body: [], retType: { SimpleType: { name: "int" } } },//空函数体(一行代码也没有),但是返回值类型已经声明为int了，在推导的时候应该报错
+                    functionValue: { argument: {}, body: [], retType: { SimpleType: { name: "int" } } },//空函数体(一行代码也没有),但是返回值类型已经声明为int了，在推导的时候应该报错
                 }
             }
         },
