@@ -1127,16 +1127,22 @@ import { FunctionSingle } from "./lib.js"
         },//this是一个object
         {
             "object:template_definition ( parameter_declare ) => { statements }": {
-                action: function ($, s) {
-                    throw new Error(`模板lambda还未实现`);
+                action: function ($, s): ASTNode {
                     let template_definition = $[0] as string[];
                     for (let t of template_definition) {
                         userTypeDictionary.delete(t);
                     }
+                    return { immediate: { value: { argument: $[2] as VariableDescriptor, body: $[6] as Block, templates: $[0] as string[] } } };
                 }
             }
         },//模板lambda
-        { "object:( parameter_declare ) => { statements }": {} },//lambda
+        {
+            "object:( parameter_declare ) => { statements }": {
+                action: function ($, s): ASTNode {
+                    return { immediate: { value: { argument: $[1] as VariableDescriptor, body: $[5] as Block } } };
+                }
+            }
+        },//lambda
         /**
          * 强制转型会出现如下二义性:
          * 情况1 (int)a+b;
