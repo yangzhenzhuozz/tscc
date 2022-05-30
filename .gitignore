@@ -4,6 +4,7 @@ node_modules/
 package-lock.json
 compiler.ts
 src/example/toy-language/parser.ts
+src/example/toy-language/output/*
 src/example/calculate/parser.ts
 src/example/lexer/parser.ts
 log.txt
