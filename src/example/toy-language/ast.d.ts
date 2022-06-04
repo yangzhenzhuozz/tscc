@@ -107,4 +107,9 @@ interface ASTNode {
     _switch?: { pattern: ASTNode, defalutStmt?: ASTNode | Block, matchList: { matchObj: ASTNode | null, stmt: ASTNode | Block }[] };//default没有matchObj
 }
 //把ast设计得优雅一点，后续设计更方便
-//scope留到解析语法树的时候做
+
+interface Scope {
+    property: VariableDescriptor;
+    parent: Scope | undefined;
+    isFunction: boolean;
+}

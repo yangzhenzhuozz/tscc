@@ -3,7 +3,7 @@ import lexer from './lexrule.js';
 import pre_process from './pre-process.js'
 import fs from 'fs';
 import { userTypeDictionary } from './lexrule.js';
-import generater from "code_generater.js"
+import generater from "./code_generater.js"
 userTypeDictionary.add('int');//注册系统类型
 userTypeDictionary.add('double');
 userTypeDictionary.add('void');

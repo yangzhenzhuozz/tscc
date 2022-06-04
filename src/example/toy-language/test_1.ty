@@ -1,6 +1,13 @@
-function fun():void{
-    var a:int;
-    <K,V>(a:K,b:V)=>{return a+b;};
-    var a=new int();
-    var b=new int [1][2][][];
+var a:int;
+function fun1():void{
+    var b:int;
+    b++;
+    {
+        var c:int;
+        function fun2():int{
+            return b.value+c.value;
+        };
+        c++;
+    }
+    b++;
 };
