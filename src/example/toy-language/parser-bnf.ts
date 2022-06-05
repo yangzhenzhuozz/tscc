@@ -752,16 +752,21 @@ import { FunctionSingle } from "./lib.js"
                     let pattern = $[2] as ASTNode;
                     let switch_bodys = $[5] as { matchObj: ASTNode | null, stmt: ASTNode | Block, isDefault: boolean }[];
                     let defalutStmt: ASTNode | Block | undefined;
+                    let matchList: { matchObj: ASTNode, stmt: ASTNode | Block }[] = [];
+                    let defaultCount = 0;
                     for (let i = 0; i < switch_bodys.length; i++) {
                         if (switch_bodys[i].isDefault) {
-                            if (i != switch_bodys.length - 1) {
-                                throw new Error(`switch body只允许最后一个分支为default`);
+                            defaultCount++;
+                            if (defaultCount > 1) {
+                                throw new Error(`switch body只允许一个default`);
                             } else {
-                                defalutStmt = switch_bodys.pop()?.stmt;//此处会更改数组长度，正常结束循环
+                                defalutStmt = switch_bodys[i].stmt;//此处会更改数组长度，正常结束循环
                             }
+                        } else {
+                            matchList.push({ matchObj: switch_bodys[i].matchObj!, stmt: switch_bodys[i].stmt });
                         }
                     }
-                    return { _switch: { pattern: pattern, defalutStmt: defalutStmt, matchList: switch_bodys } };
+                    return { _switch: { pattern: pattern, defalutStmt: defalutStmt, matchList: matchList } };
                 }
             }
         },//switch语句,因为switch在C/C++等语言中可以用跳转表处理,gcc在处理switch语句时,如果各个case的值连续,也会生成一个jum_table,这里我就稍微扩展一下switch的用法

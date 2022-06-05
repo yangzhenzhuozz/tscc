@@ -33,6 +33,7 @@ interface VariableProperties {
     initAST?: ASTNode;//当type为undefined的时候,initAST必须存在,否则无法确定类型
     getter?: FunctionType;//getter
     setter?: FunctionType;//setter
+    loadedNodes?:ASTNode[];//记录load本属性的node，在确定本属性为闭包捕获属性后，把这些load节点全部换成load闭包里面的属性
 }
 interface TypeUsed {
     SimpleType?: SimpleType;
@@ -68,10 +69,7 @@ interface ASTNode {
     load?: string;
     _super?: "";
     _this?: "";
-    immediate?: {
-        functionValue?: FunctionType;
-        primiviteValue?: | string | number;
-    };//immediate只可以是数字、字符串、函数,对应了 1、"string"、()=>{console.log("aaa")}这几种情况
+    immediate?: { functionValue?: FunctionType; primiviteValue?: | string | number; };//immediate只可以是数字、字符串、函数,对应了 1、"string"、()=>{console.log("aaa")}这几种情况
     trycatch?: { tryBlock: Block, catchVariable: string, catchType: TypeUsed, catchBlock: Block };
     throwStmt?: ASTNode;
     ret?: ASTNode | "";
@@ -104,7 +102,7 @@ interface ASTNode {
     "=="?: { rightChild: ASTNode; leftChild: ASTNode; };
     "||"?: { rightChild: ASTNode; leftChild: ASTNode; };
     "&&"?: { rightChild: ASTNode; leftChild: ASTNode; };
-    _switch?: { pattern: ASTNode, defalutStmt?: ASTNode | Block, matchList: { matchObj: ASTNode | null, stmt: ASTNode | Block }[] };//default没有matchObj
+    _switch?: { pattern: ASTNode, defalutStmt?: ASTNode | Block, matchList: { matchObj: ASTNode, stmt: ASTNode | Block }[] };//default没有matchObj
 }
 //把ast设计得优雅一点，后续设计更方便
 
@@ -112,4 +110,5 @@ interface Scope {
     property: VariableDescriptor;
     parent: Scope | undefined;
     isFunction: boolean;
+    captured:Set<string>;//需要进行lambda捕获的变量名
 }
