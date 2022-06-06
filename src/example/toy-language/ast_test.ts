@@ -25,10 +25,10 @@ let program: Program = {
         },
         test: {
             _constructor: {},
-            property: { a: { variable: 'var', type: { SimpleType: { name: 'int' } } }, b: { variable: 'g-set', getter: { argument: {}, body: [] } } },
+            property: { a: { variable: 'var', type: { SimpleType: { name: 'int' } } }, b: { variable: 'g-set', getter: { _arguments: {}, body: [] } } },
             operatorOverload: {
                 "+": {
-                    argument: { a: { variable: 'var', type: { SimpleType: { name: 'int' } } }, b: { variable: 'var', type: { SimpleType: { name: 'int' } } } },
+                    _arguments: { a: { variable: 'var', type: { SimpleType: { name: 'int' } } }, b: { variable: 'var', type: { SimpleType: { name: 'int' } } } },
                     body: [
                         {
                             "+": {
@@ -94,7 +94,7 @@ let program: Program = {
             variable: 'var',
             initAST: {
                 immediate: {
-                    functionValue: { argument: {}, body: [], retType: { SimpleType: { name: "int" } } },//空函数体(一行代码也没有),但是返回值类型已经声明为int了，在推导的时候应该报错
+                    functionValue: { _arguments: {}, body: [], retType: { SimpleType: { name: "int" } } },//空函数体(一行代码也没有),但是返回值类型已经声明为int了，在推导的时候应该报错
                 }
             }
         },

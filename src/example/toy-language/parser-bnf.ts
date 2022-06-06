@@ -224,7 +224,7 @@ import { FunctionSingle } from "./lib.js"
                     let ret_type = $[6] as TypeUsed | undefined;
                     let statements = $[8] as Block;
                     let ret: VariableDescriptor = JSON.parse("{}");//为了生成的解析器不报红
-                    ret[id] = { variable: 'val', type: { FunctionType: { argument: parameter_declare, body: statements, templates: template_declare, retType: ret_type } } };
+                    ret[id] = { variable: 'val', type: { FunctionType: { _arguments: parameter_declare, body: statements, templates: template_declare, retType: ret_type } } };
                     return ret;
                 }
             }
@@ -345,7 +345,7 @@ import { FunctionSingle } from "./lib.js"
                     }
                     let parameter_declare = $[2] as VariableDescriptor;
                     let ret_type = $[5] as TypeUsed;
-                    return { FunctionType: { templates: template_definition, argument: parameter_declare, body: [], retType: ret_type } };
+                    return { FunctionType: { templates: template_definition, _arguments: parameter_declare, body: [], retType: ret_type } };
                 }
             }
         },//泛型函数类型
@@ -355,7 +355,7 @@ import { FunctionSingle } from "./lib.js"
                 action: function ($, s): TypeUsed {
                     let parameter_declare = $[1] as VariableDescriptor;
                     let ret_type = $[4] as TypeUsed;
-                    return { FunctionType: { argument: parameter_declare, body: [], retType: ret_type } };
+                    return { FunctionType: { _arguments: parameter_declare, body: [], retType: ret_type } };
                 }
             }
         },//函数类型
@@ -505,7 +505,7 @@ import { FunctionSingle } from "./lib.js"
                     ret[id] = {
                         variable: 'val',
                         getter: {
-                            argument: {},
+                            _arguments: {},
                             body: statements,
                             retType: retType
                         }
@@ -530,7 +530,7 @@ import { FunctionSingle } from "./lib.js"
                     ret[id] = {
                         variable: 'val',
                         setter: {
-                            argument: argument,
+                            _arguments: argument,
                             body: statements,
                             retType: {
                                 SimpleType: {
@@ -550,7 +550,7 @@ import { FunctionSingle } from "./lib.js"
                     let parameter_declare = $[2] as VariableDescriptor;
                     let statements = $[5] as Block;
                     let ret: { [key: string]: FunctionType } = JSON.parse("{}");//为了生成的解析器不报红
-                    let functionType: FunctionType = { _construct_for_type: basic_type.SimpleType!.name, argument: parameter_declare, body: statements };
+                    let functionType: FunctionType = { _construct_for_type: basic_type.SimpleType!.name, _arguments: parameter_declare, body: statements };
                     let single: string = FunctionSingle(functionType);
                     ret[single] = functionType;
                     return [ret];
@@ -572,7 +572,7 @@ import { FunctionSingle } from "./lib.js"
                     };
                     return {
                         "+": {
-                            argument: argument,
+                            _arguments: argument,
                             body: statements,
                             retType: retType
                         }
@@ -715,9 +715,9 @@ import { FunctionSingle } from "./lib.js"
             "statement:label_def for ( for_init ; for_condition ; for_step ) statement": {
                 action: function ($, s): ASTNode {
                     let label_def = $[0] as string | undefined;
-                    let init = $[3] as ASTNode;
-                    let condition = $[5] as ASTNode;
-                    let step = $[7] as ASTNode;
+                    let init = $[3] as ASTNode | undefined;
+                    let condition = $[5] as ASTNode | undefined;
+                    let step = $[7] as ASTNode | undefined;
                     let stmt = $[9] as Block | ASTNode;
                     return { _for: { init: init, condition: condition, step: step, stmt: stmt, label: label_def } };
                 }
@@ -875,7 +875,7 @@ import { FunctionSingle } from "./lib.js"
                 action: function ($, s): ASTNode {
                     let obj = $[0] as ASTNode;
                     let id = $[2] as string;
-                    return { accessField: { node: obj, field: id } };
+                    return { accessField: { obj: obj, field: id } };
                 }
             }
         },//取成员
@@ -1102,14 +1102,14 @@ import { FunctionSingle } from "./lib.js"
                     for (let t of template_definition) {
                         userTypeDictionary.delete(t);
                     }
-                    return { immediate: { functionValue: { argument: $[2] as VariableDescriptor, body: $[6] as Block, templates: $[0] as string[] } } };
+                    return { immediate: { functionValue: { _arguments: $[2] as VariableDescriptor, body: $[6] as Block, templates: $[0] as string[] } } };
                 }
             }
         },//模板lambda
         {
             "object:( parameter_declare ) => { statements }": {
                 action: function ($, s): ASTNode {
-                    return { immediate: { functionValue: { argument: $[1] as VariableDescriptor, body: $[5] as Block } } };
+                    return { immediate: { functionValue: { _arguments: $[1] as VariableDescriptor, body: $[5] as Block } } };
                 }
             }
         },//lambda
@@ -1138,7 +1138,7 @@ import { FunctionSingle } from "./lib.js"
         {
             "object:new type  ( arguments )": {
                 action: function ($, s): ASTNode {
-                    return { _new: { type: $[1] as TypeUsed, argument: $[3] as ASTNode[] } };
+                    return { _new: { type: $[1] as TypeUsed, _arguments: $[3] as ASTNode[] } };
                 }
             }
         },//创建对象

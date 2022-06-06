@@ -1,8 +1,8 @@
 //函数签名
 export function FunctionSingle(functionType: FunctionType): string {
     let types: string[] = [];
-    for (let k in functionType.argument) {
-        types.push(TypeUsedSingle(functionType.argument[k].type!));
+    for (let k in functionType._arguments) {
+        types.push(TypeUsedSingle(functionType._arguments[k].type!));
     }
     return `args:(${types.length > 0 ? types.reduce((p, c) => `${p},${c}`) : ''}) templateLentgh:${functionType.templates != undefined ? functionType.templates.length : 0} retType:${functionType.retType == undefined ? '' : TypeUsedSingle(functionType.retType)}`;
 }

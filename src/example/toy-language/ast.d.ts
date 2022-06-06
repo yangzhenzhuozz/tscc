@@ -47,14 +47,16 @@ interface SimpleType {
 interface ArrayType {
     innerType: TypeUsed;
 }
-class FunctionType {
-    argument: VariableDescriptor;
+interface FunctionType {
+    _arguments: VariableDescriptor;
     body: Block;//函数体
     retType?: TypeUsed;//返回类型，可选，如果为undefined则需要进行类型推导
     templates?: string[];//模板列表
     _construct_for_type?: string;//是某个类型的构造函数
 }
-type Block = (ASTNode | Block)[];
+interface Block extends Array<(ASTNode | Block)>{
+    scope?:Scope;//在第二次扫描的时候为每一个Block创建cope
+};
 interface Program {
     definedType: {//已经定义了的类型
         [key: string]: TypeDef
@@ -63,7 +65,7 @@ interface Program {
 }
 //一条语句就是一个Noe
 interface ASTNode {
-    accessField?: { node: ASTNode, field: string };
+    accessField?: { obj: ASTNode, field: string };
     call?: { functionObj: ASTNode, _arguments: ASTNode[], templateSpecialization_list?: TypeUsed[] };
     def?: VariableDescriptor;
     load?: string;
@@ -77,7 +79,7 @@ interface ASTNode {
     ifElseStmt?: { condition: ASTNode, stmt1: ASTNode | Block, stmt2: ASTNode | Block };
     do_while?: { condition: ASTNode, stmt: ASTNode | Block, label?: string };
     _while?: { condition: ASTNode, stmt: ASTNode | Block, label?: string };
-    _for?: { init: ASTNode, condition: ASTNode, step: ASTNode, stmt: ASTNode | Block, label: string | undefined };
+    _for?: { init?: ASTNode, condition?: ASTNode, step?: ASTNode, stmt: ASTNode | Block, label: string | undefined };
     _break?: { label: string };
     _continue?: { label: string };
     _instanceof?: { obj: ASTNode, type: TypeUsed };
@@ -88,7 +90,7 @@ interface ASTNode {
     ternary?: { condition: ASTNode, obj1: ASTNode, obj2: ASTNode };
     immediate?: { val: any };
     cast?: { obj: ASTNode, type: TypeUsed };
-    _new?: { type: TypeUsed, argument: ASTNode[] };
+    _new?: { type: TypeUsed, _arguments: ASTNode[] };
     _newArray?: { type: TypeUsed, initList: ASTNode[], placeholder: number };
     "="?: { rightChild: ASTNode; leftChild: ASTNode; };
     "+"?: { rightChild: ASTNode; leftChild: ASTNode; };
