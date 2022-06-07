@@ -33,7 +33,7 @@ interface VariableProperties {
     initAST?: ASTNode;//当type为undefined的时候,initAST必须存在,否则无法确定类型
     getter?: FunctionType;//getter
     setter?: FunctionType;//setter
-    loadedNodes?:ASTNode[];//记录load本属性的node，在确定本属性为闭包捕获属性后，把这些load节点全部换成load闭包里面的属性
+    loadedNodes?: ASTNode[];//记录load本属性的node，在确定本属性为闭包捕获属性后，把这些load节点全部换成load闭包里面的属性
 }
 interface TypeUsed {
     SimpleType?: SimpleType;
@@ -54,9 +54,7 @@ interface FunctionType {
     templates?: string[];//模板列表
     _construct_for_type?: string;//是某个类型的构造函数
 }
-interface Block extends Array<(ASTNode | Block)>{
-    scope?:Scope;//在第二次扫描的时候为每一个Block创建cope
-};
+type Block = Array<(ASTNode | Block)>;
 interface Program {
     definedType: {//已经定义了的类型
         [key: string]: TypeDef
@@ -112,5 +110,5 @@ interface Scope {
     property: VariableDescriptor;
     parent: Scope | undefined;
     isFunction: boolean;
-    captured:Set<string>;//需要进行lambda捕获的变量名
+    captured: Set<string>;//需要进行lambda捕获的变量名
 }

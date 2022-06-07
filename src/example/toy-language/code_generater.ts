@@ -283,5 +283,8 @@ export default function scan(program_source: string) {
             }
         }
     }
+    fs.writeFileSync('./src/example/toy-language/output/stage-2.json', JSON.stringify(program));
 }
-// scan(fs.readFileSync("./src/example/toy-language/output/class.json").toString());
+// scan(fs.readFileSync("./src/example/toy-language/output/stage-1.json").toString());
+//progrom和class的scope不用管，闭包只捕获block中的变量，所以在Scope解析完成之后，应该创建闭包类，block不需要scope属性了
+//刚好在每个报错的地方后面一点(遍历完block之后)生成闭包类

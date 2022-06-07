@@ -16,7 +16,7 @@ try {
     pre_process(source);
     let ret = parser.parse(lexer);
     console.timeEnd("解析源码耗时");
-    fs.writeFileSync(`./src/example/toy-language/output/class.json`, JSON.stringify(ret, null, 4));
+    fs.writeFileSync(`./src/example/toy-language/output/stage-1.json`, JSON.stringify(ret, null, 4));
     generater(JSON.stringify(ret));//开始生成二进制数据
 } catch (e: unknown) {
     if (e instanceof Error) {
