@@ -1,15 +1,42 @@
 import fs from "fs";
 let program: Program;
+let captureCounter = 0;
 function scopePostProcess(scope: Scope) {
     if (scope.captured.size > 0) {
+        let closureTypeName = `@closure_${captureCounter}`;
+        let properties: VariableDescriptor = {};
+        for (let k of scope.captured) {
+            //修改所有的load节点
+            for (let n of scope.property[k].loadedNodes!) {
+                delete n.load;//删除掉原来的Load
+                n['accessField'] = { obj: { load: `var_${closureTypeName}` }, field: k };
+            }
+            delete scope.property[k].loadedNodes;//删除loadedNodes，在最终输出的代码里，这个属性已经不需要了
+            properties[k] = scope.property[k];
+        }
+        //创建闭包类
+        program.definedType[closureTypeName] = { operatorOverload: {}, property: properties, _constructor: {} };
+        //在scope的block最前面插入一个new指令,new闭包类,还需要定义一个变量保存
+        let def_variable: VariableDescriptor = {};
+        def_variable[`var_${closureTypeName}`] = {
+            variable: "var",
+            initAST: {
+                _new: {
+                    type: { SimpleType: { name: closureTypeName } },
+                    _arguments: []
+                }
+            }
+        };
+        scope.block.push({ def: def_variable });
         console.log(scope.captured);
-        console.log(`捕获变量,需要修改对于节点`);//这里直接这样修改还不行，父节点链接不到修改之后的节点
+        console.log(`捕获变量,需要修改对应节点`);//这里直接这样修改还不行，父节点链接不到修改之后的节点
+        captureCounter++;//计数器加一
     }
 }
 //只扫描Node，处理block的时候调用者自己循环(因为nodeScan遇到block的时候会自己创建一个Scope)
 function nodeScan(scope: Scope, node: ASTNode | Block) {
     if (Array.isArray(node)) {//是一个block
-        let newScope: Scope = { isFunction: false, parent: scope, property: {}, captured: new Set() };//为block创建Scope
+        let newScope: Scope = { isFunction: false, parent: scope, property: {}, captured: new Set(), block: node };//为block创建Scope
         for (let n of node) {//遍历block的所有节点
             nodeScan(newScope, n);//递归扫描
         }
@@ -23,7 +50,7 @@ function nodeScan(scope: Scope, node: ASTNode | Block) {
             } else {
                 scope.property[key] = node.def[key];
                 if (node.def[key].type?.FunctionType != undefined) {
-                    let newScope: Scope = { isFunction: true, parent: scope, property: node.def[key].type!.FunctionType!._arguments, captured: new Set() };//为block创建Scope
+                    let newScope: Scope = { isFunction: true, parent: scope, property: node.def[key].type!.FunctionType!._arguments, captured: new Set(), block: node.def[key].type!.FunctionType!.body };//为block创建Scope
                     for (let n of node.def[key].type!.FunctionType!.body) {
                         nodeScan(newScope, n);
                     }
@@ -66,7 +93,7 @@ function nodeScan(scope: Scope, node: ASTNode | Block) {
         else if (node["_this"] != undefined) { }
         else if (node["immediate"] != undefined) {
             if (node.immediate.functionValue != undefined) {
-                let newScope: Scope = { isFunction: true, parent: scope, property: node.immediate.functionValue._arguments, captured: new Set() };//为block创建Scope
+                let newScope: Scope = { isFunction: true, parent: scope, property: node.immediate.functionValue._arguments, captured: new Set(), block: node.immediate.functionValue.body };//为block创建Scope
                 for (let n of node.immediate.functionValue.body) {
                     nodeScan(newScope, n);
                 }
@@ -85,7 +112,7 @@ function nodeScan(scope: Scope, node: ASTNode | Block) {
         else if (node["ifStmt"] != undefined) {
             nodeScan(scope, node.ifStmt.condition);
             if (Array.isArray(node.ifStmt.stmt)) {
-                let newScope: Scope = { isFunction: false, parent: scope, property: {}, captured: new Set() };//为block创建Scope
+                let newScope: Scope = { isFunction: false, parent: scope, property: {}, captured: new Set(), block: node.ifStmt.stmt };//为block创建Scope
                 for (let n of node.ifStmt.stmt) {
                     nodeScan(newScope, n);
                 }
@@ -97,7 +124,7 @@ function nodeScan(scope: Scope, node: ASTNode | Block) {
         else if (node["ifElseStmt"] != undefined) {
             nodeScan(scope, node.ifElseStmt.condition);
             if (Array.isArray(node.ifElseStmt.stmt1)) {
-                let newScope: Scope = { isFunction: false, parent: scope, property: {}, captured: new Set() };//为block创建Scope
+                let newScope: Scope = { isFunction: false, parent: scope, property: {}, captured: new Set(), block: node.ifElseStmt.stmt1 };//为block创建Scope
                 for (let n of node.ifElseStmt.stmt1) {
                     nodeScan(newScope, n);
                 }
@@ -106,7 +133,7 @@ function nodeScan(scope: Scope, node: ASTNode | Block) {
                 nodeScan(scope, node.ifElseStmt.stmt1);
             }
             if (Array.isArray(node.ifElseStmt.stmt2)) {
-                let newScope: Scope = { isFunction: false, parent: scope, property: {}, captured: new Set() };//为block创建Scope
+                let newScope: Scope = { isFunction: false, parent: scope, property: {}, captured: new Set(), block: node.ifElseStmt.stmt2 };//为block创建Scope
                 for (let n of node.ifElseStmt.stmt2) {
                     nodeScan(newScope, n);
                 }
@@ -118,7 +145,7 @@ function nodeScan(scope: Scope, node: ASTNode | Block) {
         else if (node["do_while"] != undefined) {
             nodeScan(scope, node.do_while.condition);
             if (Array.isArray(node.do_while.stmt)) {
-                let newScope: Scope = { isFunction: false, parent: scope, property: {}, captured: new Set() };//为block创建Scope
+                let newScope: Scope = { isFunction: false, parent: scope, property: {}, captured: new Set(), block: node.do_while.stmt };//为block创建Scope
                 for (let n of node.do_while.stmt) {
                     nodeScan(newScope, n);
                 }
@@ -130,7 +157,7 @@ function nodeScan(scope: Scope, node: ASTNode | Block) {
         else if (node["_while"] != undefined) {
             nodeScan(scope, node._while.condition);
             if (Array.isArray(node._while.stmt)) {
-                let newScope: Scope = { isFunction: false, parent: scope, property: {}, captured: new Set() };//为block创建Scope
+                let newScope: Scope = { isFunction: false, parent: scope, property: {}, captured: new Set(), block: node._while.stmt };//为block创建Scope
                 for (let n of node._while.stmt) {
                     nodeScan(newScope, n);
                 }
@@ -150,7 +177,7 @@ function nodeScan(scope: Scope, node: ASTNode | Block) {
                 nodeScan(scope, node._for.step);
             }
             if (Array.isArray(node._for.stmt)) {
-                let newScope: Scope = { isFunction: false, parent: scope, property: {}, captured: new Set() };//为block创建Scope
+                let newScope: Scope = { isFunction: false, parent: scope, property: {}, captured: new Set(), block: node._for.stmt };//为block创建Scope
                 for (let n of node._for.stmt) {
                     nodeScan(newScope, n);
                 }
@@ -248,7 +275,7 @@ function nodeScan(scope: Scope, node: ASTNode | Block) {
             nodeScan(scope, node._switch.pattern);
             if (node._switch.defalutStmt != undefined) {
                 if (Array.isArray(node._switch.defalutStmt)) {
-                    let newScope: Scope = { isFunction: false, parent: scope, property: {}, captured: new Set() };//为block创建Scope
+                    let newScope: Scope = { isFunction: false, parent: scope, property: {}, captured: new Set(), block: node._switch.defalutStmt };//为block创建Scope
                     for (let n of node._switch.defalutStmt) {
                         nodeScan(newScope, n);
                     }
@@ -260,7 +287,7 @@ function nodeScan(scope: Scope, node: ASTNode | Block) {
             for (let matcItem of node._switch.matchList) {
                 nodeScan(scope, matcItem.matchObj);
                 if (Array.isArray(matcItem.stmt)) {
-                    let newScope: Scope = { isFunction: false, parent: scope, property: {}, captured: new Set() };//为block创建Scope
+                    let newScope: Scope = { isFunction: false, parent: scope, property: {}, captured: new Set(), block: matcItem.stmt };//为block创建Scope
                     for (let n of matcItem.stmt) {
                         nodeScan(newScope, n);
                     }
@@ -274,15 +301,15 @@ function nodeScan(scope: Scope, node: ASTNode | Block) {
         }
     }
 }
-//第二步不是生成代码，应该先扫描闭包
-export default function scan(program_source: string) {
+//闭包扫描
+export default function clouserScan(program_source: string) {
     program = JSON.parse(program_source) as Program;
     let property = program.property;
-    let programScope: Scope = { parent: undefined, property: property, isFunction: false, captured: new Set() };
+    let programScope: Scope = { parent: undefined, property: property, isFunction: false, captured: new Set(), block: [] };//program的scope暂时没有代码，class的也一样
     for (let key in property) {
         let prop = property[key];
         if (prop?.type?.FunctionType != undefined) {//处理顶层Fcuntion
-            let functionScope: Scope = { isFunction: true, parent: programScope, property: prop.type.FunctionType._arguments, captured: new Set() };
+            let functionScope: Scope = { isFunction: true, parent: programScope, property: prop.type.FunctionType._arguments, captured: new Set(), block: prop.type.FunctionType.body };
             for (let node of prop.type.FunctionType.body) {
                 nodeScan(functionScope, node);
             }
@@ -291,6 +318,4 @@ export default function scan(program_source: string) {
     }
     fs.writeFileSync('./src/example/toy-language/output/stage-2.json', JSON.stringify(program));
 }
-scan(fs.readFileSync("./src/example/toy-language/output/stage-1.json").toString());
-//progrom和class的scope不用管，闭包只捕获block中的变量，所以在Scope解析完成之后，应该创建闭包类，block不需要scope属性了
-//刚好在每个报错的地方后面一点(遍历完block之后)生成闭包类
+// clouserScan(fs.readFileSync("./src/example/toy-language/output/stage-1.json").toString());

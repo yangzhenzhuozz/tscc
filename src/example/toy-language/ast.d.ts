@@ -110,5 +110,6 @@ interface Scope {
     property: VariableDescriptor;
     parent: Scope | undefined;
     isFunction: boolean;
+    block:Block;
     captured: Set<string>;//需要进行lambda捕获的变量名
 }
