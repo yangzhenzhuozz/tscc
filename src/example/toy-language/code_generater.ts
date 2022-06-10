@@ -15,7 +15,7 @@ function scopePostProcess(scope: Scope) {
             properties[k] = scope.property[k];
         }
         //创建闭包类
-        program.definedType[closureTypeName] = { operatorOverload: {}, property: properties, _constructor: {} };
+        program.definedType[closureTypeName] = { operatorOverload: {}, property: JSON.parse(JSON.stringify(properties)), _constructor: {} };
         //在scope的block最前面插入一个new指令,new闭包类,还需要定义一个变量保存
         let def_variable: VariableDescriptor = {};
         def_variable[`var_${closureTypeName}`] = {
@@ -50,7 +50,7 @@ function nodeScan(scope: Scope, node: ASTNode | Block) {
             } else {
                 scope.property[key] = node.def[key];
                 if (node.def[key].type?.FunctionType != undefined) {
-                    let newScope: Scope = { isFunction: true, parent: scope, property: node.def[key].type!.FunctionType!._arguments, captured: new Set(), block: node.def[key].type!.FunctionType!.body };//为block创建Scope
+                    let newScope: Scope = { isFunction: true, parent: scope, property: JSON.parse(JSON.stringify(node.def[key].type!.FunctionType!._arguments)), captured: new Set(), block: node.def[key].type!.FunctionType!.body };//为block创建Scope
                     for (let n of node.def[key].type!.FunctionType!.body) {
                         nodeScan(newScope, n);
                     }
@@ -93,7 +93,7 @@ function nodeScan(scope: Scope, node: ASTNode | Block) {
         else if (node["_this"] != undefined) { }
         else if (node["immediate"] != undefined) {
             if (node.immediate.functionValue != undefined) {
-                let newScope: Scope = { isFunction: true, parent: scope, property: node.immediate.functionValue._arguments, captured: new Set(), block: node.immediate.functionValue.body };//为block创建Scope
+                let newScope: Scope = { isFunction: true, parent: scope, property: JSON.parse(JSON.stringify(node.immediate.functionValue._arguments)), captured: new Set(), block: node.immediate.functionValue.body };//为block创建Scope
                 for (let n of node.immediate.functionValue.body) {
                     nodeScan(newScope, n);
                 }
@@ -305,11 +305,11 @@ function nodeScan(scope: Scope, node: ASTNode | Block) {
 export default function clouserScan(program_source: string) {
     program = JSON.parse(program_source) as Program;
     let property = program.property;
-    let programScope: Scope = { parent: undefined, property: property, isFunction: false, captured: new Set(), block: [] };//program的scope暂时没有代码，class的也一样
+    let programScope: Scope = { parent: undefined, property: JSON.parse(JSON.stringify(property)), isFunction: false, captured: new Set(), block: [] };//program的scope暂时没有代码，class的也一样
     for (let key in property) {
         let prop = property[key];
         if (prop?.type?.FunctionType != undefined) {//处理顶层Fcuntion
-            let functionScope: Scope = { isFunction: true, parent: programScope, property: prop.type.FunctionType._arguments, captured: new Set(), block: prop.type.FunctionType.body };
+            let functionScope: Scope = { isFunction: true, parent: programScope, property: JSON.parse(JSON.stringify(prop.type.FunctionType._arguments)), captured: new Set(), block: prop.type.FunctionType.body };
             for (let node of prop.type.FunctionType.body) {
                 nodeScan(functionScope, node);
             }
@@ -318,4 +318,4 @@ export default function clouserScan(program_source: string) {
     }
     fs.writeFileSync('./src/example/toy-language/output/stage-2.json', JSON.stringify(program));
 }
-// clouserScan(fs.readFileSync("./src/example/toy-language/output/stage-1.json").toString());
+clouserScan(fs.readFileSync("./src/example/toy-language/output/stage-1.json").toString());

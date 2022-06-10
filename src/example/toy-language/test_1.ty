@@ -1,10 +1,10 @@
 var a:int;
-function fun1():void{
-    var b:int;
+function fun1<T>():void{
+    var b:T;
     b++;
     {
-        var c:int;
-        function fun2():int{
+        var c:T;
+        function fun2():T{
             return b.value+c.value;
         };
         c++;
