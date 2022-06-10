@@ -27,7 +27,7 @@ function scopePostProcess(scope: Scope) {
                 }
             }
         };
-        scope.block.push({ def: def_variable });
+        scope.block.unshift({ def: def_variable });
         console.log(scope.captured);
         console.log(`捕获变量,需要修改对应节点`);//这里直接这样修改还不行，父节点链接不到修改之后的节点
         captureCounter++;//计数器加一
