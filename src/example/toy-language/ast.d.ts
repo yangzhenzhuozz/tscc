@@ -104,7 +104,6 @@ interface ASTNode {
     "&&"?: { rightChild: ASTNode; leftChild: ASTNode; };
     _switch?: { pattern: ASTNode, defalutStmt?: ASTNode | Block, matchList: { matchObj: ASTNode, stmt: ASTNode | Block }[] };//default没有matchObj
 }
-//把ast设计得优雅一点，后续设计更方便
 
 interface Scope {
     property: VariableDescriptor;
@@ -112,4 +111,5 @@ interface Scope {
     isFunction: boolean;
     block:Block;
     captured: Set<string>;//需要进行lambda捕获的变量名
+    template:string[];
 }
