@@ -1,7 +1,7 @@
 import fs from "fs";
 let program: Program;
 let captureCounter = 0;
-function closureScan(scope: Scope) {
+function closureScan(scope: Scope, block: Block) {
     if (scope.captured.size > 0) {
         let closureTypeName = `@closure_${captureCounter}`;
         let properties: VariableDescriptor = {};
@@ -27,7 +27,7 @@ function closureScan(scope: Scope) {
                 }
             }
         };
-        scope.block.unshift({ def: def_variable });
+        block.unshift({ def: def_variable });
         console.log(scope.captured);
         console.log(`捕获变量,需要修改对应节点`);//这里直接这样修改还不行，父节点链接不到修改之后的节点
         captureCounter++;//计数器加一
@@ -36,11 +36,11 @@ function closureScan(scope: Scope) {
 //处理闭包捕获
 function scopeProcessor(scope: Scope, node: ASTNode | Block) {
     if (Array.isArray(node)) {//是一个block
-        let newScope: Scope = { isFunction: false, parent: scope, property: {}, captured: new Set(), block: node, template: scope.template.concat() };//为block创建Scope
+        let newScope: Scope = { isFunction: false, parent: scope, property: {}, captured: new Set(), template: scope.template.concat() };//为block创建Scope
         for (let n of node) {//遍历block的所有节点
             scopeProcessor(newScope, n);//递归扫描
         }
-        closureScan(newScope);
+        closureScan(newScope, node);
     } else {
         //是一个普通节点
         if (node["def"] != undefined) {
@@ -50,7 +50,7 @@ function scopeProcessor(scope: Scope, node: ASTNode | Block) {
             } else {
                 scope.property[key] = node.def[key];
                 if (node.def[key].type?.FunctionType != undefined) {
-                    let newScope: Scope = { isFunction: true, parent: scope, property: JSON.parse(JSON.stringify(node.def[key].type!.FunctionType!._arguments)), captured: new Set(), block: node.def[key].type!.FunctionType!.body, template: node.def[key].type!.FunctionType!.templates == undefined ? scope.template.concat() : scope.template.concat(node.def[key].type!.FunctionType!.templates!) };//为block创建Scope
+                    let newScope: Scope = { isFunction: true, parent: scope, property: JSON.parse(JSON.stringify(node.def[key].type!.FunctionType!._arguments)), captured: new Set(), template: node.def[key].type!.FunctionType!.templates == undefined ? scope.template.concat() : scope.template.concat(node.def[key].type!.FunctionType!.templates!) };//为block创建Scope
                     for (let n of node.def[key].type!.FunctionType!.body) {
                         scopeProcessor(newScope, n);
                     }
@@ -69,7 +69,7 @@ function scopeProcessor(scope: Scope, node: ASTNode | Block) {
                     } else {
                         node.def[key].type!.FunctionType!.templates = scope.template.concat(node.def[key].type!.FunctionType!.templates!);
                     }
-                    closureScan(newScope);
+                    closureScan(newScope, node.def[key].type!.FunctionType!.body);
                 }
             }
         }
@@ -108,11 +108,11 @@ function scopeProcessor(scope: Scope, node: ASTNode | Block) {
         else if (node["_this"] != undefined) { }
         else if (node["immediate"] != undefined) {
             if (node.immediate.functionValue != undefined) {
-                let newScope: Scope = { isFunction: true, parent: scope, property: JSON.parse(JSON.stringify(node.immediate.functionValue._arguments)), captured: new Set(), block: node.immediate.functionValue.body, template: node.immediate.functionValue.templates == undefined ? scope.template.concat() : scope.template.concat(node.immediate.functionValue.templates) };//为block创建Scope
+                let newScope: Scope = { isFunction: true, parent: scope, property: JSON.parse(JSON.stringify(node.immediate.functionValue._arguments)), captured: new Set(), template: node.immediate.functionValue.templates == undefined ? scope.template.concat() : scope.template.concat(node.immediate.functionValue.templates) };//为block创建Scope
                 for (let n of node.immediate.functionValue.body) {
                     scopeProcessor(newScope, n);
                 }
-                closureScan(newScope);
+                closureScan(newScope, node.immediate.functionValue.body);
             }
         }
         else if (node["trycatch"] != undefined) { }
@@ -127,11 +127,11 @@ function scopeProcessor(scope: Scope, node: ASTNode | Block) {
         else if (node["ifStmt"] != undefined) {
             scopeProcessor(scope, node.ifStmt.condition);
             if (Array.isArray(node.ifStmt.stmt)) {
-                let newScope: Scope = { isFunction: false, parent: scope, property: {}, captured: new Set(), block: node.ifStmt.stmt, template: scope.template.concat() };//为block创建Scope
+                let newScope: Scope = { isFunction: false, parent: scope, property: {}, captured: new Set(), template: scope.template.concat() };//为block创建Scope
                 for (let n of node.ifStmt.stmt) {
                     scopeProcessor(newScope, n);
                 }
-                closureScan(newScope);
+                closureScan(newScope, node.ifStmt.stmt);
             } else {
                 scopeProcessor(scope, node.ifStmt.stmt);
             }
@@ -139,20 +139,20 @@ function scopeProcessor(scope: Scope, node: ASTNode | Block) {
         else if (node["ifElseStmt"] != undefined) {
             scopeProcessor(scope, node.ifElseStmt.condition);
             if (Array.isArray(node.ifElseStmt.stmt1)) {
-                let newScope: Scope = { isFunction: false, parent: scope, property: {}, captured: new Set(), block: node.ifElseStmt.stmt1, template: scope.template.concat() };//为block创建Scope
+                let newScope: Scope = { isFunction: false, parent: scope, property: {}, captured: new Set(), template: scope.template.concat() };//为block创建Scope
                 for (let n of node.ifElseStmt.stmt1) {
                     scopeProcessor(newScope, n);
                 }
-                closureScan(newScope);
+                closureScan(newScope, node.ifElseStmt.stmt1);
             } else {
                 scopeProcessor(scope, node.ifElseStmt.stmt1);
             }
             if (Array.isArray(node.ifElseStmt.stmt2)) {
-                let newScope: Scope = { isFunction: false, parent: scope, property: {}, captured: new Set(), block: node.ifElseStmt.stmt2, template: scope.template.concat() };//为block创建Scope
+                let newScope: Scope = { isFunction: false, parent: scope, property: {}, captured: new Set(), template: scope.template.concat() };//为block创建Scope
                 for (let n of node.ifElseStmt.stmt2) {
                     scopeProcessor(newScope, n);
                 }
-                closureScan(newScope);
+                closureScan(newScope, node.ifElseStmt.stmt2);
             } else {
                 scopeProcessor(scope, node.ifElseStmt.stmt2);
             }
@@ -160,11 +160,11 @@ function scopeProcessor(scope: Scope, node: ASTNode | Block) {
         else if (node["do_while"] != undefined) {
             scopeProcessor(scope, node.do_while.condition);
             if (Array.isArray(node.do_while.stmt)) {
-                let newScope: Scope = { isFunction: false, parent: scope, property: {}, captured: new Set(), block: node.do_while.stmt, template: scope.template.concat() };//为block创建Scope
+                let newScope: Scope = { isFunction: false, parent: scope, property: {}, captured: new Set(), template: scope.template.concat() };//为block创建Scope
                 for (let n of node.do_while.stmt) {
                     scopeProcessor(newScope, n);
                 }
-                closureScan(newScope);
+                closureScan(newScope, node.do_while.stmt);
             } else {
                 scopeProcessor(scope, node.do_while.stmt);
             }
@@ -172,11 +172,11 @@ function scopeProcessor(scope: Scope, node: ASTNode | Block) {
         else if (node["_while"] != undefined) {
             scopeProcessor(scope, node._while.condition);
             if (Array.isArray(node._while.stmt)) {
-                let newScope: Scope = { isFunction: false, parent: scope, property: {}, captured: new Set(), block: node._while.stmt, template: scope.template.concat() };//为block创建Scope
+                let newScope: Scope = { isFunction: false, parent: scope, property: {}, captured: new Set(), template: scope.template.concat() };//为block创建Scope
                 for (let n of node._while.stmt) {
                     scopeProcessor(newScope, n);
                 }
-                closureScan(newScope);
+                closureScan(newScope, node._while.stmt);
             } else {
                 scopeProcessor(scope, node._while.stmt);
             }
@@ -192,11 +192,11 @@ function scopeProcessor(scope: Scope, node: ASTNode | Block) {
                 scopeProcessor(scope, node._for.step);
             }
             if (Array.isArray(node._for.stmt)) {
-                let newScope: Scope = { isFunction: false, parent: scope, property: {}, captured: new Set(), block: node._for.stmt, template: scope.template.concat() };//为block创建Scope
+                let newScope: Scope = { isFunction: false, parent: scope, property: {}, captured: new Set(), template: scope.template.concat() };//为block创建Scope
                 for (let n of node._for.stmt) {
                     scopeProcessor(newScope, n);
                 }
-                closureScan(newScope);
+                closureScan(newScope, node._for.stmt);
             } else {
                 scopeProcessor(scope, node._for.stmt);
             }
@@ -290,11 +290,11 @@ function scopeProcessor(scope: Scope, node: ASTNode | Block) {
             scopeProcessor(scope, node._switch.pattern);
             if (node._switch.defalutStmt != undefined) {
                 if (Array.isArray(node._switch.defalutStmt)) {
-                    let newScope: Scope = { isFunction: false, parent: scope, property: {}, captured: new Set(), block: node._switch.defalutStmt, template: scope.template.concat() };//为block创建Scope
+                    let newScope: Scope = { isFunction: false, parent: scope, property: {}, captured: new Set(), template: scope.template.concat() };//为block创建Scope
                     for (let n of node._switch.defalutStmt) {
                         scopeProcessor(newScope, n);
                     }
-                    closureScan(newScope);
+                    closureScan(newScope, node._switch.defalutStmt);
                 } else {
                     scopeProcessor(scope, node._switch.defalutStmt);
                 }
@@ -302,11 +302,11 @@ function scopeProcessor(scope: Scope, node: ASTNode | Block) {
             for (let matcItem of node._switch.matchList) {
                 scopeProcessor(scope, matcItem.matchObj);
                 if (Array.isArray(matcItem.stmt)) {
-                    let newScope: Scope = { isFunction: false, parent: scope, property: {}, captured: new Set(), block: matcItem.stmt, template: scope.template.concat() };//为block创建Scope
+                    let newScope: Scope = { isFunction: false, parent: scope, property: {}, captured: new Set(), template: scope.template.concat() };//为block创建Scope
                     for (let n of matcItem.stmt) {
                         scopeProcessor(newScope, n);
                     }
-                    closureScan(newScope);
+                    closureScan(newScope, matcItem.stmt);
                 } else {
                     scopeProcessor(scope, matcItem.stmt);
                 }
@@ -320,20 +320,20 @@ function scopeProcessor(scope: Scope, node: ASTNode | Block) {
 export default function clouserScan(program_source: string) {
     program = JSON.parse(program_source) as Program;
     let property = program.property;
-    let programScope: Scope = { parent: undefined, property: JSON.parse(JSON.stringify(property)), isFunction: false, captured: new Set(), block: [], template: [] };//program的scope暂时没有代码，class的也一样
+    let programScope: Scope = { parent: undefined, property: JSON.parse(JSON.stringify(property)), isFunction: false, captured: new Set(), template: [] };//program的scope暂时没有代码，class的也一样
     for (let key in property) {
         let prop = property[key];
         if (prop?.type?.FunctionType != undefined) {//处理顶层Fcuntion
-            let functionScope: Scope = { isFunction: true, parent: programScope, property: JSON.parse(JSON.stringify(prop.type.FunctionType._arguments)), captured: new Set(), block: prop.type.FunctionType.body, template: prop?.type?.FunctionType.templates == undefined ? [] : prop?.type?.FunctionType.templates.concat() };
+            let functionScope: Scope = { isFunction: true, parent: programScope, property: JSON.parse(JSON.stringify(prop.type.FunctionType._arguments)), captured: new Set(), template: prop?.type?.FunctionType.templates == undefined ? [] : prop?.type?.FunctionType.templates.concat() };
             for (let node of prop.type.FunctionType.body) {
                 scopeProcessor(functionScope, node);
             }
-            closureScan(functionScope);
+            closureScan(functionScope, prop.type.FunctionType.body);
         }
     }
     fs.writeFileSync('./src/example/toy-language/output/stage-2.json', JSON.stringify(program));
 }
-// clouserScan(fs.readFileSync("./src/example/toy-language/output/stage-1.json").toString());
+clouserScan(fs.readFileSync("./src/example/toy-language/output/stage-1.json").toString());
 
 
 
