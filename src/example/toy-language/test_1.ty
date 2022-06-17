@@ -1,8 +1,29 @@
-function fun1<T1>():void{
+class MyClass{
+    var fun1=<T1>()=>{
+        var a:T1;
+        function fun2<T2>():void{
+            var b:T2=0;
+            function fun3():int{
+                return a+b;
+            };
+            var fun4=()=>{
+                    return a+b;
+                };
+            };
+        for(var h:int;;){
+            h++;
+        }
+        h++;
+    };
+}
+var fun1=<T1>()=>{
     var a:T1;
     function fun2<T2>():void{
-        var b:T2;
+        var b:T2=0;
         function fun3():int{
+            return a+b;
+        };
+        var fun4=()=>{
             return a+b;
         };
     };

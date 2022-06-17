@@ -5,14 +5,27 @@ function closureScan(scope: Scope, block: Block) {
     if (scope.captured.size > 0) {
         let closureTypeName = `@closure_${captureCounter}`;
         let properties: VariableDescriptor = {};
+        let hasEmptyNode = false;//如果只定义一个被捕获的属性，没有初始化，这个定义指令是没用的，会被处理成空白对象
         for (let k of scope.captured) {
             //修改所有的load节点
             for (let n of scope.property[k].loadedNodes!) {
                 delete n.load;//删除掉原来的Load
-                n['accessField'] = { obj: { load: `var_${closureTypeName}` }, field: k };
+                n['accessField'] = { obj: { load: `var_${closureTypeName}` }, field: k };//换成accessField节点
             }
             delete scope.property[k].loadedNodes;//删除loadedNodes，在最终输出的代码里，这个属性已经不需要了
             properties[k] = scope.property[k];
+            delete scope.property[k].defNode!.def;//删除原来的def,原来的节点内容会变成空白对象
+            if (scope.property[k].initAST != undefined) {//如果原来的def节点有initAST，则换成对闭包属性的赋值
+                //替换成新的accessField赋值节点
+                scope.property[k].defNode!["="] = {
+                    leftChild: {
+                        "accessField": { obj: { load: `var_${closureTypeName}` }, field: k }
+                    },
+                    rightChild: scope.property[k].initAST!
+                };
+            } else {
+                hasEmptyNode = true;
+            }
         }
         //创建闭包类
         program.definedType[closureTypeName] = { operatorOverload: {}, property: JSON.parse(JSON.stringify(properties)), _constructor: {}, templates: scope.template };
@@ -27,10 +40,36 @@ function closureScan(scope: Scope, block: Block) {
                 }
             }
         };
-        block.unshift({ def: def_variable });
+        if (hasEmptyNode) {
+            //如果有节点被处理成了空白节点，则删除掉他们
+            let newblock:Block=[];
+            newblock.push({ def: def_variable });//在最前插入def节点
+            newblock=newblock.concat(block);//克隆原来的block
+            block.length = 0;//清空数组
+            for (let item of newblock) {
+                if (Object.keys(item).length != 0) {
+                    block.push(item);
+                }
+            }
+        } else {
+            block.unshift({ def: def_variable });
+        }
+
+
         console.log(scope.captured);
         console.log(`捕获变量,需要修改对应节点`);//这里直接这样修改还不行，父节点链接不到修改之后的节点
         captureCounter++;//计数器加一
+    }
+
+    /**
+     * 对于一个block，遇到def节点的时候，scopeProcessor会挂载一个节点指向它自己
+     * 所以在处理完这个block之后，要把挂载的节点卸载掉，避免circular
+     * 每个block处理完都会调用一次closureScan,所以放到这里处理也刚刚好
+     */
+    for (let k in scope.property) {
+        if (scope.property[k].defNode != undefined) {
+            delete scope.property[k].defNode;//卸载节点
+        }
     }
 }
 //处理闭包捕获
@@ -49,6 +88,8 @@ function scopeProcessor(scope: Scope, node: ASTNode | Block) {
                 throw new Error(`重复定义属性${key}`);
             } else {
                 scope.property[key] = node.def[key];
+                scope.property[key].defNode = node;//挂载def节点指向自己
+                //这种是function f():void{}
                 if (node.def[key].type?.FunctionType != undefined) {
                     let newScope: Scope = { isFunction: true, parent: scope, property: JSON.parse(JSON.stringify(node.def[key].type!.FunctionType!._arguments)), captured: new Set(), template: node.def[key].type!.FunctionType!.templates == undefined ? scope.template.concat() : scope.template.concat(node.def[key].type!.FunctionType!.templates!) };//为block创建Scope
                     for (let n of node.def[key].type!.FunctionType!.body) {
@@ -70,6 +111,8 @@ function scopeProcessor(scope: Scope, node: ASTNode | Block) {
                         node.def[key].type!.FunctionType!.templates = scope.template.concat(node.def[key].type!.FunctionType!.templates!);
                     }
                     closureScan(newScope, node.def[key].type!.FunctionType!.body);
+                } else if (node.def[key].initAST != undefined) {//这种是var f=()=>void{}
+                    scopeProcessor(scope, node.def[key].initAST!);
                 }
             }
         }
@@ -224,7 +267,6 @@ function scopeProcessor(scope: Scope, node: ASTNode | Block) {
             scopeProcessor(scope, node.ternary.obj1);
             scopeProcessor(scope, node.ternary.obj2);
         }
-        else if (node["immediate"] != undefined) { }
         else if (node["cast"] != undefined) {
             scopeProcessor(scope, node.cast.obj);
         }
@@ -319,21 +361,40 @@ function scopeProcessor(scope: Scope, node: ASTNode | Block) {
 //闭包扫描
 export default function clouserScan(program_source: string) {
     program = JSON.parse(program_source) as Program;
-    let property = program.property;
-    let programScope: Scope = { parent: undefined, property: JSON.parse(JSON.stringify(property)), isFunction: false, captured: new Set(), template: [] };//program的scope暂时没有代码，class的也一样
-    for (let key in property) {
-        let prop = property[key];
+    let programProperty = program.property;
+    let programScope: Scope = { parent: undefined, property: JSON.parse(JSON.stringify(programProperty)), isFunction: false, captured: new Set(), template: [] };//program的scope暂时没有代码，class的也一样
+    for (let key in programProperty) {
+        let prop = programProperty[key];
+        //这种是function f():void{}
         if (prop?.type?.FunctionType != undefined) {//处理顶层Fcuntion
             let functionScope: Scope = { isFunction: true, parent: programScope, property: JSON.parse(JSON.stringify(prop.type.FunctionType._arguments)), captured: new Set(), template: prop?.type?.FunctionType.templates == undefined ? [] : prop?.type?.FunctionType.templates.concat() };
             for (let node of prop.type.FunctionType.body) {
                 scopeProcessor(functionScope, node);
             }
             closureScan(functionScope, prop.type.FunctionType.body);
+        } else if (prop?.initAST?.immediate?.functionValue != undefined) {//这种是var f=()=>void{}
+            scopeProcessor(programScope, prop?.initAST);
+        }
+    }
+    for (let key of Object.keys(program.definedType)) {
+        let classProp = program.definedType[key].property;
+        let classScope: Scope = { parent: programScope, property: classProp, isFunction: false, captured: new Set(), template: program.definedType[key].templates != undefined ? program.definedType[key].templates! : [] };
+        for (let key in classProp) {
+            let prop = classProp[key];
+            //这种是function f():void{}
+            if (prop?.type?.FunctionType != undefined) {//处理顶层Fcuntion
+                let functionScope: Scope = { isFunction: true, parent: classScope, property: JSON.parse(JSON.stringify(prop.type.FunctionType._arguments)), captured: new Set(), template: prop?.type?.FunctionType.templates == undefined ? [] : prop?.type?.FunctionType.templates.concat() };
+                for (let node of prop.type.FunctionType.body) {
+                    scopeProcessor(functionScope, node);
+                }
+                closureScan(functionScope, prop.type.FunctionType.body);
+            } else if (prop?.initAST?.immediate?.functionValue != undefined) {//这种是var f=()=>void{}
+                scopeProcessor(programScope, prop?.initAST);
+            }
         }
     }
     fs.writeFileSync('./src/example/toy-language/output/stage-2.json', JSON.stringify(program));
 }
-clouserScan(fs.readFileSync("./src/example/toy-language/output/stage-1.json").toString());
 
 
 

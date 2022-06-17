@@ -182,9 +182,6 @@ import { FunctionSingle } from "./lib.js"
                     }
                     let basic_type = $[2] as TypeUsed;
                     let modifier = $[0] as 'valuetype' | 'sealed' | undefined;
-                    if (modifier == undefined) {
-                        modifier = 'valuetype';
-                    }
                     let extends_declare = $[4] as TypeUsed | undefined;
                     let class_units = $[6] as {
                         operatorOverload: { [key: string]: FunctionType },

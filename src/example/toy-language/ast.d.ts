@@ -34,6 +34,7 @@ interface VariableProperties {
     getter?: FunctionType;//getter
     setter?: FunctionType;//setter
     loadedNodes?: ASTNode[];//记录load本属性的node，在确定本属性为闭包捕获属性后，把这些load节点全部换成load闭包里面的属性
+    defNode?: ASTNode;//定义这个属性的节点(只有block中的属性才是由节点定义出来的)
 }
 interface TypeUsed {
     SimpleType?: SimpleType;
@@ -86,7 +87,6 @@ interface ASTNode {
     decrease?: { child: ASTNode };
     indexOP?: { obj: ASTNode, index: ASTNode };
     ternary?: { condition: ASTNode, obj1: ASTNode, obj2: ASTNode };
-    immediate?: { val: any };
     cast?: { obj: ASTNode, type: TypeUsed };
     _new?: { type: TypeUsed, _arguments: ASTNode[] };
     _newArray?: { type: TypeUsed, initList: ASTNode[], placeholder: number };
