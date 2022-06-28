@@ -34,7 +34,6 @@ interface VariableProperties {
     getter?: FunctionType;//getter
     setter?: FunctionType;//setter
     loadedNodes?: ASTNode[];//记录load本属性的node，在确定本属性为闭包捕获属性后，把这些load节点全部换成load闭包里面的属性
-    defNode?: ASTNode;//定义这个属性的节点(只有block中的属性才是由节点定义出来的)
 }
 interface TypeUsed {
     SimpleType?: SimpleType;
@@ -64,6 +63,7 @@ interface Program {
 }
 //一条语句就是一个Noe
 interface ASTNode {
+    isLoaction?:boolean;//是否为可修改节点
     accessField?: { obj: ASTNode, field: string };
     call?: { functionObj: ASTNode, _arguments: ASTNode[], templateSpecialization_list?: TypeUsed[] };
     def?: VariableDescriptor;
@@ -103,12 +103,4 @@ interface ASTNode {
     "||"?: { rightChild: ASTNode; leftChild: ASTNode; };
     "&&"?: { rightChild: ASTNode; leftChild: ASTNode; };
     _switch?: { pattern: ASTNode, defalutStmt?: ASTNode | Block, matchList: { matchObj: ASTNode, stmt: ASTNode | Block }[] };//default没有matchObj
-}
-
-interface Scope {
-    property: VariableDescriptor;
-    parent: Scope | undefined;
-    isFunction: boolean;
-    captured: Set<string>;//需要进行lambda捕获的变量名
-    template:string[];
 }
