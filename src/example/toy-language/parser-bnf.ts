@@ -342,7 +342,7 @@ import { FunctionSingle } from "./lib.js"
                     }
                     let parameter_declare = $[2] as VariableDescriptor;
                     let ret_type = $[5] as TypeUsed;
-                    return { FunctionType: { templates: template_definition, _arguments: parameter_declare, body: [], retType: ret_type } };
+                    return { FunctionType: { templates: template_definition, _arguments: parameter_declare, body: { desc: 'Block', body: [] }, retType: ret_type } };
                 }
             }
         },//泛型函数类型
@@ -352,7 +352,7 @@ import { FunctionSingle } from "./lib.js"
                 action: function ($, s): TypeUsed {
                     let parameter_declare = $[1] as VariableDescriptor;
                     let ret_type = $[4] as TypeUsed;
-                    return { FunctionType: { _arguments: parameter_declare, body: [], retType: ret_type } };
+                    return { FunctionType: { _arguments: parameter_declare, body: { desc: 'Block', body: [] }, retType: ret_type } };
                 }
             }
         },//函数类型
@@ -582,7 +582,7 @@ import { FunctionSingle } from "./lib.js"
                 action: function ($, s): Block {
                     let statements = $[0] as Block;
                     let statement = $[1] as ASTNode;
-                    statements.push(statement);
+                    statements.body.push(statement);
                     return statements;
                 }
             }
@@ -590,7 +590,7 @@ import { FunctionSingle } from "./lib.js"
         {
             "statements:": {
                 action: function ($, s): Block {
-                    return [] as Block;
+                    return { desc: "Block", body: [] } as Block;
                 }
             }
         },//statements可以为空
@@ -598,7 +598,7 @@ import { FunctionSingle } from "./lib.js"
             "statement:declare ;": {
                 action: function ($, s): ASTNode {
                     let declare: VariableDescriptor = $[0];
-                    return { def: declare };
+                    return { desc: "ASTNode", def: declare };
                 }
             }
         },//statement可以是一条声明语句
@@ -609,28 +609,28 @@ import { FunctionSingle } from "./lib.js"
                     let catchVariable = $[6] as string;
                     let catchType = $[8] as TypeUsed;
                     let catchBlock = $[11] as Block;
-                    return { trycatch: { tryBlock: tryBlock, catchVariable: catchVariable, catchType: catchType, catchBlock: catchBlock } };
+                    return { desc: "ASTNode", trycatch: { tryBlock: tryBlock, catchVariable: catchVariable, catchType: catchType, catchBlock: catchBlock } };
                 }
             }
         },//try catch语句，允许捕获任意类型的异常
         {
             "statement:throw object ;": {
                 action: function ($, s): ASTNode {
-                    return { throwStmt: $[1] as ASTNode };
+                    return { desc: "ASTNode", throwStmt: $[1] as ASTNode };
                 }
             }
         },//抛异常语句
         {
             "statement:return object ;": {
                 action: function ($, s): ASTNode {
-                    return { ret: $[1] as ASTNode };
+                    return { desc: "ASTNode", ret: $[1] as ASTNode };
                 }
             }
         },//带返回值的返回语句
         {
             "statement:return ;": {
                 action: function ($, s): ASTNode {
-                    return { ret: "" };
+                    return { desc: "ASTNode", ret: "" };
                 }
             }
         },//不带返回值的语句
@@ -640,7 +640,7 @@ import { FunctionSingle } from "./lib.js"
                 action: function ($, s): ASTNode {
                     let condition = $[2] as ASTNode;
                     let stmt = $[4] as Block | ASTNode;
-                    return { ifStmt: { condition: condition, stmt: stmt } };
+                    return { desc: "ASTNode", ifStmt: { condition: condition, stmt: stmt } };
                 }
             }
         },//if语句
@@ -684,7 +684,7 @@ import { FunctionSingle } from "./lib.js"
                     let condition = $[2] as ASTNode;
                     let stmt1 = $[4] as Block | ASTNode;
                     let stmt2 = $[6] as Block | ASTNode;
-                    return { ifElseStmt: { condition: condition, stmt1: stmt1, stmt2: stmt2 } };
+                    return { desc: "ASTNode", ifElseStmt: { condition: condition, stmt1: stmt1, stmt2: stmt2 } };
                 }
             }
         },//if else语句
@@ -694,7 +694,7 @@ import { FunctionSingle } from "./lib.js"
                     let label_def = $[0] as string | undefined;
                     let stmt = $[2] as Block | ASTNode;
                     let condition = $[5] as ASTNode;
-                    return { do_while: { condition: condition, stmt: stmt, label: label_def } };
+                    return { desc: "ASTNode", do_while: { condition: condition, stmt: stmt, label: label_def } };
                 }
             }
         },//do-while语句，其实我是想删除while语句的，我觉得for_loop可以完全替代while,一句话,为了看起来没这么怪
@@ -704,7 +704,7 @@ import { FunctionSingle } from "./lib.js"
                     let label_def = $[0] as string | undefined;
                     let condition = $[3] as ASTNode;
                     let stmt = $[5] as Block | ASTNode;
-                    return { _while: { condition: condition, stmt: stmt, label: label_def } };
+                    return { desc: "ASTNode", _while: { condition: condition, stmt: stmt, label: label_def } };
                 }
             }
         },//while语句
@@ -716,7 +716,7 @@ import { FunctionSingle } from "./lib.js"
                     let condition = $[5] as ASTNode | undefined;
                     let step = $[7] as ASTNode | undefined;
                     let stmt = $[9] as Block | ASTNode;
-                    return { _for: { init: init, condition: condition, step: step, stmt: stmt, label: label_def } };
+                    return { desc: "ASTNode", _for: { init: init, condition: condition, step: step, stmt: stmt, label: label_def } };
                 }
             }
         },//for_loop
@@ -731,7 +731,7 @@ import { FunctionSingle } from "./lib.js"
             "statement:break label_use ;": {
                 action: function ($, s): ASTNode {
                     let label_use = $[1] as string | undefined;
-                    return { _break: { label: label_use == undefined ? "" : label_use } };
+                    return { desc: "ASTNode", _break: { label: label_use == undefined ? "" : label_use } };
                 }
             }
         },//break语句
@@ -739,7 +739,7 @@ import { FunctionSingle } from "./lib.js"
             "statement:continue label_use ;": {
                 action: function ($, s): ASTNode {
                     let label_use = $[1] as string | undefined;
-                    return { _continue: { label: label_use == undefined ? "" : label_use } };
+                    return { desc: "ASTNode", _continue: { label: label_use == undefined ? "" : label_use } };
                 }
             }
         },//continue语句
@@ -763,7 +763,7 @@ import { FunctionSingle } from "./lib.js"
                             matchList.push({ matchObj: switch_bodys[i].matchObj!, stmt: switch_bodys[i].stmt });
                         }
                     }
-                    return { _switch: { pattern: pattern, defalutStmt: defalutStmt, matchList: matchList } };
+                    return { desc: "ASTNode", _switch: { pattern: pattern, defalutStmt: defalutStmt, matchList: matchList } };
                 }
             }
         },//switch语句,因为switch在C/C++等语言中可以用跳转表处理,gcc在处理switch语句时,如果各个case的值连续,也会生成一个jum_table,这里我就稍微扩展一下switch的用法
@@ -787,7 +787,7 @@ import { FunctionSingle } from "./lib.js"
             "for_init:declare": {
                 action: function ($, s): ASTNode {
                     let declare: VariableDescriptor = $[0];
-                    return { def: declare };
+                    return { desc: "ASTNode", def: declare };
                 }
             }
         },//init可以是一个声明
@@ -872,7 +872,7 @@ import { FunctionSingle } from "./lib.js"
                 action: function ($, s): ASTNode {
                     let obj = $[0] as ASTNode;
                     let id = $[2] as string;
-                    return { accessField: { obj: obj, field: id } };
+                    return { desc: "ASTNode", accessField: { obj: obj, field: id } };
                 }
             }
         },//取成员
@@ -890,7 +890,7 @@ import { FunctionSingle } from "./lib.js"
         {
             "object:object  ( arguments )": {
                 action: function ($, s): ASTNode {
-                    return { call: { functionObj: $[0] as ASTNode, _arguments: $[2] as ASTNode[] } };
+                    return { desc: "ASTNode", call: { functionObj: $[0] as ASTNode, _arguments: $[2] as ASTNode[] } };
                 }
             }
         },//函数调用
@@ -900,7 +900,7 @@ import { FunctionSingle } from "./lib.js"
                     let obj = $[0] as ASTNode;
                     let templateSpecialization_list = $[2] as TypeUsed[];
                     let _arguments = $[5] as ASTNode[];
-                    return { call: { functionObj: obj, templateSpecialization_list: templateSpecialization_list, _arguments: _arguments } };
+                    return { desc: "ASTNode", call: { functionObj: obj, templateSpecialization_list: templateSpecialization_list, _arguments: _arguments } };
                 }
             }
         },//模板函数调用
@@ -914,84 +914,84 @@ import { FunctionSingle } from "./lib.js"
         {
             "object:object = object": {
                 action: function ($, s): ASTNode {
-                    return { "=": { leftChild: $[0] as ASTNode, rightChild: $[2] as ASTNode } };
+                    return { desc: "ASTNode", "=": { leftChild: $[0] as ASTNode, rightChild: $[2] as ASTNode } };
                 }
             }
         },
         {
             "object:object + object": {
                 action: function ($, s): ASTNode {
-                    return { "+": { leftChild: $[0] as ASTNode, rightChild: $[2] as ASTNode } };
+                    return { desc: "ASTNode", "+": { leftChild: $[0] as ASTNode, rightChild: $[2] as ASTNode } };
                 }
             }
         },
         {
             "object:object - object": {
                 action: function ($, s): ASTNode {
-                    return { "-": { leftChild: $[0] as ASTNode, rightChild: $[2] as ASTNode } };
+                    return { desc: "ASTNode", "-": { leftChild: $[0] as ASTNode, rightChild: $[2] as ASTNode } };
                 }
             }
         },
         {
             "object:object * object": {
                 action: function ($, s): ASTNode {
-                    return { "*": { leftChild: $[0] as ASTNode, rightChild: $[2] as ASTNode } };
+                    return { desc: "ASTNode", "*": { leftChild: $[0] as ASTNode, rightChild: $[2] as ASTNode } };
                 }
             }
         },
         {
             "object:object / object": {
                 action: function ($, s): ASTNode {
-                    return { "/": { leftChild: $[0] as ASTNode, rightChild: $[2] as ASTNode } };
+                    return { desc: "ASTNode", "/": { leftChild: $[0] as ASTNode, rightChild: $[2] as ASTNode } };
                 }
             }
         },
         {
             "object:object < object": {
                 action: function ($, s): ASTNode {
-                    return { "<": { leftChild: $[0] as ASTNode, rightChild: $[2] as ASTNode } };
+                    return { desc: "ASTNode", "<": { leftChild: $[0] as ASTNode, rightChild: $[2] as ASTNode } };
                 }
             }
         },
         {
             "object:object <= object": {
                 action: function ($, s): ASTNode {
-                    return { "<=": { leftChild: $[0] as ASTNode, rightChild: $[2] as ASTNode } };
+                    return { desc: "ASTNode", "<=": { leftChild: $[0] as ASTNode, rightChild: $[2] as ASTNode } };
                 }
             }
         },
         {
             "object:object > object": {
                 action: function ($, s): ASTNode {
-                    return { ">": { leftChild: $[0] as ASTNode, rightChild: $[2] as ASTNode } };
+                    return { desc: "ASTNode", ">": { leftChild: $[0] as ASTNode, rightChild: $[2] as ASTNode } };
                 }
             }
         },
         {
             "object:object >= object": {
                 action: function ($, s): ASTNode {
-                    return { ">=": { leftChild: $[0] as ASTNode, rightChild: $[2] as ASTNode } };
+                    return { desc: "ASTNode", ">=": { leftChild: $[0] as ASTNode, rightChild: $[2] as ASTNode } };
                 }
             }
         },
         {
             "object:object == object": {
                 action: function ($, s): ASTNode {
-                    return { "==": { leftChild: $[0] as ASTNode, rightChild: $[2] as ASTNode } };
+                    return { desc: "ASTNode", "==": { leftChild: $[0] as ASTNode, rightChild: $[2] as ASTNode } };
                 }
             }
         },
         {
             "object:object || object": {
                 action: function ($, s): ASTNode {
-                    return { "||": { leftChild: $[0] as ASTNode, rightChild: $[2] as ASTNode } };
+                    return { desc: "ASTNode", "||": { leftChild: $[0] as ASTNode, rightChild: $[2] as ASTNode } };
                 }
             }
         },
         {
             "object:object && object": {
                 action: function ($, s): ASTNode {
-                    return { "&&": { leftChild: $[0] as ASTNode, rightChild: $[2] as ASTNode } };
+                    return { desc: "ASTNode", "&&": { leftChild: $[0] as ASTNode, rightChild: $[2] as ASTNode } };
                 }
             }
         },
@@ -1008,7 +1008,7 @@ import { FunctionSingle } from "./lib.js"
         {
             "object:object instanceof type": {
                 action: function ($, s): ASTNode {
-                    return { _instanceof: { obj: $[0] as ASTNode, type: $[2] as TypeUsed } };
+                    return { desc: "ASTNode", _instanceof: { obj: $[0] as ASTNode, type: $[2] as TypeUsed } };
                 }
             }
         },
@@ -1017,21 +1017,21 @@ import { FunctionSingle } from "./lib.js"
         {
             "object:! object": {
                 action: function ($, s): ASTNode {
-                    return { not: { child: $[1] as ASTNode } };
+                    return { desc: "ASTNode", not: { child: $[1] as ASTNode } };
                 }
             }
         },//单目运算符-非
         {
             "object:object ++": {
                 action: function ($, s): ASTNode {
-                    return { increase: { child: $[0] as ASTNode } };
+                    return { desc: "ASTNode", increase: { child: $[0] as ASTNode } };
                 }
             }
         },//单目运算符++
         {
             "object:object --": {
                 action: function ($, s): ASTNode {
-                    return { decrease: { child: $[0] as ASTNode } };
+                    return { desc: "ASTNode", decrease: { child: $[0] as ASTNode } };
                 }
             }
         },//单目运算符--
@@ -1039,7 +1039,7 @@ import { FunctionSingle } from "./lib.js"
         {
             "object:object [ object ]": {
                 action: function ($, s): ASTNode {
-                    return { indexOP: { obj: $[0] as ASTNode, index: $[2] as ASTNode } };
+                    return { desc: "ASTNode", indexOP: { obj: $[0] as ASTNode, index: $[2] as ASTNode } };
                 }
             }
         },//[]运算符
@@ -1060,35 +1060,35 @@ import { FunctionSingle } from "./lib.js"
             "object:object ? object : object": {
                 priority: "?",
                 action: function ($, s): ASTNode {
-                    return { ternary: { condition: $[0] as ASTNode, obj1: $[2] as ASTNode, obj2: $[4] as ASTNode } };
+                    return { desc: "ASTNode", ternary: { condition: $[0] as ASTNode, obj1: $[2] as ASTNode, obj2: $[4] as ASTNode } };
                 }
             }
         },//三目运算
         {
             "object:id": {
                 action: function ($, s): ASTNode {
-                    return { load: $[0] as string };
+                    return { desc: "ASTNode", load: $[0] as string };
                 }
             }
         },//id是一个对象
         {
             "object:immediate_val": {
                 action: function ($, s): ASTNode {
-                    return { immediate: { primiviteValue: $[0] } };
+                    return { desc: "ASTNode", immediate: { primiviteValue: $[0] } };
                 }
             }
         },//立即数是一个object
         {
             "object:super": {
                 action: function ($, s): ASTNode {
-                    return { _super: "" };
+                    return { desc: "ASTNode", _super: "" };
                 }
             }
         },//super是一个对象
         {
             "object:this": {
                 action: function ($, s): ASTNode {
-                    return { _this: "" };
+                    return { desc: "ASTNode", _this: "" };
                 }
             }
         },//this是一个object
@@ -1099,14 +1099,14 @@ import { FunctionSingle } from "./lib.js"
                     for (let t of template_definition) {
                         userTypeDictionary.delete(t);
                     }
-                    return { immediate: { functionValue: { _arguments: $[2] as VariableDescriptor, body: $[6] as Block, templates: $[0] as string[] } } };
+                    return { desc: "ASTNode", immediate: { functionValue: { _arguments: $[2] as VariableDescriptor, body: $[6] as Block, templates: $[0] as string[] } } };
                 }
             }
         },//模板lambda
         {
             "object:( parameter_declare ) => { statements }": {
                 action: function ($, s): ASTNode {
-                    return { immediate: { functionValue: { _arguments: $[1] as VariableDescriptor, body: $[5] as Block } } };
+                    return { desc: "ASTNode", immediate: { functionValue: { _arguments: $[1] as VariableDescriptor, body: $[5] as Block } } };
                 }
             }
         },//lambda
@@ -1128,14 +1128,14 @@ import { FunctionSingle } from "./lib.js"
             "object:( type ) object": {
                 priority: "cast_priority",
                 action: function ($, s): ASTNode {
-                    return { cast: { obj: $[3] as ASTNode, type: $[1] as TypeUsed } };
+                    return { desc: "ASTNode", cast: { obj: $[3] as ASTNode, type: $[1] as TypeUsed } };
                 }
             }
         },//强制转型
         {
             "object:new type  ( arguments )": {
                 action: function ($, s): ASTNode {
-                    return { _new: { type: $[1] as TypeUsed, _arguments: $[3] as ASTNode[] } };
+                    return { desc: "ASTNode", _new: { type: $[1] as TypeUsed, _arguments: $[3] as ASTNode[] } };
                 }
             }
         },//创建对象
@@ -1151,7 +1151,7 @@ import { FunctionSingle } from "./lib.js"
             "object:new type array_init_list": {
                 action: function ($, s): ASTNode {
                     let init_list = $[2] as { initList: ASTNode[], placeholder: number };
-                    return { _newArray: { type: $[1] as TypeUsed, initList: init_list.initList, placeholder: init_list.placeholder } };
+                    return { desc: "ASTNode", _newArray: { type: $[1] as TypeUsed, initList: init_list.initList, placeholder: init_list.placeholder } };
                 }
             }
         },//创建数组

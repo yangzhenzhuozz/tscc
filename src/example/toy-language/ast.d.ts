@@ -54,7 +54,11 @@ interface FunctionType {
     templates?: string[];//模板列表
     _construct_for_type?: string;//是某个类型的构造函数
 }
-type Block = Array<(ASTNode | Block)>;
+type NodeDesc = "ASTNode" | "Block";
+type Block = {
+    desc: NodeDesc;
+    body: Array<(ASTNode | Block)>;
+};
 interface Program {
     definedType: {//已经定义了的类型
         [key: string]: TypeDef
@@ -63,14 +67,16 @@ interface Program {
 }
 //一条语句就是一个Noe
 interface ASTNode {
-    isLoaction?:boolean;//是否为可修改节点
+    desc: 'ASTNode';
+    type?: TypeUsed,//节点的运算结果类型
+    loadArgument?: number,//读取参数
+    def?: VariableDescriptor;
     accessField?: { obj: ASTNode, field: string };
     call?: { functionObj: ASTNode, _arguments: ASTNode[], templateSpecialization_list?: TypeUsed[] };
-    def?: VariableDescriptor;
-    load?: string;
+    load?: string;//读取某个变量
     _super?: "";
     _this?: "";
-    immediate?: { functionValue?: FunctionType; primiviteValue?: | string | number; };//immediate只可以是数字、字符串、函数,对应了 1、"string"、()=>{console.log("aaa")}这几种情况
+    immediate?: { functionValue?: FunctionType; primiviteValue?: string | number; };//immediate只可以是数字、字符串、函数,对应了 1、"string"、()=>{console.log("aaa")}这几种情况
     trycatch?: { tryBlock: Block, catchVariable: string, catchType: TypeUsed, catchBlock: Block };
     throwStmt?: ASTNode;
     ret?: ASTNode | "";
@@ -90,7 +96,7 @@ interface ASTNode {
     cast?: { obj: ASTNode, type: TypeUsed };
     _new?: { type: TypeUsed, _arguments: ASTNode[] };
     _newArray?: { type: TypeUsed, initList: ASTNode[], placeholder: number };
-    "="?: { rightChild: ASTNode; leftChild: ASTNode; };
+    "="?: { rightChild: ASTNode; leftChild: ASTNode; };//赋值操作的左节点必须是load节点或者accessField节点
     "+"?: { rightChild: ASTNode; leftChild: ASTNode; };
     "-"?: { rightChild: ASTNode; leftChild: ASTNode; };
     "*"?: { rightChild: ASTNode; leftChild: ASTNode; };

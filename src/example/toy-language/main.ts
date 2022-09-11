@@ -6,7 +6,7 @@ import { userTypeDictionary } from './lexrule.js';
 userTypeDictionary.add('int');//注册系统类型
 userTypeDictionary.add('double');
 userTypeDictionary.add('void');
-let source = fs.readFileSync("./src/example/toy-language/test_1.ty", 'utf-8').toString();
+let source = fs.readFileSync("./src/example/toy-language/test_2.ty", 'utf-8').toString();
 lexer.setSource(source);
 try {
     lexer.compile();

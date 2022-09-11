@@ -1,12 +1,24 @@
 class MyClass{
+    var c:int;
+    function a(){
+
+    };
     var f1=(a:int)=>{
         var b:int=0;
         function f2(){
             a+b+c;
+            {
+                a+b;
+                a+b;
+                a+b;
+                a+b;
+            }
         };
         var f3=(a:int)=>{
             a+b+c;
         };
     };
-    var c:int;
 }
+function f5<T>(){
+
+};
