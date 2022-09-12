@@ -27,12 +27,12 @@ function nodeRecursion(scope: Scope, node: ASTNode): TypeUsed {
             if (initType != undefined) {
                 typeCheck(initType!, scope.property[name].type!);
             }
-            if (node['def'][name].type!.FunctionType != undefined) {
+            if (node['def'][name].type!.FunctionType?.body != undefined) {
                 /**
-                 * 对于下面两种代码，生成的AST是一样的
+                 * 下面两种代码
                  * function f1():int{};
                  * var f1:()=>int;
-                 * 都会生成一个block为空数组的def节点
+                 * 都会生成一个def节点,一个有body，一个没有(函数声明没有，函数定义有)
                  * 所以遇到这种情况，通通扫描一次，在functionScan中，如果function.body.body.length==0,则直接放弃扫描
                 */
                 functionScan(scope, node['def'][name].type!.FunctionType!);//如果是定义了函数，则扫描一下
@@ -217,7 +217,7 @@ function BlockScan(scope: BlockScope, block: Block) {
     }
 }
 function functionScan(scope: Scope, fun: FunctionType): TypeUsed {
-    if (fun.body.body.length == 0) {//函数里面没有任何语句，放弃扫描
+    if (fun.body!.body.length == 0) {//函数里面没有任何语句，放弃扫描
         console.error('后面需要补充返回值类型');
         return {};
     }
@@ -225,11 +225,11 @@ function functionScan(scope: Scope, fun: FunctionType): TypeUsed {
     for (let argumentName in fun._arguments) {
         let defNode: ASTNode = { desc: 'ASTNode', def: {} };
         defNode.def![argumentName] = { variable: 'var', initAST: { desc: 'ASTNode', loadArgument: argIndex } };
-        fun.body.body.unshift(defNode);//插入args的def指令
+        fun.body!.body.unshift(defNode);//插入args的def指令
         argIndex++;
     }
-    let blockScope = new BlockScope({}, scope, true, fun.body);
-    BlockScan(blockScope, fun.body);
+    let blockScope = new BlockScope({}, scope, true, fun.body!);
+    BlockScan(blockScope, fun.body!);
     if (blockScope.hasCapture) {
         throw `unimplemented`;//闭包处理还未完成
     }

@@ -50,7 +50,7 @@ interface ArrayType {
 }
 interface FunctionType {
     _arguments: VariableDescriptor;
-    body: Block;//函数体
+    body?: Block;//函数体,根据有无body判断是函数类型声明还是定义
     retType?: TypeUsed;//返回类型，可选，如果为undefined则需要进行类型推导
     templates?: string[];//模板列表
     _construct_for_type?: string;//是某个类型的构造函数

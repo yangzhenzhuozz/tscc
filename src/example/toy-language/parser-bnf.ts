@@ -342,7 +342,7 @@ import { FunctionSingle } from "./lib.js"
                     }
                     let parameter_declare = $[2] as VariableDescriptor;
                     let ret_type = $[5] as TypeUsed;
-                    return { FunctionType: { templates: template_definition, _arguments: parameter_declare, body: { desc: 'Block', body: [] }, retType: ret_type } };
+                    return { FunctionType: { templates: template_definition, _arguments: parameter_declare, retType: ret_type } };
                 }
             }
         },//泛型函数类型
@@ -352,7 +352,7 @@ import { FunctionSingle } from "./lib.js"
                 action: function ($, s): TypeUsed {
                     let parameter_declare = $[1] as VariableDescriptor;
                     let ret_type = $[4] as TypeUsed;
-                    return { FunctionType: { _arguments: parameter_declare, body: { desc: 'Block', body: [] }, retType: ret_type } };
+                    return { FunctionType: { _arguments: parameter_declare, retType: ret_type } };
                 }
             }
         },//函数类型
