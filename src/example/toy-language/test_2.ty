@@ -1,12 +1,9 @@
 class MyClass{
-    var a:MyClass;
-    var b=a.b;
-}
-class A{
-    var v1:B;
-    var v2=v1.v2;
-}
-class B{
-    var v1:A;
-    var v2=v1.v2;
+    var f1:()=>int;
+    function f2():int{
+        var a:int;
+        function f():int{
+            a;
+        };
+    };
 }

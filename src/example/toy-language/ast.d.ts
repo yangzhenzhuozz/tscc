@@ -39,6 +39,7 @@ interface TypeUsed {
     SimpleType?: SimpleType;
     FunctionType?: FunctionType;
     ArrayType?: ArrayType;
+    ProgramType?:"";//整个program对象
 }
 interface SimpleType {
     name: string;//使用的类型
@@ -75,7 +76,8 @@ interface ASTNode {
     call?: { functionObj: ASTNode, _arguments: ASTNode[], templateSpecialization_list?: TypeUsed[] };
     load?: string;//读取某个变量
     _super?: "";
-    _this?: "";
+    _this?: string;
+    _program?: "";//访问program对象
     immediate?: { functionValue?: FunctionType; primiviteValue?: string | number; };//immediate只可以是数字、字符串、函数,对应了 1、"string"、()=>{console.log("aaa")}这几种情况
     trycatch?: { tryBlock: Block, catchVariable: string, catchType: TypeUsed, catchBlock: Block };
     throwStmt?: ASTNode;
