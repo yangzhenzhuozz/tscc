@@ -2,11 +2,11 @@ import fs from "fs";
 import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
 import { userTypeDictionary } from './lexrule.js';
-import { FunctionSingle } from "./lib.js"
+import { FunctionSingle, FunctionSingleWithoutRetType } from "./lib.js"
 let grammar: Grammar = {
     userCode: `
 import { userTypeDictionary } from './lexrule.js';
-import { FunctionSingle } from "./lib.js"
+import { FunctionSingle, FunctionSingleWithoutRetType } from "./lib.js"
     `,
     tokens: ['var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'throw', 'super', 'basic_type', 'instanceof'],
     association: [
@@ -184,7 +184,7 @@ import { FunctionSingle } from "./lib.js"
                     let modifier = $[0] as 'valuetype' | 'sealed' | undefined;
                     let extends_declare = $[4] as TypeUsed | undefined;
                     let class_units = $[6] as {
-                        operatorOverload: { [key: string]: FunctionType },
+                        operatorOverload: { [key in opType]: { [key: string]: FunctionType } },
                         property: VariableDescriptor,
                         _constructor: { [key: string]: FunctionType };
                     };
@@ -426,8 +426,8 @@ import { FunctionSingle } from "./lib.js"
         },//parameter_list可以是一个parameter_list接上 , id : type
         {
             "class_units:class_units class_unit": {
-                action: function ($, s): { operatorOverload: { [key: string]: FunctionType }, property: VariableDescriptor, _constructor: { [key: string]: FunctionType } } {
-                    let class_units = $[0] as { operatorOverload: { [key: string]: FunctionType }, property: VariableDescriptor, _constructor: { [key: string]: FunctionType } };
+                action: function ($, s): { operatorOverload: { [key: string]: { [key: string]: FunctionType } }, property: VariableDescriptor, _constructor: { [key: string]: FunctionType } } {
+                    let class_units = $[0] as { operatorOverload: { [key: string]: { [key: string]: FunctionType } }, property: VariableDescriptor, _constructor: { [key: string]: FunctionType } };
                     let class_unit = $[1] as { [key: string]: FunctionType } | VariableDescriptor | [{ [key: string]: FunctionType }];//{ [key: string]: FunctionType }是为了表示一个操作符重载
                     if (Array.isArray(class_unit)) {//是_constructor
                         let single = Object.keys(class_unit[0])[0];
@@ -437,11 +437,15 @@ import { FunctionSingle } from "./lib.js"
                         class_units._constructor[single] = class_unit[0][single];
                     } else {
                         for (let k in class_unit) {
-                            if (class_unit[k].hasOwnProperty("argument")) {//是操作符重载,VariableDescriptor没有argument属性
-                                if (class_units.operatorOverload[k] != undefined) {
-                                    throw new Error(`重复定义重载操作符${k}`);
+                            if (class_unit[k].hasOwnProperty("_arguments")) {//是操作符重载,VariableDescriptor没有argument属性,k一定是'='|'+'|'-'|'*'|'/'|'<'|'<='|'>'|'>='|'=='|'||'|'&&'中的一个
+                                let single = FunctionSingleWithoutRetType((class_unit as { [key: string]: FunctionType })[k]);
+                                if (class_units.operatorOverload[k] == undefined) {
+                                    class_units.operatorOverload[k] = {};
+                                }
+                                if (class_units.operatorOverload[k][single] != undefined) {
+                                    throw new Error(`重载操作符${k}->${single}重复定义`);
                                 } else {
-                                    class_units.operatorOverload[k] = (class_unit as { [key: string]: FunctionType })[k];
+                                    class_units.operatorOverload[k][single] = (class_unit as { [key: string]: FunctionType })[k];
                                 }
                             } else {//是普通成员
                                 if (class_units.property[k] == undefined) {//之前没有定义过这个成员
@@ -556,19 +560,17 @@ import { FunctionSingle } from "./lib.js"
         },//构造函数
         { "class_unit:default ( )  { statements }": {} },//default函数,用于初始化值类型
         {
-            "operator_overload:operator + ( id : type ) : type { statements }": {
+            "operator_overload:operator = ( id : type ) : type { statements } ;": {
                 action: function ($, s): { [key: string]: FunctionType } {
                     let id = $[3] as string;
                     let parameterType = $[5] as TypeUsed;
                     let statements = $[10] as Block;
                     let retType = $[8] as TypeUsed;
-                    let argument: VariableDescriptor = JSON.parse("{}");//为了生成的解析器不报红
-                    argument[id] = {
-                        variable: 'var',
-                        type: parameterType
-                    };
+                    let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
+                    argument[id] = { variable: 'var', type: parameterType };
                     return {
-                        "+": {
+                        "=":
+                        {
                             _arguments: argument,
                             body: statements,
                             retType: retType
@@ -576,7 +578,227 @@ import { FunctionSingle } from "./lib.js"
                     };
                 }
             }
-        },//运算符重载,运算符重载实在是懒得做泛型了,以后要是有需求再讲,比起C#和java的残废泛型，已经很好了
+        },
+        {
+            "operator_overload:operator + ( id : type ) : type { statements } ;": {
+                action: function ($, s): { [key: string]: FunctionType } {
+                    let id = $[3] as string;
+                    let parameterType = $[5] as TypeUsed;
+                    let statements = $[10] as Block;
+                    let retType = $[8] as TypeUsed;
+                    let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
+                    argument[id] = { variable: 'var', type: parameterType };
+                    return {
+                        "+":
+                        {
+                            _arguments: argument,
+                            body: statements,
+                            retType: retType
+                        }
+                    };
+                }
+            }
+        },
+        {
+            "operator_overload:operator - ( id : type ) : type { statements } ;": {
+                action: function ($, s): { [key: string]: FunctionType } {
+                    let id = $[3] as string;
+                    let parameterType = $[5] as TypeUsed;
+                    let statements = $[10] as Block;
+                    let retType = $[8] as TypeUsed;
+                    let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
+                    argument[id] = { variable: 'var', type: parameterType };
+                    return {
+                        "-":
+                        {
+                            _arguments: argument,
+                            body: statements,
+                            retType: retType
+                        }
+                    };
+                }
+            }
+        },
+        {
+            "operator_overload:operator * ( id : type ) : type { statements } ;": {
+                action: function ($, s): { [key: string]: FunctionType } {
+                    let id = $[3] as string;
+                    let parameterType = $[5] as TypeUsed;
+                    let statements = $[10] as Block;
+                    let retType = $[8] as TypeUsed;
+                    let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
+                    argument[id] = { variable: 'var', type: parameterType };
+                    return {
+                        "*":
+                        {
+                            _arguments: argument,
+                            body: statements,
+                            retType: retType
+                        }
+                    };
+                }
+            }
+        },
+        {
+            "operator_overload:operator / ( id : type ) : type { statements } ;": {
+                action: function ($, s): { [key: string]: FunctionType } {
+                    let id = $[3] as string;
+                    let parameterType = $[5] as TypeUsed;
+                    let statements = $[10] as Block;
+                    let retType = $[8] as TypeUsed;
+                    let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
+                    argument[id] = { variable: 'var', type: parameterType };
+                    return {
+                        "/":
+                        {
+                            _arguments: argument,
+                            body: statements,
+                            retType: retType
+                        }
+                    };
+                }
+            }
+        },
+        {
+            "operator_overload:operator < ( id : type ) : type { statements } ;": {
+                action: function ($, s): { [key: string]: FunctionType } {
+                    let id = $[3] as string;
+                    let parameterType = $[5] as TypeUsed;
+                    let statements = $[10] as Block;
+                    let retType = $[8] as TypeUsed;
+                    let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
+                    argument[id] = { variable: 'var', type: parameterType };
+                    return {
+                        "<":
+                        {
+                            _arguments: argument,
+                            body: statements,
+                            retType: retType
+                        }
+                    };
+                }
+            }
+        },
+        {
+            "operator_overload:operator <= ( id : type ) : type { statements } ;": {
+                action: function ($, s): { [key: string]: FunctionType } {
+                    let id = $[3] as string;
+                    let parameterType = $[5] as TypeUsed;
+                    let statements = $[10] as Block;
+                    let retType = $[8] as TypeUsed;
+                    let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
+                    argument[id] = { variable: 'var', type: parameterType };
+                    return {
+                        "<=":
+                        {
+                            _arguments: argument,
+                            body: statements,
+                            retType: retType
+                        }
+                    };
+                }
+            }
+        },
+        {
+            "operator_overload:operator > ( id : type ) : type { statements } ;": {
+                action: function ($, s): { [key: string]: FunctionType } {
+                    let id = $[3] as string;
+                    let parameterType = $[5] as TypeUsed;
+                    let statements = $[10] as Block;
+                    let retType = $[8] as TypeUsed;
+                    let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
+                    argument[id] = { variable: 'var', type: parameterType };
+                    return {
+                        ">":
+                        {
+                            _arguments: argument,
+                            body: statements,
+                            retType: retType
+                        }
+                    };
+                }
+            }
+        },
+        {
+            "operator_overload:operator >= ( id : type ) : type { statements } ;": {
+                action: function ($, s): { [key: string]: FunctionType } {
+                    let id = $[3] as string;
+                    let parameterType = $[5] as TypeUsed;
+                    let statements = $[10] as Block;
+                    let retType = $[8] as TypeUsed;
+                    let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
+                    argument[id] = { variable: 'var', type: parameterType };
+                    return {
+                        ">=":
+                        {
+                            _arguments: argument,
+                            body: statements,
+                            retType: retType
+                        }
+                    };
+                }
+            }
+        },
+        {
+            "operator_overload:operator == ( id : type ) : type { statements } ;": {
+                action: function ($, s): { [key: string]: FunctionType } {
+                    let id = $[3] as string;
+                    let parameterType = $[5] as TypeUsed;
+                    let statements = $[10] as Block;
+                    let retType = $[8] as TypeUsed;
+                    let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
+                    argument[id] = { variable: 'var', type: parameterType };
+                    return {
+                        "==":
+                        {
+                            _arguments: argument,
+                            body: statements,
+                            retType: retType
+                        }
+                    };
+                }
+            }
+        },
+        {
+            "operator_overload:operator || ( id : type ) : type { statements } ;": {
+                action: function ($, s): { [key: string]: FunctionType } {
+                    let id = $[3] as string;
+                    let parameterType = $[5] as TypeUsed;
+                    let statements = $[10] as Block;
+                    let retType = $[8] as TypeUsed;
+                    let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
+                    argument[id] = { variable: 'var', type: parameterType };
+                    return {
+                        "||":
+                        {
+                            _arguments: argument,
+                            body: statements,
+                            retType: retType
+                        }
+                    };
+                }
+            }
+        },
+        {
+            "operator_overload:operator && ( id : type ) : type { statements } ;": {
+                action: function ($, s): { [key: string]: FunctionType } {
+                    let id = $[3] as string;
+                    let parameterType = $[5] as TypeUsed;
+                    let statements = $[10] as Block;
+                    let retType = $[8] as TypeUsed;
+                    let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
+                    argument[id] = { variable: 'var', type: parameterType };
+                    return {
+                        "&&":
+                        {
+                            _arguments: argument,
+                            body: statements,
+                            retType: retType
+                        }
+                    };
+                }
+            }
+        },
         {
             "statements:statements statement": {
                 action: function ($, s): Block {

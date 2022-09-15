@@ -2,7 +2,7 @@ import fs from "fs";
 import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
 let grammar: Grammar = {
-    tokens: ['var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'throw', 'super', 'basic_type','instanceof'],
+    tokens: ['var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'throw', 'super', 'basic_type', 'instanceof'],
     association: [
         { 'right': ['='] },
         { 'right': ['?'] },
@@ -99,7 +99,18 @@ let grammar: Grammar = {
         { "class_unit:set id ( id : type ) { statements }": {} },//set
         { "class_unit:basic_type ( parameter_declare )  { statements }": {} },//构造函数
         { "class_unit:default ( )  { statements }": {} },//default函数,用于初始化值类型
-        { "operator_overload:operator + ( id : type ) : type { statements }": {} },//运算符重载,运算符重载实在是懒得做泛型了,以后要是有需求再讲,比起C#和java的残废泛型，已经很好了
+        { "operator_overload:operator = ( id : type ) : type { statements } ;": {} },//运算符重载,运算符重载实在是懒得做泛型了,以后要是有需求再讲,比起C#和java的残废泛型，已经很好了
+        { "operator_overload:operator + ( id : type ) : type { statements } ;": {} },
+        { "operator_overload:operator - ( id : type ) : type { statements } ;": {} },
+        { "operator_overload:operator * ( id : type ) : type { statements } ;": {} },
+        { "operator_overload:operator / ( id : type ) : type { statements } ;": {} },
+        { "operator_overload:operator < ( id : type ) : type { statements } ;": {} },
+        { "operator_overload:operator <= ( id : type ) : type { statements } ;": {} },
+        { "operator_overload:operator > ( id : type ) : type { statements } ;": {} },
+        { "operator_overload:operator >= ( id : type ) : type { statements } ;": {} },
+        { "operator_overload:operator == ( id : type ) : type { statements } ;": {} },
+        { "operator_overload:operator || ( id : type ) : type { statements } ;": {} },
+        { "operator_overload:operator && ( id : type ) : type { statements } ;": {} },
         { "statements:statements statement": {} },//statements可以由多个statement组成
         { "statements:": {} },//statements可以为空
         { "statement:declare ;": {} },//statement可以是一条声明语句

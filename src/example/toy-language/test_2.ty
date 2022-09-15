@@ -1,8 +1,9 @@
-class MyClass{
-    var f3:()=>int;
-    function f():int{
-            function f2():int{
-                f2;
-            };
+class int{
+    operator + ( a:int ):int { return a; };
+    operator + ( b:double ):int { return a; };
+    function f(){
+        var a:int;
+        var b:int;
+        a=b;
     };
 }

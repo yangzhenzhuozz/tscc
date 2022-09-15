@@ -13,13 +13,15 @@ Reflect.ownKeys({
 })
 // ['4', '18', 'star', 'kirby', Symbol(07akioni)]
 */
-//定义的类型
-interface TypeDef {
+type opType='='|'+'|'-'|'*'|'/'|'<'|'<='|'>'|'>='|'=='|'||'|'&&';
+interface TypeDef {//定义的类型
     modifier?: 'valuetype' | 'sealed';
     templates?: string[];//模板列表
     extends?: TypeUsed;//基类
     operatorOverload: {//重载列表
-        [key: string]: FunctionType//key为操作符
+        [key in opType]: {//key为操作符
+            [key: string]: FunctionType//key为函数签名(不包含返回值的签名)
+        }
     };
     property: VariableDescriptor;//属性列表
     _constructor: { [key: string]: FunctionType };//key为函数签名
@@ -39,7 +41,7 @@ interface TypeUsed {
     SimpleType?: SimpleType;
     FunctionType?: FunctionType;
     ArrayType?: ArrayType;
-    ProgramType?:"";//整个program对象
+    ProgramType?: "";//整个program对象
 }
 interface SimpleType {
     name: string;//使用的类型
