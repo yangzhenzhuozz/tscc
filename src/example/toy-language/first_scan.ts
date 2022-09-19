@@ -36,7 +36,7 @@ function nodeRecursion(scope: Scope, node: ASTNode): { type: TypeUsed, hasRet: b
                  * function f1():int{};
                  * var f1:()=>int;
                  * 都会生成一个def节点,一个有body，一个没有(函数声明没有，函数定义有)
-                 * 所以遇到这种情况，通通扫描一次，在functionScan中，如果function.body.body.length==0,则直接放弃扫描
+                 * 所以遇到这种情况，通通扫描一次，在functionScan中，如果function.body==undefined,则直接放弃扫描
                 */
                 functionScan(scope, node['def'][name].type!.FunctionType!);//如果是定义了函数，则扫描一下
             }
@@ -254,7 +254,7 @@ function BlockScan(scope: BlockScope, block: Block): boolean {
     return ret;
 }
 function functionScan(scope: Scope, fun: FunctionType): TypeUsed {
-    if (fun.body!.body.length == 0) {//函数里面没有任何语句，放弃扫描
+    if (fun.body!.body==undefined) {//函数里面没有任何语句，放弃扫描
         console.error('后面需要补充返回值类型');
         return {};
     }

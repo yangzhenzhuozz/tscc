@@ -1,5 +1,5 @@
 class int{
     function f(){
-        f();
+        function f(){};
     };
 }
