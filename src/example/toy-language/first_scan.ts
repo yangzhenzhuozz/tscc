@@ -3,7 +3,7 @@ import { TypeUsedSingle } from './lib.js';
 import { Scope, BlockScope, ClassScope, ProgramScope } from './scope.js';
 let program: Program;
 let programScope: ProgramScope;
-function OperatorChech(a: TypeUsed, b: TypeUsed, op: opType): TypeUsed {
+function OperatorCheck(leftType: TypeUsed, rightType: TypeUsed, op: opType): TypeUsed {
     throw `unimplemented`
 }
 /**
@@ -87,14 +87,29 @@ function nodeRecursion(scope: Scope, node: ASTNode): { type: TypeUsed, hasRet: b
         }
     }
     else if (node["call"] != undefined) {
-        let type = nodeRecursion(scope, node["call"].functionObj).type;
-        for (let argNode of node["call"]._arguments) {
-            nodeRecursion(scope, argNode);
+        let funType = nodeRecursion(scope, node["call"].functionObj).type.FunctionType!;//FunctionType不可能为undefined
+        if (funType.retType == undefined) {
+            if ((funType as any).flag) {
+                return { type: {}, hasRet: false };//返回一个空值
+            }
+            (funType as any).flag = true;//标记
+            functionScan(scope, funType);
+            delete (funType as any).flag;//删除标记
         }
-        if (!type.FunctionType) {
+        if (funType == undefined) {
             throw `必须调用一个函数`;
         }
-        return { type: type, hasRet: false };
+        let keyOfDeclare = Object.keys(funType._arguments);
+        if (keyOfDeclare.length != node["call"]._arguments.length) {
+            throw `函数需要${keyOfDeclare.length}个参数，实际传递了${node["call"]._arguments.length}个参数`;
+        } else {
+            for (let i = 0; node["call"]._arguments.length; i++) {
+                let argNode = node["call"]._arguments[i];
+                let arg_type = nodeRecursion(scope, argNode).type;
+                typeCheck(arg_type, funType._arguments);//参数类型检查
+            }
+        }
+        return { type: funType.retType!, hasRet: false };
     }
     else if (node["accessField"] != undefined) {
         let accessedType = nodeRecursion(scope, node["accessField"].obj).type;
@@ -166,7 +181,7 @@ function nodeRecursion(scope: Scope, node: ASTNode): { type: TypeUsed, hasRet: b
     else if (node["="] != undefined) {
         let leftType = nodeRecursion(scope, node['='].leftChild).type;
         let rightType = nodeRecursion(scope, node['='].rightChild).type;
-        let retType = OperatorChech(leftType, rightType, '=');
+        let retType = OperatorCheck(leftType, rightType, '=');
         return { type: retType, hasRet: false };
     }
     else if (node["+"] != undefined) { }
@@ -257,7 +272,7 @@ function functionScan(scope: Scope, fun: FunctionType): TypeUsed {
     }
     //为这个Scope的所有prop插入load_stack指令
     // throw 'unimplemented'
-    console.error('后面需要补充返回值类型');
+    console.error('需要补充返回值类型');
     return {};
 }
 function ClassScan(scope: ClassScope, type: TypeDef) {

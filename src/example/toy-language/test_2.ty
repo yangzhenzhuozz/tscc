@@ -1,9 +1,5 @@
 class int{
-    operator + ( a:int ):int { return a; };
-    operator + ( b:double ):int { return a; };
     function f(){
-        var a:int;
-        var b:int;
-        a=b;
+        f();
     };
 }
