@@ -71,17 +71,18 @@ interface Program {
 //一条语句就是一个Noe
 interface ASTNode {
     desc: 'ASTNode';
+    loadException?:'';//读取异常
     type?: TypeUsed,//节点的运算结果类型
     loadArgument?: number,//读取参数
     def?: VariableDescriptor;
-    accessField?: { obj: ASTNode, field: string };
+    accessField?: { obj: ASTNode, field: string ,isProperty:boolean,get_flag?:boolean,set_flag?:boolean};
     call?: { functionObj: ASTNode, _arguments: ASTNode[], templateSpecialization_list?: TypeUsed[] };
     load?: string;//读取某个变量
     _super?: "";
     _this?: string;
     _program?: "";//访问program对象
     immediate?: { functionValue?: FunctionType; primiviteValue?: string | number; };//immediate只可以是数字、字符串、函数,对应了 1、"string"、()=>{console.log("aaa")}这几种情况
-    trycatch?: { tryBlock: Block, catchVariable: string, catchType: TypeUsed, catchBlock: Block };
+    trycatch?: { tryBlock: Block, catch_list:{catchVariable: string, catchType: TypeUsed, catchBlock: Block}[] };
     throwStmt?: ASTNode;
     ret?: ASTNode | "";
     ifStmt?: { condition: ASTNode, stmt: ASTNode | Block };

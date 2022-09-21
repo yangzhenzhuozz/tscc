@@ -825,16 +825,36 @@ import { FunctionSingle, FunctionSingleWithoutRetType } from "./lib.js"
             }
         },//statement可以是一条声明语句
         {
-            "statement:try { statements } catch ( id : type ) { statements }": {
+            "statement:try { statements } catch_list": {
                 action: function ($, s): ASTNode {
                     let tryBlock = $[2] as Block;
-                    let catchVariable = $[6] as string;
-                    let catchType = $[8] as TypeUsed;
-                    let catchBlock = $[11] as Block;
-                    return { desc: "ASTNode", trycatch: { tryBlock: tryBlock, catchVariable: catchVariable, catchType: catchType, catchBlock: catchBlock } };
+                    let catch_list = $[4] as { catchVariable: string, catchType: TypeUsed, catchBlock: Block }[];
+                    return { desc: "ASTNode", trycatch: { tryBlock: tryBlock, catch_list: catch_list } };
                 }
             }
         },//try catch语句，允许捕获任意类型的异常
+        {
+            "catch_list:catch ( id : type ) { statements }": {
+                action: function ($, s): { catchVariable: string, catchType: TypeUsed, catchBlock: Block }[] {
+                    let catchVariable = $[2] as string;
+                    let catchType = $[4] as TypeUsed;
+                    let catchBlock = $[7] as Block;
+                    return [{ catchVariable: catchVariable, catchType: catchType, catchBlock: catchBlock }];
+                }
+            }
+        },
+        {
+            "catch_list:catch_list catch ( id : type ) { statements }": {
+                action: function ($, s): { catchVariable: string, catchType: TypeUsed, catchBlock: Block }[] {
+                    let catch_list = $[0] as { catchVariable: string, catchType: TypeUsed, catchBlock: Block }[];
+                    let catchVariable = $[3] as string;
+                    let catchType = $[5] as TypeUsed;
+                    let catchBlock = $[8] as Block;
+                    catch_list.push({ catchVariable: catchVariable, catchType: catchType, catchBlock: catchBlock });
+                    return catch_list;
+                }
+            }
+        },
         {
             "statement:throw object ;": {
                 action: function ($, s): ASTNode {
@@ -1094,7 +1114,7 @@ import { FunctionSingle, FunctionSingleWithoutRetType } from "./lib.js"
                 action: function ($, s): ASTNode {
                     let obj = $[0] as ASTNode;
                     let id = $[2] as string;
-                    return { desc: "ASTNode", accessField: { obj: obj, field: id } };
+                    return { desc: "ASTNode", accessField: { obj: obj, field: id, isProperty: false } };//代码解析阶段还不知道是不是property
                 }
             }
         },//取成员
