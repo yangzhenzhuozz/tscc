@@ -497,14 +497,14 @@ import { FunctionSingle, FunctionSingleWithoutRetType } from "./lib.js"
             }
         },//class_unit可以是一个运算符重载
         {
-            "class_unit:get id ( ) : type { statements }": {
+            "class_unit:get id ( ) : type { statements } ;": {
                 action: function ($, s): VariableDescriptor {
                     let id = $[1] as string;
                     let retType = $[5] as TypeUsed;
                     let statements = $[7] as Block;
                     let ret: VariableDescriptor = JSON.parse("{}");//为了生成的解析器不报红
                     ret[id] = {
-                        variable: 'val',
+                        variable: 'var',
                         getter: {
                             _arguments: {},
                             body: statements,
@@ -516,7 +516,7 @@ import { FunctionSingle, FunctionSingleWithoutRetType } from "./lib.js"
             }
         },//get
         {
-            "class_unit:set id ( id : type ) { statements }": {
+            "class_unit:set id ( id : type ) { statements } ;": {
                 action: function ($, s): VariableDescriptor {
                     let id = $[1] as string;
                     let argumentId = $[3] as string;
@@ -529,7 +529,7 @@ import { FunctionSingle, FunctionSingleWithoutRetType } from "./lib.js"
                         type: argumentIdType
                     };
                     ret[id] = {
-                        variable: 'val',
+                        variable: 'var',
                         setter: {
                             _arguments: argument,
                             body: statements,

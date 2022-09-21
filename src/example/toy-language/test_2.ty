@@ -1,5 +1,14 @@
 class int{
-    function f(){
-        function f(){};
-    };
+   function f(){
+        a=1;
+   };
+   get a():int{
+
+   };
+   get a():int{
+
+   };
+   set a(v:int){
+
+   };
 }
