@@ -1,9 +1,6 @@
 class int{
    function f(){
-        a=1;
-   };
-   get a():int{
-
+        a=a=a;
    };
    get a():int{
 

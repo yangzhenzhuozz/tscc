@@ -10,9 +10,10 @@ function OperatorCheck(leftType: TypeUsed, rightType: TypeUsed, op: opType): Typ
  * 推导AST类型
  * @param scope 
  * @param node 
+ * @param setter
  * @returns hasRet表示是否为返回语句
  */
-function nodeRecursion(scope: Scope, node: ASTNode): { type: TypeUsed, setType?: TypeUsed, hasRet: boolean, changeAble?: boolean } {
+function nodeRecursion(scope: Scope, node: ASTNode, isSetter?: boolean): { type: TypeUsed, hasRet: boolean } {
     if (node["def"] != undefined) {
         //def节点是block专属
         let name = Object.keys(node['def'])[0];
@@ -68,12 +69,12 @@ function nodeRecursion(scope: Scope, node: ASTNode): { type: TypeUsed, setType?:
         } else {
             if (s instanceof ClassScope) {
                 delete node.load;//把load改为access
-                node.accessField = { obj: { desc: 'ASTNode', _this: s.className }, field: name, isProperty: false };//load阶段还不知道是不是property,由access节点处理进行判断
-                return nodeRecursion(scope, node);
+                node.accessField = { obj: { desc: 'ASTNode', _this: s.className }, field: name };//load阶段还不知道是不是property,由access节点处理进行判断
+                return nodeRecursion(scope, node, isSetter);
             } else if (s instanceof ProgramScope) {
                 delete node.load;//把load改为access
-                node.accessField = { obj: { desc: 'ASTNode', _program: '' }, field: name, isProperty: false };//load阶段还不知道是不是property,由access节点处理进行判断
-                return nodeRecursion(scope, node);
+                node.accessField = { obj: { desc: 'ASTNode', _program: '' }, field: name };//load阶段还不知道是不是property,由access节点处理进行判断
+                return nodeRecursion(scope, node, isSetter);
             } else {//blockScope
                 if (!(node as any).loadNodes) {
                     (node as any).loadNodes = [];
@@ -81,8 +82,13 @@ function nodeRecursion(scope: Scope, node: ASTNode): { type: TypeUsed, setType?:
                 if (level > 0) {
                     (s as BlockScope).hasCapture = true;
                 }
+                if (isSetter) {
+                    if (prop.variable == 'val') {
+                        throw `变量${name}禁止赋值`;
+                    }
+                }
                 (node as any).loadNodes.push(node);//记录下bolck有多少def节点需要被打包到闭包类,每个prop被那些地方load的,block扫描完毕的时候封闭的时候把这些load节点全部替换
-                return { type: prop.type!, hasRet: false, changeAble: prop.variable == 'var' };//如果是读取block内部定义的变量,则这个变量一点是已经被推导出类型的，因为代码区域的变量是先定义后使用的
+                return { type: prop.type!, hasRet: false };//如果是读取block内部定义的变量,则这个变量一点是已经被推导出类型的，因为代码区域的变量是先定义后使用的
             }
         }
     }
@@ -124,23 +130,29 @@ function nodeRecursion(scope: Scope, node: ASTNode): { type: TypeUsed, setType?:
         } else {
             let className = accessedType.SimpleType!.name;
             let accessName = node["accessField"].field;
-            if (program.definedType[className].property[accessName] == undefined) {
+            let prop = program.definedType[className].property[accessName];
+            if (prop == undefined) {
                 throw `访问了类型${className}中不存在的属性${accessName}`;
             }
-            if (program.definedType[className].property[accessName].getter !== undefined) {
-                node["accessField"].isProperty = true;
-                node["accessField"].get_flag = true;
-            }
-            if (program.definedType[className].property[accessName].setter !== undefined) {
-                node["accessField"].isProperty = true;
-                node["accessField"].set_flag = true;
-            }
-            let prop = program.definedType[className].property[accessName];
             let type = prop.type;
-            let setType: TypeUsed | undefined;
-            if (!node["accessField"].isProperty) {//如果不是属性
+            if (prop.getter != undefined || prop.setter != undefined) {
+                if (isSetter) {
+                    if (prop.setter == undefined) {
+                        throw `${className}.${accessName}没有setter`;
+                    } else {
+                        throw `改成set调用`;
+                    }
+                } else {
+                    if (prop.getter == undefined) {
+                        throw `${className}.${accessName}没有getter`;
+                    } else {
+                        type = prop.getter.retType;
+                        throw `改成get调用`;
+                    }
+                }
+            } else {
                 if (type == undefined) {
-                    let initAST = program.definedType[className].property[accessName].initAST!;
+                    let initAST = prop.initAST!;
                     if ((initAST as any).flag) {
                         throw `类型推导出现了循环:${className}.${accessName}`;
                     }
@@ -149,18 +161,8 @@ function nodeRecursion(scope: Scope, node: ASTNode): { type: TypeUsed, setType?:
                     type = nodeRecursion(classScope, initAST).type;
                     delete (initAST as any).flag;//删除标记,回溯常用手法
                 }
-            } else {
-                if (node["accessField"].get_flag) {
-                    type = prop.getter!.retType!;
-                } else {
-                    type = { SimpleType: { name: 'void' } };//如果没有getter，则返回void
-                }
-                if (node["accessField"].set_flag) {//读取set
-                    let argName=Object.keys(prop.setter!._arguments)[0];
-                    setType = prop.setter!._arguments[argName].type;
-                }
             }
-            return { type: type, setType: setType, hasRet: false, changeAble: program.definedType[className].property[accessName].variable == 'var' };
+            return { type: type, hasRet: false };
         }
     }
     else if (node["_super"] != undefined) {
@@ -389,7 +391,7 @@ function ClassScan(scope: ClassScope, type: TypeDef) {
             } else if (prop.type?.FunctionType) {
                 functionScan(scope, prop.type?.FunctionType);
             }
-        }else {
+        } else {
             throw `属性还没有扫描`;
         }
     }

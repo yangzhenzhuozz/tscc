@@ -75,7 +75,7 @@ interface ASTNode {
     type?: TypeUsed,//节点的运算结果类型
     loadArgument?: number,//读取参数
     def?: VariableDescriptor;
-    accessField?: { obj: ASTNode, field: string ,isProperty:boolean,get_flag?:boolean,set_flag?:boolean};
+    accessField?: { obj: ASTNode, field: string};
     call?: { functionObj: ASTNode, _arguments: ASTNode[], templateSpecialization_list?: TypeUsed[] };
     load?: string;//读取某个变量
     _super?: "";
