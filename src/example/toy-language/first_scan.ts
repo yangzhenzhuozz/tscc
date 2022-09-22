@@ -13,7 +13,7 @@ function OperatorCheck(leftType: TypeUsed, rightType: TypeUsed, op: opType): Typ
  * @param setter
  * @returns hasRet表示是否为返回语句
  */
-function nodeRecursion(scope: Scope, node: ASTNode, isSetter?: boolean): { type: TypeUsed, hasRet: boolean } {
+function nodeRecursion(scope: Scope, node: ASTNode, setter?: { arg: ASTNode }): { type: TypeUsed, hasRet: boolean } {
     if (node["def"] != undefined) {
         //def节点是block专属
         let name = Object.keys(node['def'])[0];
@@ -70,11 +70,11 @@ function nodeRecursion(scope: Scope, node: ASTNode, isSetter?: boolean): { type:
             if (s instanceof ClassScope) {
                 delete node.load;//把load改为access
                 node.accessField = { obj: { desc: 'ASTNode', _this: s.className }, field: name };//load阶段还不知道是不是property,由access节点处理进行判断
-                return nodeRecursion(scope, node, isSetter);
+                return nodeRecursion(scope, node, setter);
             } else if (s instanceof ProgramScope) {
                 delete node.load;//把load改为access
                 node.accessField = { obj: { desc: 'ASTNode', _program: '' }, field: name };//load阶段还不知道是不是property,由access节点处理进行判断
-                return nodeRecursion(scope, node, isSetter);
+                return nodeRecursion(scope, node, setter);
             } else {//blockScope
                 if (!(node as any).loadNodes) {
                     (node as any).loadNodes = [];
@@ -82,10 +82,10 @@ function nodeRecursion(scope: Scope, node: ASTNode, isSetter?: boolean): { type:
                 if (level > 0) {
                     (s as BlockScope).hasCapture = true;
                 }
-                if (isSetter) {
+                if (setter!=undefined) {
                     if (prop.variable == 'val') {
                         throw `变量${name}禁止赋值`;
-                    }
+                    }//load的赋值不需要处理
                 }
                 (node as any).loadNodes.push(node);//记录下bolck有多少def节点需要被打包到闭包类,每个prop被那些地方load的,block扫描完毕的时候封闭的时候把这些load节点全部替换
                 return { type: prop.type!, hasRet: false };//如果是读取block内部定义的变量,则这个变量一点是已经被推导出类型的，因为代码区域的变量是先定义后使用的
@@ -136,7 +136,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, isSetter?: boolean): { type:
             }
             let type = prop.type;
             if (prop.getter != undefined || prop.setter != undefined) {
-                if (isSetter) {
+                if (setter!=undefined) {
                     if (prop.setter == undefined) {
                         throw `${className}.${accessName}没有setter`;
                     } else {
