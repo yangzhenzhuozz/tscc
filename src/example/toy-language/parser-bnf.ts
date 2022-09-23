@@ -558,27 +558,6 @@ import { FunctionSingle, FunctionSingleWithoutRetType } from "./lib.js"
                 }
             }
         },//构造函数
-        { "class_unit:default ( )  { statements }": {} },//default函数,用于初始化值类型
-        {
-            "operator_overload:operator = ( id : type ) : type { statements } ;": {
-                action: function ($, s): { [key: string]: FunctionType } {
-                    let id = $[3] as string;
-                    let parameterType = $[5] as TypeUsed;
-                    let statements = $[10] as Block;
-                    let retType = $[8] as TypeUsed;
-                    let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
-                    argument[id] = { variable: 'var', type: parameterType };
-                    return {
-                        "=":
-                        {
-                            _arguments: argument,
-                            body: statements,
-                            retType: retType
-                        }
-                    };
-                }
-            }
-        },
         {
             "operator_overload:operator + ( id : type ) : type { statements } ;": {
                 action: function ($, s): { [key: string]: FunctionType } {
@@ -1114,7 +1093,7 @@ import { FunctionSingle, FunctionSingleWithoutRetType } from "./lib.js"
                 action: function ($, s): ASTNode {
                     let obj = $[0] as ASTNode;
                     let id = $[2] as string;
-                    return { desc: "ASTNode", accessField: { obj: obj, field: id, isProperty: false } };//代码解析阶段还不知道是不是property
+                    return { desc: "ASTNode", accessField: { obj: obj, field: id } };//代码解析阶段还不知道是不是property
                 }
             }
         },//取成员

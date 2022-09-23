@@ -98,8 +98,14 @@ let grammar: Grammar = {
         { "class_unit:get id ( ) : type { statements } ;": {} },//get
         { "class_unit:set id ( id : type ) { statements } ;": {} },//set
         { "class_unit:basic_type ( parameter_declare )  { statements }": {} },//构造函数
-        { "class_unit:default ( )  { statements }": {} },//default函数,用于初始化值类型
-        { "operator_overload:operator = ( id : type ) : type { statements } ;": {} },//运算符重载,运算符重载实在是懒得做泛型了,以后要是有需求再讲,比起C#和java的残废泛型，已经很好了
+        /**
+         * 运算符重载,运算符重载实在是懒得做泛型了,以后要是有需求再讲
+         * 不重载赋值运算符，因为get set实现起来略微麻烦(不知道c#是不是也是这种考虑)
+         * 比如 a=b=c;
+         * 在b=c阶段，用的是 call_b_set
+         * 在a=b阶段，用的是 call_b_get
+         * 实在是太麻烦了
+         */
         { "operator_overload:operator + ( id : type ) : type { statements } ;": {} },
         { "operator_overload:operator - ( id : type ) : type { statements } ;": {} },
         { "operator_overload:operator * ( id : type ) : type { statements } ;": {} },

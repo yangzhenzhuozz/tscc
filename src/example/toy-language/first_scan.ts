@@ -203,11 +203,10 @@ function nodeRecursion(scope: Scope, node: ASTNode, setter?: { arg: ASTNode }): 
         }
     }
     else if (node["="] != undefined) {
+        let rightType = nodeRecursion(scope, node['='].rightChild).type;//先计算右节点
         let leftType = nodeRecursion(scope, node['='].leftChild).type;
-        let rightType = nodeRecursion(scope, node['='].rightChild).type;
-        let retType = OperatorCheck(leftType, rightType, '=');
-        throw `检查左子节点是否为prop,如果是则检查是否有setType，否则检查是否为var变量`;
-        return { type: retType, hasRet: false };
+        throw `检查左子节点是否为prop,如果是则检查是否有setType，否则检查是否为var变量,然后做类型检查,返回右节点的值`;
+        return { type: rightType, hasRet: false };
     }
     else if (node["+"] != undefined) {
         let leftType = nodeRecursion(scope, node['+'].leftChild).type;
