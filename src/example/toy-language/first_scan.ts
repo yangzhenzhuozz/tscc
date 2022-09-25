@@ -4,7 +4,7 @@ import { Scope, BlockScope, ClassScope, ProgramScope } from './scope.js';
 let program: Program;
 let programScope: ProgramScope;
 function OperatorCheck(leftType: TypeUsed, rightType: TypeUsed, op: opType): TypeUsed {
-    throw `unimplemented`
+    th row `unimplemented`
 }
 /**
  * 推导AST类型
@@ -13,7 +13,7 @@ function OperatorCheck(leftType: TypeUsed, rightType: TypeUsed, op: opType): Typ
  * @param setter
  * @returns hasRet表示是否为返回语句
  */
-function nodeRecursion(scope: Scope, node: ASTNode, setter?: { arg: ASTNode }): { type: TypeUsed, hasRet: boolean } {
+function nodeRecursion(scope: Scope, node: ASTNode, setter?: ASTNode): { type: TypeUsed, hasRet: boolean, isProp?: boolean } {
     if (node["def"] != undefined) {
         //def节点是block专属
         let name = Object.keys(node['def'])[0];
@@ -82,7 +82,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, setter?: { arg: ASTNode }): 
                 if (level > 0) {
                     (s as BlockScope).hasCapture = true;
                 }
-                if (setter!=undefined) {
+                if (setter != undefined) {
                     if (prop.variable == 'val') {
                         throw `变量${name}禁止赋值`;
                     }//load的赋值不需要处理
@@ -136,18 +136,18 @@ function nodeRecursion(scope: Scope, node: ASTNode, setter?: { arg: ASTNode }): 
             }
             let type = prop.type;
             if (prop.getter != undefined || prop.setter != undefined) {
-                if (setter!=undefined) {
+                if (setter != undefined) {
                     if (prop.setter == undefined) {
                         throw `${className}.${accessName}没有setter`;
                     } else {
-                        throw `改成set调用`;
+                        th row `改成set调用`;
                     }
                 } else {
                     if (prop.getter == undefined) {
                         throw `${className}.${accessName}没有getter`;
                     } else {
                         type = prop.getter.retType;
-                        throw `改成get调用`;
+                        th row `改成get调用`;
                     }
                 }
             } else {
@@ -203,9 +203,14 @@ function nodeRecursion(scope: Scope, node: ASTNode, setter?: { arg: ASTNode }): 
         }
     }
     else if (node["="] != undefined) {
-        let rightType = nodeRecursion(scope, node['='].rightChild).type;//先计算右节点
-        let leftType = nodeRecursion(scope, node['='].leftChild).type;
-        throw `检查左子节点是否为prop,如果是则检查是否有setType，否则检查是否为var变量,然后做类型检查,返回右节点的值`;
+        let right = nodeRecursion(scope, node['='].rightChild);//先计算右节点
+        let left = nodeRecursion(scope, node['='].leftChild, node['='].rightChild);
+        if (left.isProp) {
+
+        } else {
+
+        }
+        thr ow `检查左子节点是否为prop,如果是则检查是否有setType，否则检查是否为var变量,然后做类型检查,返回右节点的值`;
         return { type: rightType, hasRet: false };
     }
     else if (node["+"] != undefined) {
@@ -342,7 +347,7 @@ function BlockScan(scope: BlockScope, block: Block): TypeUsed | undefined {
             let blockScope = new BlockScope({}, scope, false, block)
             ret = BlockScan(blockScope, block);
             if (blockScope.hasCapture) {
-                throw `unimplemented`;//闭包处理还未完成
+                th row `unimplemented`;//闭包处理还未完成
             }
         }
         if (ret != undefined) {
@@ -368,7 +373,7 @@ function functionScan(scope: Scope, fun: FunctionType): TypeUsed {
     let blockScope = new BlockScope({}, scope, true, fun.body!);
     let blockret = BlockScan(blockScope, fun.body!);
     if (blockScope.hasCapture) {
-        throw `unimplemented`;//闭包处理还未完成
+        thr ow `unimplemented`;//闭包处理还未完成
     }
     if (blockret == undefined) {
         return { SimpleType: { name: 'void' } };//block没有任何返回语句，则说明返回void
@@ -391,7 +396,7 @@ function ClassScan(scope: ClassScope, type: TypeDef) {
                 functionScan(scope, prop.type?.FunctionType);
             }
         } else {
-            throw `属性还没有扫描`;
+            thr ow `属性还没有扫描`;
         }
     }
 }
