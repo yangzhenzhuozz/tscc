@@ -142,6 +142,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
                         throw `${className}.${accessName}没有setter`;
                     } else {
                         //改成set调用
+                        functionScan(classScope, prop.setter);
                         type = { SimpleType: { name: 'void' } };//set没有返回值
                         node.call = { functionObj: { desc: 'ASTNode', accessField: { obj: node["accessField"].obj, field: `@set_${node["accessField"].field}` } }, _arguments: [assignmentObj] };
                     }
