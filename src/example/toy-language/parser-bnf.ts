@@ -1238,21 +1238,21 @@ import { FunctionSingle, FunctionSingleWithoutRetType } from "./lib.js"
         {
             "object:! object": {
                 action: function ($, s): ASTNode {
-                    return { desc: "ASTNode", not: { child: $[1] as ASTNode } };
+                    return { desc: "ASTNode", not: $[1] as ASTNode };
                 }
             }
         },//单目运算符-非
         {
             "object:object ++": {
                 action: function ($, s): ASTNode {
-                    return { desc: "ASTNode", increase: { child: $[0] as ASTNode } };
+                    return { desc: "ASTNode", '++': $[0] as ASTNode };
                 }
             }
         },//单目运算符++
         {
             "object:object --": {
                 action: function ($, s): ASTNode {
-                    return { desc: "ASTNode", decrease: { child: $[0] as ASTNode } };
+                    return { desc: "ASTNode", '--': $[0] as ASTNode };
                 }
             }
         },//单目运算符--

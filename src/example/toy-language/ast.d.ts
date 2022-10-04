@@ -13,7 +13,8 @@ Reflect.ownKeys({
 })
 // ['4', '18', 'star', 'kirby', Symbol(07akioni)]
 */
-type opType = '=' | '+' | '-' | '*' | '/' | '<' | '<=' | '>' | '>=' | '==' | '||' | '&&';
+type opType = '+' | '-' | '*' | '/' | '<' | '<=' | '>' | '>=' | '==' | '||' | '&&';
+type opType2 = '++' | '--';//单目运算符
 interface TypeDef {//定义的类型
     modifier?: 'valuetype' | 'sealed';
     templates?: string[];//模板列表
@@ -94,9 +95,9 @@ interface ASTNode {
     _break?: { label: string };
     _continue?: { label: string };
     _instanceof?: { obj: ASTNode, type: TypeUsed };
-    not?: { child: ASTNode };
-    increase?: { child: ASTNode };
-    decrease?: { child: ASTNode };
+    not?: ASTNode;
+    '++'?: ASTNode;
+    '--'?: ASTNode;
     indexOP?: { obj: ASTNode, index: ASTNode };
     ternary?: { condition: ASTNode, obj1: ASTNode, obj2: ASTNode };
     cast?: { obj: ASTNode, type: TypeUsed };
