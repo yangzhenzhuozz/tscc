@@ -13,7 +13,7 @@ Reflect.ownKeys({
 })
 // ['4', '18', 'star', 'kirby', Symbol(07akioni)]
 */
-type opType = '+' | '-' | '*' | '/' | '<' | '<=' | '>' | '>=' | '==' | '||' | '&&';
+type opType = '+' | '-' | '*' | '/' | '<' | '<=' | '>' | '>=' | '==' | '||' | '&&'|'[]';
 type opType2 = '++' | '--';//单目运算符
 interface TypeDef {//定义的类型
     modifier?: 'valuetype' | 'sealed';
@@ -73,7 +73,6 @@ interface Program {
 interface ASTNode {
     desc: 'ASTNode';
     loadException?: '';//读取异常
-    type?: TypeUsed,//节点的运算结果类型
     loadArgument?: number,//读取参数
     def?: VariableDescriptor;
     accessField?: { obj: ASTNode, field: string };
@@ -98,11 +97,11 @@ interface ASTNode {
     not?: ASTNode;
     '++'?: ASTNode;
     '--'?: ASTNode;
-    indexOP?: { obj: ASTNode, index: ASTNode };
     ternary?: { condition: ASTNode, obj1: ASTNode, obj2: ASTNode };
     cast?: { obj: ASTNode, type: TypeUsed };
     _new?: { type: TypeUsed, _arguments: ASTNode[] };
     _newArray?: { type: TypeUsed, initList: ASTNode[], placeholder: number };
+    '[]'?: { rightChild: ASTNode, leftChild: ASTNode };
     "="?: { rightChild: ASTNode; leftChild: ASTNode; };//赋值操作的左节点必须是load节点或者accessField节点
     "+"?: { rightChild: ASTNode; leftChild: ASTNode; };
     "-"?: { rightChild: ASTNode; leftChild: ASTNode; };

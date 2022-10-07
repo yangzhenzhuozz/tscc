@@ -1260,7 +1260,7 @@ import { FunctionSingle, FunctionSingleWithoutRetType } from "./lib.js"
         {
             "object:object [ object ]": {
                 action: function ($, s): ASTNode {
-                    return { desc: "ASTNode", indexOP: { obj: $[0] as ASTNode, index: $[2] as ASTNode } };
+                    return { desc: "ASTNode", '[]': { leftChild: $[0] as ASTNode, rightChild: $[2] as ASTNode } };
                 }
             }
         },//[]运算符
