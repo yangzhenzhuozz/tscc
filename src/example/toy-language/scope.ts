@@ -17,14 +17,8 @@ class ProgramScope extends Scope {
         for (let typeName in program.definedType) {
             let type = program.definedType[typeName];
             if (type.extends != undefined) {//有继承于其他类
-                if (type.extends?.SimpleType == undefined) {
-                    throw `${typeName}只能继承于基础类型，不能继承数组和函数`;
-                }
+                throw `不支持extends:${typeName}`;
             }
-            this.classMap[typeName] = new ClassScope(type.property, typeName, this, type.extends != undefined ? type.extends.SimpleType : undefined);
-        }
-        for (let typeName in program.definedType) {
-            this.classMap[typeName].extendCheck();
         }
     }
     public getClassScope(className: string): ClassScope {
@@ -52,31 +46,14 @@ class ProgramScope extends Scope {
 class ClassScope extends Scope {
     public className: string;
     public programScope: ProgramScope;
-    public superClass: SimpleType | undefined;
-    constructor(prop: VariableDescriptor | undefined, className: string, programScope: ProgramScope, superClass: SimpleType | undefined) {
+    constructor(prop: VariableDescriptor | undefined, className: string, programScope: ProgramScope) {
         super(prop);
         this.programScope = programScope;
         this.className = className;
-        this.superClass = superClass;
-    }
-    //检查继承链是否出现循环或者继承未定义的类型
-    public extendCheck() {
-        let now = this.superClass;
-        for (; now != undefined; now = this.programScope.getClassScope(now.name).superClass) {
-            if (now.name == this.className) {
-                throw `${this.className}出现循环继承`;
-            }
-        }
     }
     public getProp(name: string): { prop: VariableProperties, scope: Scope } {
         let scope: ClassScope | undefined = this;
-        let prop: VariableProperties | undefined;
-        for (; scope != undefined; scope = this.superClass != undefined ? this.programScope.getClassScope(this.superClass.name) : undefined) {
-            if (scope.property[name] != undefined) {
-                prop = scope.property[name];
-                break;
-            }
-        }
+        let prop: VariableProperties | undefined = this.property[name];
         if (prop != undefined) {
             return { prop: prop, scope: this };
         } else {
