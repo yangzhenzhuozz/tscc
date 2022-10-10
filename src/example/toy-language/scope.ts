@@ -18,6 +18,8 @@ class ProgramScope extends Scope {
             let type = program.definedType[typeName];
             if (type.extends != undefined) {//有继承于其他类
                 throw `不支持extends:${typeName}`;
+            } else {
+                this.classMap[typeName] = new ClassScope(program.definedType[typeName].property, typeName, this);
             }
         }
     }
@@ -26,13 +28,6 @@ class ProgramScope extends Scope {
             return this.classMap[className];
         } else {
             throw `未定义的类型:${className}`;
-        }
-    }
-    public setClassScope(className: string, scope: ClassScope): void {
-        if (this.classMap[className] != undefined) {
-            throw `重复定义类型:${className}`;
-        } else {
-            this.classMap[className] = scope;
         }
     }
     public getProp(name: string): { prop: VariableProperties, scope: Scope } {
