@@ -427,7 +427,9 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
         typeCheck(t1, t2, `三目运算符左右类型不一致`);
         return { type: t1, hasRet: false };
     }
-    else if (node["cast"] != undefined) { }
+    else if (node["cast"] != undefined) {
+        throw `不支持强制转型`;
+    }
     else if (node["_new"] != undefined) { }
     else if (node["_newArray"] != undefined) { }
     else if (node["_switch"] != undefined) { }
