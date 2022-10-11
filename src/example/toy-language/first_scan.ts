@@ -257,6 +257,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
     else if (node["trycatch"] != undefined) {
         let tryScope = new BlockScope(scope, false, node["trycatch"].tryBlock);//catch语句只能出现在block内部
         let tryBlockRet = BlockScan(tryScope, label);//此时的block一定是BlockScope
+        let catchRet = true;
         for (let _catch of node["trycatch"].catch_list) {
             let varialbe: VariableDescriptor = {};
             varialbe[_catch.catchVariable] = { variable: 'var', type: _catch.catchType, initAST: { desc: 'ASTNode', loadException: '' } };
@@ -265,18 +266,21 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
             catchBlock.body.unshift(defNode);//插入一个读取exception指令
             let catchScope = new BlockScope(scope, false, catchBlock);//catch语句只能出现在block内部
             let catchBlockRet = BlockScan(catchScope, label);
-            if (tryBlockRet == undefined) {
-                if (catchBlockRet != undefined) {
-                    throw `如果try不返回值,catch也不能返回值`;
-                }
-            } else {
-                if (catchBlockRet == undefined) {
-                    throw `如果try有返回值,catch也必须有返回值`;
-                } else {
+            if (catchBlockRet != undefined) {
+                if (tryBlockRet != undefined) {
                     typeCheck(tryBlockRet, catchBlockRet, `try和catch返回值类型不一致`);//检查try和catch返回值类型是否一致
                 }
+            } else {
+                catchRet = false;
             }
         }
+        let retType: TypeUsed;
+        if (tryBlockRet != undefined && catchRet) {
+            retType = tryBlockRet;
+        } else {
+            retType = { SimpleType: { name: 'any' } };
+        }
+        return { hasRet: tryBlockRet != undefined && catchRet, type: retType };
     }
     else if (node["throwStmt"] != undefined) {
         nodeRecursion(scope, node["throwStmt"], label);
