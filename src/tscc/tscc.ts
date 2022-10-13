@@ -45,7 +45,7 @@ let MultipleLanguage: MultiLanguage = {
     "en-us": {
         tips1: "redefinition association of symbol:%s",
         tips2: "head of syntax can not be terminal-symbol:%s",
-        tips3: "symbol error,the symbol need matching \"[^(->)\\s$]+\":%s",
+        tips3: "symbol error,the name must match the regular expression \"[^\\s$@#`]+\":%s",
         tips4: "grammar is empty",
         tips5: "──────────state %d──────────\n",
         tips6: "\nsignature:%s\n",
@@ -76,7 +76,7 @@ let MultipleLanguage: MultiLanguage = {
     "zh-cn": {
         tips1: "th:%s",
         tips2: "不能使用终结符作为产生式头:%s",
-        tips3: "产生式%s符号错误,符号只能为\"[^(->)\\s$]+\"",
+        tips3: "产生式%s符号错误,所有符名必须匹配正则\"[^\\s$@#`]+\"",
         tips4: "文法中没有任何产生式",
         tips5: "──────────状态%d──────────\n",
         tips6: "\n签名:%s\n",
@@ -228,7 +228,7 @@ class JSCC {
             for (let i = 0; i < grammar.BNF.length; i++) {
                 let keys = Object.getOwnPropertyNames(grammar.BNF[i]);
                 if (keys.length == 1) {//一个对象仅能有一个key用于描述产生式
-                    if (/^\s*[^:\s$@#]+\s*:\s*([^\s$@#]+\s*)*$/.test(keys[0])) {
+                    if (/^\s*[^:\s$@#`]+\s*:\s*([^\s$@#`]+\s*)*$/.test(keys[0])) {
                         let syntax = new Syntax([], grammar.BNF[i][keys[0]].action);//创建产生式
                         let length = 0;
                         let description: PriorityAndAssociationDescription | undefined;//本产生式的优先级
@@ -579,7 +579,7 @@ class ParseException extends Error{
 }
 class Parser {
     public parse(lexer: Lex):any {
-        let state: { [key: string]: string | undefined }[] = ${JSON.stringify(gotoTable)};
+        let state: { [key: string]: string | undefined }[] = JSON.parse(\`${JSON.stringify(gotoTable)}\`);
         let syntaxHead: string[] = [`;
         for (let i = 0; i < this.syntaxs.length; i++) {
             if (i != 0) {

@@ -169,7 +169,9 @@ let grammar: Grammar = {
         { "statement:break label_use ;": {} },//break语句
         { "statement:continue label_use ;": {} },//continue语句
         { "statement:switch ( object ) { switch_bodys }": {} },//switch语句,因为switch在C/C++等语言中可以用跳转表处理,gcc在处理switch语句时,如果各个case的值连续,也会生成一个jum_table,这里我就稍微扩展一下switch的用法
-        { "statement:object ;": {} },//类似C/C++中的   1; 这种语句,java好像不支持这种写法
+        { "statement:call ;": {} },//函数调用可以作为一个语句
+        { "statement:assignment ;": {} },//赋值可以作为一个语句
+        { "statement:_new ;": {} },//new可以作为一个语句
         { "label_def:": {} },//label_def可以为空
         { "label_def:id :": {} },//label_def为 id : 组成
         { "for_init:": {} },//for_loop的init可以为空
@@ -186,6 +188,9 @@ let grammar: Grammar = {
         { "switch_bodys:switch_bodys switch_body": {} },//switch_bodys可以由多个switch_body组成
         { "switch_body:case object : statement": {} },//case 语句
         { "switch_body:default : statement": {} },//default语句
+        { "object:call": {} },//函数调用
+        { "object:assignment": {} },//赋值
+        { "object:_new": {} },//new对象或者数组
         { "object:( object )": {} },//括号括住的object还是一个object
         { "object:object . id": {} },//取成员
         /**
@@ -199,8 +204,8 @@ let grammar: Grammar = {
         * 2. (int) (obj_1(obj_2))
         * 也采用方案2，令函数调用优先级高于强制转型
         */
-        { "object:object  ( arguments )": {} },//函数调用
-        { "object:object < templateSpecialization_list > ( arguments )": {} },//模板函数调用
+        { "call:object  ( arguments )": {} },//函数调用
+        { "call:object < templateSpecialization_list > ( arguments )": {} },//模板函数调用
         /**
          * 一系列的双目运算符,二义性如下:
          * a+b*c
@@ -208,7 +213,7 @@ let grammar: Grammar = {
          * 2. a+(b*c)
          * 已经把各个操作符的优先级和结合性定义的和C/C++一致，见association中定义的各个符号优先级和结合性,双目运算符都是左结合,且+ - 优先级低于 * /
          */
-        { "object:object = object": {} },
+        { "assignment:object = object": {} },
         { "object:object + object": {} },
         { "object:object - object": {} },
         { "object:object * object": {} },
@@ -273,7 +278,7 @@ let grammar: Grammar = {
          * 为其指定优先级为cast_priority
          */
         { "object:( type ) object": { priority: "cast_priority" } },//强制转型
-        { "object:new type  ( arguments )": {} },//创建对象
+        { "_new:new type  ( arguments )": {} },//创建对象
         /**
          * 假设只针对产生式array_init_list:array_inits array_placeholder 会出现如下二义性
          * new int [10][3]可以有如下两种解释:(把array_placeholder规约成ε)
@@ -282,7 +287,7 @@ let grammar: Grammar = {
          * 我当然希望采取第二种语法树,所以需要设置产生式优先级,即在new一个对象的时候,如果后面跟有方括号[,优先选择移入而不是规约,那么只需要把冲突的产生式优先级设置为比'['低即可
          * 设置array_placeholder作为产生式头的两个产生式优先级低于'['
          */
-        { "object:new type array_init_list": {} },//创建数组
+        { "_new:new type array_init_list": {} },//创建数组
         { "array_init_list:array_inits array_placeholder": {} },//new 数组的时候是可以这样写的 new int [2][3][][],其中[2][3]对应了array_inits,后面的[][]对应了array_placeholder(数组占位符)
         { "array_inits:array_inits [ object ]": {} },//见array_init_list一条的解释
         { "array_inits:[ object ]": {} },//见array_init_list一条的解释

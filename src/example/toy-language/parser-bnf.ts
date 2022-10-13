@@ -989,12 +989,26 @@ import { FunctionSingle, FunctionSingleWithoutRetType } from "./lib.js"
             }
         },//switch语句,因为switch在C/C++等语言中可以用跳转表处理,gcc在处理switch语句时,如果各个case的值连续,也会生成一个jum_table,这里我就稍微扩展一下switch的用法
         {
-            "statement:object ;": {
+            "statement:call ;": {
                 action: function ($, s): ASTNode {
                     return $[0] as ASTNode;
                 }
             }
-        },//类似C/C++中的   1; 这种语句,java好像不支持这种写法
+        },//函数调用可以作为一个语句
+        {
+            "statement:assignment ;": {
+                action: function ($, s): ASTNode {
+                    return $[0] as ASTNode;
+                }
+            }
+        },//赋值可以作为一个语句
+        {
+            "statement:_new ;": {
+                action: function ($, s): ASTNode {
+                    return $[0] as ASTNode;
+                }
+            }
+        },//new可以作为一个语句
         { "label_def:": {} },//label_def可以为空
         {
             "label_def:id :": {
@@ -1082,6 +1096,27 @@ import { FunctionSingle, FunctionSingleWithoutRetType } from "./lib.js"
             }
         },//default语句
         {
+            "object:call": {
+                action: function ($, s): ASTNode {
+                    return $[0] as ASTNode;
+                }
+            }
+        },//函数调用
+        {
+            "object:assignment": {
+                action: function ($, s): ASTNode {
+                    return $[0] as ASTNode;
+                }
+            }
+        },//赋值
+        {
+            "object:_new": {
+                action: function ($, s): ASTNode {
+                    return $[0] as ASTNode;
+                }
+            }
+        },//new对象或者数组
+        {
             "object:( object )": {
                 action: function ($, s): ASTNode {
                     return $[1] as ASTNode;
@@ -1109,14 +1144,14 @@ import { FunctionSingle, FunctionSingleWithoutRetType } from "./lib.js"
         * 也采用方案2，令函数调用优先级高于强制转型
         */
         {
-            "object:object  ( arguments )": {
+            "call:object  ( arguments )": {
                 action: function ($, s): ASTNode {
                     return { desc: "ASTNode", call: { functionObj: $[0] as ASTNode, _arguments: $[2] as ASTNode[] } };
                 }
             }
         },//函数调用
         {
-            "object:object < templateSpecialization_list > ( arguments )": {
+            "call:object < templateSpecialization_list > ( arguments )": {
                 action: function ($, s): ASTNode {
                     let obj = $[0] as ASTNode;
                     let templateSpecialization_list = $[2] as TypeUsed[];
@@ -1133,7 +1168,7 @@ import { FunctionSingle, FunctionSingleWithoutRetType } from "./lib.js"
          * 已经把各个操作符的优先级和结合性定义的和C/C++一致，见association中定义的各个符号优先级和结合性,双目运算符都是左结合,且+ - 优先级低于 * /
          */
         {
-            "object:object = object": {
+            "assignment:object = object": {
                 action: function ($, s): ASTNode {
                     return { desc: "ASTNode", "=": { leftChild: $[0] as ASTNode, rightChild: $[2] as ASTNode } };
                 }
@@ -1354,7 +1389,7 @@ import { FunctionSingle, FunctionSingleWithoutRetType } from "./lib.js"
             }
         },//强制转型
         {
-            "object:new type  ( arguments )": {
+            "_new:new type  ( arguments )": {
                 action: function ($, s): ASTNode {
                     return { desc: "ASTNode", _new: { type: $[1] as TypeUsed, _arguments: $[3] as ASTNode[] } };
                 }
@@ -1369,7 +1404,7 @@ import { FunctionSingle, FunctionSingleWithoutRetType } from "./lib.js"
          * 设置array_placeholder作为产生式头的两个产生式优先级低于'['
          */
         {
-            "object:new type array_init_list": {
+            "_new:new type array_init_list": {
                 action: function ($, s): ASTNode {
                     let init_list = $[2] as { initList: ASTNode[], placeholder: number };
                     return { desc: "ASTNode", _newArray: { type: $[1] as TypeUsed, initList: init_list.initList, placeholder: init_list.placeholder } };
