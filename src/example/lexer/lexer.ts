@@ -1,4 +1,4 @@
-import Parser from "./parser.js";
+import Parse from "./parser.js";
 import { YYTOKEN, State, Automaton, ruleResolver } from './automaton.js'
 //解析正则表达式的分析器
 class LexForREG {
@@ -57,8 +57,7 @@ class LexForREG {
     }
 }
 
-class Lexer {
-    private parser = new Parser();
+class Lexer {;
     private lexer = new LexForREG();
     private rules: Map<string, Automaton> = new Map();
     private NFAStartState: State | undefined;
@@ -146,7 +145,7 @@ class Lexer {
      */
     public addRule(rule: [string, ruleResolver]) {//添加规则
         this.lexer.setSource(rule[0]);
-        let automaton: Automaton = this.parser.parse(this.lexer);//如果source不符合我写的正则文法,会抛出异常
+        let automaton: Automaton = Parse(this.lexer);//如果source不符合我写的正则文法,会抛出异常
         automaton.end.isFinal = true;
         automaton.end.resolver = rule[1];
         this.rules.set(rule[0], automaton);

@@ -45,7 +45,7 @@ let MultipleLanguage: MultiLanguage = {
     "en-us": {
         tips1: "redefinition association of symbol:%s",
         tips2: "head of syntax can not be terminal-symbol:%s",
-        tips3: "symbol error,the name must match the regular expression \"[^\\s$@#`]+\":%s",
+        tips3: "symbol error,the name must match the regular expression \"[^\\s`\"$@#]+\":%s",
         tips4: "grammar is empty",
         tips5: "──────────state %d──────────\n",
         tips6: "\nsignature:%s\n",
@@ -76,7 +76,7 @@ let MultipleLanguage: MultiLanguage = {
     "zh-cn": {
         tips1: "th:%s",
         tips2: "不能使用终结符作为产生式头:%s",
-        tips3: "产生式%s符号错误,所有符名必须匹配正则\"[^\\s$@#`]+\"",
+        tips3: "产生式%s符号错误,所有符名必须匹配正则\"[^\\s`\"$@#]+\"",
         tips4: "文法中没有任何产生式",
         tips5: "──────────状态%d──────────\n",
         tips6: "\n签名:%s\n",
@@ -228,7 +228,7 @@ class JSCC {
             for (let i = 0; i < grammar.BNF.length; i++) {
                 let keys = Object.getOwnPropertyNames(grammar.BNF[i]);
                 if (keys.length == 1) {//一个对象仅能有一个key用于描述产生式
-                    if (/^\s*[^:\s$@#`]+\s*:\s*([^\s$@#`]+\s*)*$/.test(keys[0])) {
+                    if (/^\s*[^"`:\s$@#]+\s*:\s*([^\s`"$@#]+\s*)*$/.test(keys[0])) {
                         let syntax = new Syntax([], grammar.BNF[i][keys[0]].action);//创建产生式
                         let length = 0;
                         let description: PriorityAndAssociationDescription | undefined;//本产生式的优先级
@@ -577,139 +577,137 @@ class ParseException extends Error{
         super.name='ParseException';
     }
 }
-class Parser {
-    public parse(lexer: Lex):any {
-        let state: { [key: string]: string | undefined }[] = JSON.parse(\`${JSON.stringify(gotoTable)}\`);
-        let syntaxHead: string[] = [`;
-        for (let i = 0; i < this.syntaxs.length; i++) {
-            if (i != 0) {
-                str += `,`;
-            }
-            str += `\`${this.syntaxs[i][0]}\``;
+function Parse(lexer: Lex):any {
+    let state: { [key: string]: string | undefined }[] = JSON.parse(\`${JSON.stringify(gotoTable)}\`);
+    let syntaxHead: string[] = [`;
+    for (let i = 0; i < this.syntaxs.length; i++) {
+        if (i != 0) {
+            str += `,`;
         }
-        str += `];//每个产生式的头部,规约的时候使用
-        let syntaxLength = [`;
-        for (let i = 0; i < this.syntaxs.length; i++) {
-            if (i != 0) {
-                str += `,`;
-            }
-            str += `${this.syntaxs[i].syntaxLength}`;
+        str += `\`${this.syntaxs[i][0]}\``;
+    }
+    str += `];//每个产生式的头部,规约的时候使用
+    let syntaxLength = [`;
+    for (let i = 0; i < this.syntaxs.length; i++) {
+        if (i != 0) {
+            str += `,`;
         }
-        str += `];
-        let functionArray:(((args:any[],stack:any[])=>any)|undefined)[]=[
-            `;
-        for (let i = 0; i < this.syntaxs.length; i++) {
-            if (i != 0) {
-                str += `,`;
-            }
-            if (this.syntaxs[i].resolver != undefined) {//如果函数不是未定义,则输出到源码
-                str += `${this.syntaxs[i].resolver!.toString()}`;
-            }
+        str += `${this.syntaxs[i].syntaxLength}`;
+    }
+    str += `];
+    let functionArray:(((args:any[],stack:any[])=>any)|undefined)[]=[
+        `;
+    for (let i = 0; i < this.syntaxs.length; i++) {
+        if (i != 0) {
+            str += `,`;
         }
-        str += `];
-        let result;//最终规约之后的返回值,由accept动作提供
-        let yytoken:YYTOKEN | undefined;
-        let errorRollback = false;//是否处于错误恢复模式
-        let hasError=false;//是否曾经出现过错误
-        //如龙书所说:"S0(即分析器的开始状态)不代表任何文法符号，它只是作为栈底标记，同时也在语法分析过程中担负了重要的角色。"
-        //自己标注的:用于规约成增广文法初始符号S'
-        let symbolStack: Token[] = [{ type: syntaxHead[0], value: undefined }];//符号栈
-        let symbolValStack: any[] = [undefined];//符号值栈，是symbolStack的value构成的栈，用于插入动作
-        let stateStack: number[] = [0];//状态栈
-        let reduceToken: Token | null = null;
-        let lexBuffer: Token | null = null;//lex输入缓冲,如果遇到规约,则上次从lex读取到的数据还没有被使用
-        L0:
-        for (; ;) {
-            let nowState = stateStack[stateStack.length - 1];
-            let sym: Token;
-            /**
-             * 如果没有规约出来的符号,则使用lex读取输入,因为不可能出现连写的规约,所以用一个变量reduceToken保存规约而 成的符号就够了
-             * 对于LR(1)分析器来说,规约要求输入符号必须是一个终结符,而规约必定是得到一个非终结符,所以不可能出现不读取输入而连续多次规约的情况
-             */
-            if (reduceToken == null) {
-                if (lexBuffer == null) {
-                    yytoken = lexer.yylex();
-                    lexBuffer = yytoken;
+        if (this.syntaxs[i].resolver != undefined) {//如果函数不是未定义,则输出到源码
+            str += `${this.syntaxs[i].resolver!.toString()}`;
+        }
+    }
+    str += `];
+    let result;//最终规约之后的返回值,由accept动作提供
+    let yytoken:YYTOKEN | undefined;
+    let errorRollback = false;//是否处于错误恢复模式
+    let hasError=false;//是否曾经出现过错误
+    //如龙书所说:"S0(即分析器的开始状态)不代表任何文法符号，它只是作为栈底标记，同时也在语法分析过程中担负了重要的角色。"
+    //自己标注的:用于规约成增广文法初始符号S'
+    let symbolStack: Token[] = [{ type: syntaxHead[0], value: undefined }];//符号栈
+    let symbolValStack: any[] = [undefined];//符号值栈，是symbolStack的value构成的栈，用于插入动作
+    let stateStack: number[] = [0];//状态栈
+    let reduceToken: Token | null = null;
+    let lexBuffer: Token | null = null;//lex输入缓冲,如果遇到规约,则上次从lex读取到的数据还没有被使用
+    L0:
+    for (; ;) {
+        let nowState = stateStack[stateStack.length - 1];
+        let sym: Token;
+        /**
+         * 如果没有规约出来的符号,则使用lex读取输入,因为不可能出现连写的规约,所以用一个变量reduceToken保存规约而 成的符号就够了
+         * 对于LR(1)分析器来说,规约要求输入符号必须是一个终结符,而规约必定是得到一个非终结符,所以不可能出现不读取输入而连续多次规约的情况
+         */
+        if (reduceToken == null) {
+            if (lexBuffer == null) {
+                yytoken = lexer.yylex();
+                lexBuffer = yytoken;
+            }
+            sym = lexBuffer;
+            lexBuffer = null;
+        } else {
+            sym = reduceToken;
+            reduceToken = null;
+        }
+        let actionString = state[nowState][sym.type];
+        if (actionString != undefined&&actionString != 'err') {
+            if (sym.type != \`error\`) {//不是因为error符号产生的移入则解除错误回滚标志
+                errorRollback = false;
+            }
+            let action = actionString.substring(0, 1);
+            let target = Number(actionString.substring(1, actionString.length));
+            if (action == "s") {//移入
+                symbolStack.push(sym);
+                symbolValStack.push(sym.value);//保持和stateStack一致
+                stateStack.push(target);
+            } else {//规约
+                let args: any[] = [];
+                for (let i = 0; i < syntaxLength[target]; i++) {
+                    args.unshift(symbolStack.pop()!.value);
+                    symbolValStack.pop();//保持和stateStack一致
+                    stateStack.pop();
                 }
-                sym = lexBuffer;
-                lexBuffer = null;
-            } else {
-                sym = reduceToken;
-                reduceToken = null;
-            }
-            let actionString = state[nowState][sym.type];
-            if (actionString != undefined&&actionString != 'err') {
-                if (sym.type != \`error\`) {//不是因为error符号产生的移入则解除错误回滚标志
-                    errorRollback = false;
+                reduceToken = {
+                    type: syntaxHead[target],
+                    value: undefined//规约动作的返回值
+                };
+                if(functionArray[target]!=undefined){
+                    reduceToken.value=functionArray[target]!(args,symbolValStack);//调用规约动作
                 }
-                let action = actionString.substring(0, 1);
-                let target = Number(actionString.substring(1, actionString.length));
-                if (action == "s") {//移入
-                    symbolStack.push(sym);
-                    symbolValStack.push(sym.value);//保持和stateStack一致
-                    stateStack.push(target);
-                } else {//规约
-                    let args: any[] = [];
-                    for (let i = 0; i < syntaxLength[target]; i++) {
-                        args.unshift(symbolStack.pop()!.value);
-                        symbolValStack.pop();//保持和stateStack一致
+                if (target == 0) {
+                    result=reduceToken.value;//增广文法的返回值
+                    break;//文法分析结束
+                }
+                lexBuffer = sym;//把读取到的符号暂时退回去
+            }
+        } else {
+            hasError=true;
+            if (errorRollback) { //已经在错误处理状态中了
+                //什么都不用做,消耗lex中的token就行了
+                if (sym.type == \`$\`) {//因为EOF导致的错误,不需要回溯了
+                    break;
+                }
+            }
+            else {//如果不处于错误恢复状态,则进行一些操作
+                lexer.yyerror(\`语法错误:此处不能接受\${sym.type}\`);
+                if (sym.type == \`$\`) {//因为EOF导致的错误,不需要回溯了
+                    break;
+                }
+                errorRollback = true;
+                //状态栈中默认包含一个状态0,如果回溯到这个位置还不能移入error,则放弃回溯
+                for (; stateStack.length > 0;) {//尝试回退栈中状态,直到状态包含一个形如 A->.error any,any的项,简单来说就是这个状态可以接收error
+                    if (state[stateStack[stateStack.length-1]][\`error\`] != undefined) {
+                        reduceToken = {
+                            type: \`error\`,
+                            value: undefined
+                        };
+                        lexBuffer = sym;//把读取到的符号暂时退回去
+                        continue L0;//假装已经把所有的错误符号规约成了error,进行下一轮操作
+                    } else {
                         stateStack.pop();
-                    }
-                    reduceToken = {
-                        type: syntaxHead[target],
-                        value: undefined//规约动作的返回值
-                    };
-                    if(functionArray[target]!=undefined){
-                        reduceToken.value=functionArray[target]!(args,symbolValStack);//调用规约动作
-                    }
-                    if (target == 0) {
-                        result=reduceToken.value;//增广文法的返回值
-                        break;//文法分析结束
-                    }
-                    lexBuffer = sym;//把读取到的符号暂时退回去
-                }
-            } else {
-                hasError=true;
-                if (errorRollback) { //已经在错误处理状态中了
-                    //什么都不用做,消耗lex中的token就行了
-                    if (sym.type == \`$\`) {//因为EOF导致的错误,不需要回溯了
-                        break;
+                        symbolValStack.pop();//保持和stateStack一致
+                        symbolStack.pop();
                     }
                 }
-                else {//如果不处于错误恢复状态,则进行一些操作
-                    lexer.yyerror(\`语法错误:此处不能接受\${sym.type}\`);
-                    if (sym.type == \`$\`) {//因为EOF导致的错误,不需要回溯了
-                        break;
-                    }
-                    errorRollback = true;
-                    //状态栈中默认包含一个状态0,如果回溯到这个位置还不能移入error,则放弃回溯
-                    for (; stateStack.length > 0;) {//尝试回退栈中状态,直到状态包含一个形如 A->.error any,any的项,简单来说就是这个状态可以接收error
-                        if (state[stateStack[stateStack.length-1]][\`error\`] != undefined) {
-                            reduceToken = {
-                                type: \`error\`,
-                                value: undefined
-                            };
-                            lexBuffer = sym;//把读取到的符号暂时退回去
-                            continue L0;//假装已经把所有的错误符号规约成了error,进行下一轮操作
-                        } else {
-                            stateStack.pop();
-                            symbolValStack.pop();//保持和stateStack一致
-                            symbolStack.pop();
-                        }
-                    }
-                    break;//弹出栈中的所有符号都不能处理错误,结束语法分析,在函数末尾抛出异常
-                }
+                break;//弹出栈中的所有符号都不能处理错误,结束语法分析,在函数末尾抛出异常
             }
         }
-        if(hasError){
-            throw new ParseException(\`${this.localTips.tips25}\`);
-        }else{
-            return result;
-        }
+    }
+    if(hasError){
+        throw new ParseException(\`${this.localTips.tips25}\`);
+    }else{
+        return result;
     }
 }
 export {ParseException};
-export default Parser;`;
+export default Parse;`;
         return str;
     }
 

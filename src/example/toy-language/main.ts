@@ -11,9 +11,8 @@ lexer.setSource(source);
 try {
     lexer.compile();
     console.time("解析源码耗时");
-    let parser = new Parser();
     pre_process(source);
-    let ret = parser.parse(lexer);
+    let ret = Parser(lexer);
     console.timeEnd("解析源码耗时");
     fs.writeFileSync(`./src/example/toy-language/output/stage-1.json`, JSON.stringify(ret, null, 4));
 } catch (e: unknown) {
