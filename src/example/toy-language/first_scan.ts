@@ -1,5 +1,5 @@
 import fs from 'fs'
-import { TypeUsedSingle } from './lib.js';
+import { FunctionSingle, TypeUsedSingle, FunctionSingleWithArgument } from './lib.js';
 import { Scope, BlockScope, ClassScope, ProgramScope } from './scope.js';
 let program: Program;
 let programScope: ProgramScope;
@@ -13,7 +13,7 @@ function OperatorOverLoad(scope: Scope, leftObj: ASTNode, rightObj: ASTNode | un
  * @param assignmentObj 赋值语句a=b中的b
  * @returns hasRet表示是否为返回语句
  */
-function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentObj?: ASTNode): { type: TypeUsed, hasRet: boolean, isProp?: boolean } {
+function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentObj?: ASTNode): { type: TypeUsed, hasRet: boolean, location?: 'prop' | 'field' | 'stack' } {
     if (node["def"] != undefined) {
         //def节点是block专属
         let name = Object.keys(node['def'])[0];
@@ -63,7 +63,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
                 }
             }
             (node as any).loadNodes.push(node);//记录下bolck有多少def节点需要被打包到闭包类,每个prop被那些地方load的,block扫描完毕的时候封闭的时候把这些load节点全部替换
-            return { type: propDesc.prop.type!, hasRet: false };//如果是读取block内部定义的变量,则这个变量一点是已经被推导出类型的，因为代码区域的变量是先定义后使用的
+            return { type: propDesc.prop.type!, hasRet: false, location: 'stack' };//如果是读取block内部定义的变量,则这个变量一点是已经被推导出类型的，因为代码区域的变量是先定义后使用的
         } else {
             throw `未定义的其他类型Scope`;
         }
@@ -71,7 +71,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
     }
     else if (node["call"] != undefined) {
         let funType = nodeRecursion(scope, node["call"].functionObj, label).type.FunctionType!;//FunctionType不可能为undefined
-        if (funType.retType == undefined) {
+        if (funType.retType == undefined) {//说明函数没有被推导过
             if ((funType as any).flag) {
                 return { type: {}, hasRet: false };//返回一个空值
             }
@@ -133,7 +133,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
                     }
                 }
                 delete node.accessField;//删除accessField节点
-                return { type: type, isProp: true, hasRet: false };
+                return { type: type, location: 'prop', hasRet: false };
             } else {
                 type = prop.type;
                 if (type == undefined) {
@@ -148,7 +148,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
                 if (prop.variable == 'val') {//load不可能变成access
                     throw `${className}.${accessName}声明为val,禁止赋值`;
                 }
-                return { type: type, hasRet: false };
+                return { type: type, hasRet: false, location: 'field' };
             }
         }
     }
@@ -192,10 +192,12 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
     else if (node["="] != undefined) {
         let right = nodeRecursion(scope, node['='].rightChild, label);//计算右节点
         let left = nodeRecursion(scope, node['='].leftChild, label, node['='].rightChild);
-        if (left.isProp) {
+        if (left.location != undefined && left.location == 'prop') {
             //已经在access节点的处理阶段被更改为call prop_set了,类型检查也做了,无需做任何处理
-        } else {
+        } else if (left.location != undefined && (left.location == 'stack' || left.location == 'field')) {
             typeCheck(left.type, right.type, `赋值语句左右类型不一致`);//类型检查
+        } else {
+            throw `只有左值才能赋值`;
         }
         return { type: right.type, hasRet: false };
     }
@@ -260,7 +262,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
         let catchRet = true;
         for (let _catch of node["trycatch"].catch_list) {
             let varialbe: VariableDescriptor = {};
-            varialbe[_catch.catchVariable] = { variable: 'var', type: _catch.catchType, initAST: { desc: 'ASTNode', loadException: '' } };
+            varialbe[_catch.catchVariable] = { variable: 'var', type: _catch.catchType, initAST: { desc: 'ASTNode', loadException: _catch.catchType } };
             let defNode: ASTNode = { desc: 'ASTNode', def: varialbe };
             let catchBlock = _catch.catchBlock;
             catchBlock.body.unshift(defNode);//插入一个读取exception指令
@@ -434,12 +436,61 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
     else if (node["cast"] != undefined) {
         throw `不支持强制转型`;
     }
-    else if (node["_new"] != undefined) { }
-    else if (node["_newArray"] != undefined) { }
-    else if (node["_switch"] != undefined) { }
-    else if (node["loadException"] != undefined) { }
-    else if (node["loadArgument"] != undefined) { }
-    throw new Error(`未知节点`);
+    else if (node["_new"] != undefined) {
+        let ts: TypeUsed[] = [];
+        for (let n of node["_new"]._arguments) {
+            ts.push(nodeRecursion(scope, n, label).type);
+        }
+        let callSingle: string = FunctionSingleWithArgument(ts, { SimpleType: { name: 'void' } });//根据调用参数生成一个签名,构造函数没有返回值
+        if (scope instanceof ProgramScope) {
+            if (scope.program.definedType[node["_new"].type.SimpleType!.name]._constructor[callSingle] == undefined) {
+                throw '无法找到合适的构造函数'
+            }
+        } else if (scope instanceof BlockScope || scope instanceof ClassScope) {
+            if (scope.programScope.program.definedType[node["_new"].type.SimpleType!.name]._constructor[callSingle] == undefined) {
+                throw '无法找到合适的构造函数'
+            }
+        } else {
+            throw `未知类型的Scope`;
+        }
+        return { type: node["_new"].type, hasRet: false };
+    }
+    else if (node["_newArray"] != undefined) {
+        for (let n of node["_newArray"].initList) {
+            nodeRecursion(scope, n, label);
+        }
+        return { type: { ArrayType: { innerType: node["_newArray"].type } }, hasRet: false };
+    }
+    else if (node["_switch"] != undefined) {
+        nodeRecursion(scope, node["_switch"].pattern, label);
+        for (let caseStmt of node["_switch"].matchList) {
+            nodeRecursion(scope, caseStmt.matchObj, label);
+            if (caseStmt.stmt.desc == 'Block') {
+                BlockScan(new BlockScope(scope, false, caseStmt.stmt), label);
+            } else if (caseStmt.stmt.desc == 'ASTNode') {
+                nodeRecursion(scope, caseStmt.stmt as ASTNode, label);
+            } else {
+                throw `未知类型`;
+            }
+        }
+        if (node["_switch"].defalutStmt?.desc == 'Block') {
+            BlockScan(new BlockScope(scope, false, node["_switch"].defalutStmt), label);
+        } else if (node["_switch"].defalutStmt?.desc == 'ASTNode') {
+            nodeRecursion(scope, node["_switch"].defalutStmt as ASTNode, label);
+        } else {
+            throw `未知类型`;
+        }
+        return { type: { SimpleType: { name: 'void' } }, hasRet: false };
+    }
+    else if (node["loadException"] != undefined) {
+        return { type: node["loadException"], hasRet: false };
+    }
+    else if (node["loadArgument"] != undefined) {
+        return { type: node["loadArgument"].type, hasRet: false };
+    }
+    else {
+        throw new Error(`未知节点`);
+    }
 }
 function typeCheck(a: TypeUsed, b: TypeUsed, msg: string) {
     let ta = TypeUsedSingle(a);
@@ -481,14 +532,16 @@ function functionScan(blockScope: BlockScope, fun: FunctionType): TypeUsed {
     } else {
         (fun as any).hasFunctionScan = true;
     }
-    if (fun.body!.body == undefined) {//函数体,根据有无body判断是函数类型声明还是定义，声明语句不做扫描
-        console.error('后面需要补充返回值类型');
-        return {};
+    if (fun.body == undefined) {//函数体,根据有无body判断是函数类型声明还是定义，声明语句不做扫描
+        if(fun.retType==undefined){
+            throw `函数声明一定有返回值声明`;
+        }
+        return fun.retType;
     }
     let argIndex = 0;
     for (let argumentName in fun._arguments) {
         let defNode: ASTNode = { desc: 'ASTNode', def: {} };
-        defNode.def![argumentName] = { variable: 'var', initAST: { desc: 'ASTNode', loadArgument: argIndex } };
+        defNode.def![argumentName] = { variable: 'var', initAST: { desc: 'ASTNode', loadArgument: { index: argIndex, type: fun._arguments[argumentName].type! } } };
         fun.body!.body.unshift(defNode);//插入args的def指令
         argIndex++;
     }

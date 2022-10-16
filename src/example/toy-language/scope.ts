@@ -10,9 +10,11 @@ abstract class Scope {
     public abstract getProp(name: string): { prop: VariableProperties, scope: Scope };
 }
 class ProgramScope extends Scope {
+    public program: Program;
     private classMap: { [key: string]: ClassScope } = {};
     constructor(program: Program) {
         super(program.property);
+        this.program = program;
         //创建所有的classScope
         for (let typeName in program.definedType) {
             let type = program.definedType[typeName];

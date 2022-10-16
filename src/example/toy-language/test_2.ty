@@ -1,7 +1,4 @@
-function f(){
-    var a:int;
-    a=1;
-    a();
-    new int();
-    new int[5];
-};
+class int{
+    var a:()=>void;
+    function b():int{return 1;};
+}

@@ -551,7 +551,7 @@ import { FunctionSingle, FunctionSingleWithoutRetType } from "./lib.js"
                     let parameter_declare = $[2] as VariableDescriptor;
                     let statements = $[5] as Block;
                     let ret: { [key: string]: FunctionType } = JSON.parse("{}");//为了生成的解析器不报红
-                    let functionType: FunctionType = { _construct_for_type: basic_type.SimpleType!.name, _arguments: parameter_declare, body: statements };
+                    let functionType: FunctionType = { _construct_for_type: basic_type.SimpleType!.name, _arguments: parameter_declare, body: statements, retType: { SimpleType: { name: 'void' } } };
                     let single: string = FunctionSingle(functionType);
                     ret[single] = functionType;
                     return [ret];

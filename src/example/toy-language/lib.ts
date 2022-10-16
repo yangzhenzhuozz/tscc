@@ -14,6 +14,15 @@ export function FunctionSingleWithoutRetType(functionType: FunctionType): string
     }
     return `args:(${types.length > 0 ? types.reduce((p, c) => `${p},${c}`) : ''}) templateLentgh:${functionType.templates != undefined ? functionType.templates.length : 0}`;
 }
+//根据参数生成签名
+export function FunctionSingleWithArgument(ts: TypeUsed[], ret: TypeUsed) {
+    let types: string[] = [];
+    for (let t of ts) {
+        types.push(TypeUsedSingle(t));
+    }
+    return `args:(${types.length > 0 ? types.reduce((p, c) => `${p},${c}`) : ''}) templateLentgh:0`;
+}
+
 //类型签名
 export function TypeUsedSingle(type: TypeUsed): string {
     if (type.SimpleType != undefined) {

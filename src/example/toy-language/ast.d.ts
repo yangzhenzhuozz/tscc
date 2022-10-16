@@ -13,7 +13,7 @@ Reflect.ownKeys({
 })
 // ['4', '18', 'star', 'kirby', Symbol(07akioni)]
 */
-type opType = '+' | '-' | '*' | '/' | '<' | '<=' | '>' | '>=' | '==' | '||' | '&&'|'[]';
+type opType = '+' | '-' | '*' | '/' | '<' | '<=' | '>' | '>=' | '==' | '||' | '&&' | '[]';
 type opType2 = '++' | '--';//单目运算符
 interface TypeDef {//定义的类型
     modifier?: 'valuetype' | 'sealed';
@@ -72,8 +72,8 @@ interface Program {
 //一条语句就是一个Noe
 interface ASTNode {
     desc: 'ASTNode';
-    loadException?: '';//读取异常
-    loadArgument?: number,//读取参数
+    loadException?: TypeUsed;//读取异常
+    loadArgument?: { index: number, type: TypeUsed },//读取参数
     def?: VariableDescriptor;
     accessField?: { obj: ASTNode, field: string };
     call?: { functionObj: ASTNode, _arguments: ASTNode[], templateSpecialization_list?: TypeUsed[] };
