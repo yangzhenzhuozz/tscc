@@ -31,7 +31,7 @@ interface TypeDef {//定义的类型
 type VariableDescriptor = { [key: string]: VariableProperties };
 //变量属性
 interface VariableProperties {
-    variable: 'var' | 'val' | 'g-set';
+    variable: 'var' | 'val';
     type?: TypeUsed;//需要类型推导的变量可以先不设置Type
     initAST?: ASTNode;//当type为undefined的时候,initAST必须存在,否则无法确定类型
     getter?: FunctionType;//getter

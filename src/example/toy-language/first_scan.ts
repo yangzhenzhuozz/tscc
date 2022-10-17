@@ -15,21 +15,19 @@ function OperatorOverLoad(scope: Scope, leftObj: ASTNode, rightObj: ASTNode | un
  */
 function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentObj?: ASTNode): { type: TypeUsed, hasRet: boolean, location?: 'prop' | 'field' | 'stack' } {
     if (node["def"] != undefined) {
-        //def节点是block专属
+        let blockScope = (scope as BlockScope);//def节点是block专属
         let name = Object.keys(node['def'])[0];
-        if (scope.property[name] != undefined) {
-            throw `重复定义变量${name}`;
-        }
-        scope.property[name] = node['def'][name];
+        blockScope.setProp(name, node['def'][name], node);
         let initType: TypeUsed | undefined;
         if (node['def'][name].initAST != undefined) {
             initType = nodeRecursion(scope, node['def'][name].initAST!, label).type;
         }
-        if (scope.property[name].type == undefined) {//如果是需要进行类型推导的，则推导
-            scope.property[name].type = initType;
+        let prop = blockScope.getProp(name).prop;
+        if (prop.type == undefined) {//如果是需要进行类型推导，则推导类型
+            prop.type = initType;
         } else {//否则检查initialization的类型和声明类型是否一致
             if (initType != undefined) {
-                typeCheck(initType!, scope.property[name].type!, `声明类型和初始化类型不匹配`);
+                typeCheck(initType!, prop.type!, `声明类型和初始化类型不匹配`);
             }
             if (node['def'][name].type!.FunctionType?.body != undefined) {
                 /**
@@ -42,7 +40,6 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
                 functionScan(new BlockScope(scope, true, node['def'][name].type!.FunctionType!.body!), node['def'][name].type!.FunctionType!);//如果是定义了函数，则扫描一下
             }
         }
-        (scope.property[name] as any).defNode = node;//记录defnode
         return { type: { SimpleType: { name: 'void' } }, hasRet: false };
     }
     else if (node["load"] != undefined) {
@@ -56,13 +53,13 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
             delete node.load;//把load改为access
             node.accessField = { obj: { desc: 'ASTNode', _program: '' }, field: name };//load阶段还不知道是不是property,由access节点处理进行判断
             return nodeRecursion(scope, node, label, assignmentObj);//处理access节点需要附带这个参数
-        } else if (scope instanceof BlockScope) {//blockScope
+        } else if (propDesc.scope instanceof BlockScope) {//blockScope
             if (assignmentObj != undefined) {
                 if (propDesc.prop.variable == 'val') {//load不可能变成access
                     throw `变量${name}声明为val,禁止赋值`;
                 }
             }
-            (node as any).loadNodes.push(node);//记录下bolck有多少def节点需要被打包到闭包类,每个prop被那些地方load的,block扫描完毕的时候封闭的时候把这些load节点全部替换
+            propDesc.scope.defNodes[name].loads.push(node);//记录下bolck有多少def节点需要被打包到闭包类,每个prop被那些地方load的,block扫描完毕的时候封闭的时候把这些load节点全部替换
             return { type: propDesc.prop.type!, hasRet: false, location: 'stack' };//如果是读取block内部定义的变量,则这个变量一点是已经被推导出类型的，因为代码区域的变量是先定义后使用的
         } else {
             throw `未定义的其他类型Scope`;
@@ -179,7 +176,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
         return { type: { ProgramType: "" }, hasRet: false };
     }
     else if (node["immediate"] != undefined) {
-        if (node["immediate"].primiviteValue) {
+        if (node["immediate"].primiviteValue != undefined) {
             if (isNaN(Number(node["immediate"].primiviteValue))) {
                 return { type: { SimpleType: { name: 'string' } }, hasRet: false };
             } else {
@@ -263,9 +260,9 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
         for (let _catch of node["trycatch"].catch_list) {
             let varialbe: VariableDescriptor = {};
             varialbe[_catch.catchVariable] = { variable: 'var', type: _catch.catchType, initAST: { desc: 'ASTNode', loadException: _catch.catchType } };
-            let defNode: ASTNode = { desc: 'ASTNode', def: varialbe };
+            let def: ASTNode = { desc: 'ASTNode', def: varialbe };
             let catchBlock = _catch.catchBlock;
-            catchBlock.body.unshift(defNode);//插入一个读取exception指令
+            catchBlock.body.unshift(def);//插入一个读取exception指令
             let catchScope = new BlockScope(scope, false, catchBlock);//catch语句只能出现在block内部
             let catchBlockRet = BlockScan(catchScope, label);
             if (catchBlockRet != undefined) {
@@ -512,17 +509,16 @@ function BlockScan(blockScope: BlockScope, label: string[]): TypeUsed | undefine
             ret = nodeRet.hasRet ? nodeRet.type : undefined;
         } else {
             let block = nodeOrBlock as Block;
-            let innerBlockScope = new BlockScope(blockScope, false, block);
-            ret = BlockScan(innerBlockScope, label);
-            if (innerBlockScope.hasCapture) {
-                throw `unimplemented`;//闭包处理还未完成
-            }
+            ret = BlockScan(new BlockScope(blockScope, false, block), label);
         }
         if (ret != undefined) {
             if (i != blockScope.block!.body.length - 1) {
                 throw 'return之后不能再有语句';
             }
         }
+    }
+    if (blockScope.captured.size > 0) {
+        throw `unimplemented`;//闭包处理还未完成
     }
     return ret;
 }
@@ -533,7 +529,7 @@ function functionScan(blockScope: BlockScope, fun: FunctionType): TypeUsed {
         (fun as any).hasFunctionScan = true;
     }
     if (fun.body == undefined) {//函数体,根据有无body判断是函数类型声明还是定义，声明语句不做扫描
-        if(fun.retType==undefined){
+        if (fun.retType == undefined) {
             throw `函数声明一定有返回值声明`;
         }
         return fun.retType;
@@ -546,9 +542,6 @@ function functionScan(blockScope: BlockScope, fun: FunctionType): TypeUsed {
         argIndex++;
     }
     let blockret = BlockScan(blockScope, []);
-    if (blockScope.hasCapture) {
-        throw `unimplemented`;//闭包处理还未完成
-    }
     if (blockret == undefined) {
         return { SimpleType: { name: 'void' } };//block没有任何返回语句，则说明返回void
     } else {
@@ -556,8 +549,8 @@ function functionScan(blockScope: BlockScope, fun: FunctionType): TypeUsed {
     }
 }
 function ClassScan(classScope: ClassScope) {
-    for (let propName in classScope.property) {
-        let prop = classScope.property[propName];
+    for (let propName of classScope.getPropNames()) {
+        let prop = classScope.getProp(propName).prop;
         if (prop.getter == undefined && prop.setter == undefined) {
             if (prop.initAST) {
                 let initType = nodeRecursion(classScope, prop.initAST, []).type;
@@ -585,3 +578,4 @@ function programScan() {
     //扫描property
 }
 programScan();
+//变量类型循环推导已经测试，函数类型循环推导还未测试

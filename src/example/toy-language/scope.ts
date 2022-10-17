@@ -1,5 +1,5 @@
 abstract class Scope {
-    public property: VariableDescriptor;
+    protected property: VariableDescriptor;
     constructor(prop: VariableDescriptor | undefined) {
         if (prop == undefined) {
             this.property = {};
@@ -12,6 +12,9 @@ abstract class Scope {
 class ProgramScope extends Scope {
     public program: Program;
     private classMap: { [key: string]: ClassScope } = {};
+    public setProp(name: string, variableProperties: VariableProperties): void {
+        this.property[name] = variableProperties;
+    }
     constructor(program: Program) {
         super(program.property);
         this.program = program;
@@ -48,6 +51,12 @@ class ClassScope extends Scope {
         this.programScope = programScope;
         this.className = className;
     }
+    public getPropNames() {
+        return Object.keys(this.property);
+    }
+    public setProp(name: string, variableProperties: VariableProperties): void {
+        this.property[name] = variableProperties;
+    }
     public getProp(name: string): { prop: VariableProperties, scope: Scope } {
         let scope: ClassScope | undefined = this;
         let prop: VariableProperties | undefined = this.property[name];
@@ -62,7 +71,8 @@ class BlockScope extends Scope {
     public parent: BlockScope | undefined;
     public block?: Block;//记录当前scope是属于哪个block,处理闭包时插入指令
     public isFunctionScope: boolean = false;//是否是一个function scope，用于判断闭包捕获
-    public hasCapture: boolean = false;//本scope是否有被捕获的变量
+    public captured: Set<string> = new Set();//本scope被捕获的变量
+    public defNodes: { [key: string]: { defNode: ASTNode, loads: ASTNode[] } } = {};//def:哪个节点定义的变量,loads:被哪些节点读取
     public programScope: ProgramScope;
     public classScope: ClassScope | undefined;
     constructor(scope: Scope, isFunctionScope: boolean, block: Block) {
@@ -84,6 +94,14 @@ class BlockScope extends Scope {
         }
         this.isFunctionScope = !!isFunctionScope;
         this.block = block;
+    }
+    public setProp(name: string, variableProperties: VariableProperties, defNode: ASTNode): void {
+        if (this.property[name] != undefined) {
+            throw `重复定义变量${name}`;
+        } else {
+            this.property[name] = variableProperties;
+            this.defNodes[name] = { defNode: defNode, loads: [] };
+        }
     }
     public getProp(name: string): { prop: VariableProperties, scope: Scope } {
         let prop: VariableProperties | undefined;
@@ -107,8 +125,10 @@ class BlockScope extends Scope {
             level = 0;//不是在blockScope中的属性，清除标记
         }
         if (prop != undefined) {
-            this.hasCapture = level > 0;
-            return { prop: prop, scope: this };
+            if (level > 0) {
+                this.captured.add(name);
+            }
+            return { prop: prop, scope: scope! };
         } else {
             if (this.classScope != undefined) {
                 return this.classScope.getProp(name);
