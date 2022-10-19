@@ -22,7 +22,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
         if (node['def'][name].initAST != undefined) {
             initType = nodeRecursion(scope, node['def'][name].initAST!, label).type;
         }
-        let prop = blockScope.getProp(name).prop;
+        let prop = node['def'][name];
         if (prop.type == undefined) {//如果是需要进行类型推导，则推导类型
             prop.type = initType;
         } else {//否则检查initialization的类型和声明类型是否一致
@@ -37,7 +37,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
                  * 都会生成一个def节点,一个有body，一个没有(函数声明没有，函数定义有)
                  * 所以遇到这种情况，通通扫描一次，在functionScan中，如果function.body==undefined,则直接放弃扫描
                 */
-                functionScan(new BlockScope(scope, true, node['def'][name].type!.FunctionType!.body!), node['def'][name].type!.FunctionType!);//如果是定义了函数，则扫描一下
+                functionScan(new BlockScope(scope, node['def'][name].type!.FunctionType!, node['def'][name].type!.FunctionType!.body!), node['def'][name].type!.FunctionType!);//如果是定义了函数，则扫描一下
             }
         }
         return { type: { SimpleType: { name: 'void' } }, hasRet: false };
@@ -73,7 +73,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
                 return { type: {}, hasRet: false };//返回一个空值
             }
             (funType as any).flag = true;//标记
-            functionScan(new BlockScope(scope, true, funType.body!), funType);
+            functionScan(new BlockScope(scope, funType, funType.body!), funType);
             delete (funType as any).flag;//删除标记
         }
         if (funType == undefined) {
@@ -116,7 +116,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
                         throw `${className}.${accessName}没有setter`;
                     } else {
                         //改成set调用
-                        functionScan(new BlockScope(classScope, true, prop.setter.body!), prop.setter);
+                        functionScan(new BlockScope(classScope, prop.setter, prop.setter.body!), prop.setter);
                         type = { SimpleType: { name: 'void' } };//set没有返回值
                         node.call = { functionObj: { desc: 'ASTNode', accessField: { obj: node["accessField"].obj, field: `@set_${node["accessField"].field}` } }, _arguments: [assignmentObj] };
                     }
@@ -125,7 +125,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
                         throw `${className}.${accessName}没有getter`;
                     } else {
                         //改成get调用
-                        type = functionScan(new BlockScope(classScope, true, prop.getter.body!), prop.getter);
+                        type = functionScan(new BlockScope(classScope, prop.getter, prop.getter.body!), prop.getter);
                         node.call = { functionObj: { desc: 'ASTNode', accessField: { obj: node["accessField"].obj, field: `@get_${node["accessField"].field}` } }, _arguments: [] };//改为get
                     }
                 }
@@ -183,7 +183,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
                 return { type: { SimpleType: { name: 'int' } }, hasRet: false };
             }
         } else {//是一个函数体
-            return { type: functionScan(new BlockScope(scope, true, node["immediate"].functionValue!.body!), node["immediate"].functionValue!), hasRet: false };
+            return { type: functionScan(new BlockScope(scope, node["immediate"].functionValue!, node["immediate"].functionValue!.body!), node["immediate"].functionValue!), hasRet: false };
         }
     }
     else if (node["="] != undefined) {
@@ -254,7 +254,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
         return { type: retType, hasRet: false };
     }
     else if (node["trycatch"] != undefined) {
-        let tryScope = new BlockScope(scope, false, node["trycatch"].tryBlock);//catch语句只能出现在block内部
+        let tryScope = new BlockScope(scope, undefined, node["trycatch"].tryBlock);//catch语句只能出现在block内部
         let tryBlockRet = BlockScan(tryScope, label);//此时的block一定是BlockScope
         let catchRet = true;
         for (let _catch of node["trycatch"].catch_list) {
@@ -263,7 +263,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
             let def: ASTNode = { desc: 'ASTNode', def: varialbe };
             let catchBlock = _catch.catchBlock;
             catchBlock.body.unshift(def);//插入一个读取exception指令
-            let catchScope = new BlockScope(scope, false, catchBlock);//catch语句只能出现在block内部
+            let catchScope = new BlockScope(scope, undefined, catchBlock);//catch语句只能出现在block内部
             let catchBlockRet = BlockScan(catchScope, label);
             if (catchBlockRet != undefined) {
                 if (tryBlockRet != undefined) {
@@ -299,7 +299,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
         if (node["ifStmt"].stmt.desc == 'ASTNode') {
             nodeRecursion(scope, node["ifStmt"].stmt as ASTNode, label);
         } else {
-            let blockScope = new BlockScope(scope, false, node["ifStmt"].stmt);//ifStmt语句只能出现在block内部
+            let blockScope = new BlockScope(scope, undefined, node["ifStmt"].stmt);//ifStmt语句只能出现在block内部
             BlockScan(blockScope, label);
         }
         return { hasRet: false, type: { SimpleType: { name: 'void' } } };
@@ -314,7 +314,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
                 type1 = stmtRet.type;
             }
         } else {
-            let blockScope = new BlockScope(scope, false, node["ifElseStmt"].stmt1);//ifElseStmt语句只能出现在block内部
+            let blockScope = new BlockScope(scope, undefined, node["ifElseStmt"].stmt1);//ifElseStmt语句只能出现在block内部
             type1 = BlockScan(blockScope, label);
         }
         if (node["ifElseStmt"].stmt2.desc == 'ASTNode') {
@@ -323,7 +323,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
                 type2 = stmtRet.type;
             }
         } else {
-            let blockScope = new BlockScope(scope, false, node["ifElseStmt"].stmt2);//ifElseStmt语句只能出现在block内部
+            let blockScope = new BlockScope(scope, undefined, node["ifElseStmt"].stmt2);//ifElseStmt语句只能出现在block内部
             type2 = BlockScan(blockScope, label);
         }
         if (type1 != undefined && type2 != undefined) {
@@ -343,7 +343,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
         if (node["do_while"].stmt.desc == 'ASTNode') {
             nodeRecursion(scope, node["do_while"].stmt as ASTNode, label);
         } else {
-            let blockScope = new BlockScope(scope, false, node["do_while"].stmt);//do_while语句只能出现在block内部
+            let blockScope = new BlockScope(scope, undefined, node["do_while"].stmt);//do_while语句只能出现在block内部
             BlockScan(blockScope, label);
         }
         label.pop();
@@ -357,7 +357,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
         if (node["_while"].stmt.desc == 'ASTNode') {
             nodeRecursion(scope, node["_while"].stmt as ASTNode, label);
         } else {
-            let blockScope = new BlockScope(scope, false, node["_while"].stmt);//while语句只能出现在block内部
+            let blockScope = new BlockScope(scope, undefined, node["_while"].stmt);//while语句只能出现在block内部
             BlockScan(blockScope, label);
         }
         label.pop();
@@ -379,7 +379,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
         if (node["_for"].stmt.desc == 'ASTNode') {
             nodeRecursion(scope, node["_for"].stmt as ASTNode, label);
         } else {
-            let blockScope = new BlockScope(scope, false, node["_for"].stmt);//for语句只能出现在block内部
+            let blockScope = new BlockScope(scope, undefined, node["_for"].stmt);//for语句只能出现在block内部
             BlockScan(blockScope, label);
         }
         label.pop();
@@ -463,7 +463,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
         for (let caseStmt of node["_switch"].matchList) {
             nodeRecursion(scope, caseStmt.matchObj, label);
             if (caseStmt.stmt.desc == 'Block') {
-                BlockScan(new BlockScope(scope, false, caseStmt.stmt), label);
+                BlockScan(new BlockScope(scope, undefined, caseStmt.stmt), label);
             } else if (caseStmt.stmt.desc == 'ASTNode') {
                 nodeRecursion(scope, caseStmt.stmt as ASTNode, label);
             } else {
@@ -471,7 +471,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
             }
         }
         if (node["_switch"].defalutStmt?.desc == 'Block') {
-            BlockScan(new BlockScope(scope, false, node["_switch"].defalutStmt), label);
+            BlockScan(new BlockScope(scope, undefined, node["_switch"].defalutStmt), label);
         } else if (node["_switch"].defalutStmt?.desc == 'ASTNode') {
             nodeRecursion(scope, node["_switch"].defalutStmt as ASTNode, label);
         } else {
@@ -509,7 +509,7 @@ function BlockScan(blockScope: BlockScope, label: string[]): TypeUsed | undefine
             ret = nodeRet.hasRet ? nodeRet.type : undefined;
         } else {
             let block = nodeOrBlock as Block;
-            ret = BlockScan(new BlockScope(blockScope, false, block), label);
+            ret = BlockScan(new BlockScope(blockScope, undefined, block), label);
         }
         if (ret != undefined) {
             if (i != blockScope.block!.body.length - 1) {
@@ -518,7 +518,14 @@ function BlockScan(blockScope: BlockScope, label: string[]): TypeUsed | undefine
         }
     }
     if (blockScope.captured.size > 0) {
-        throw `unimplemented`;//闭包处理还未完成
+        for (let k of [...blockScope.captured]) {
+            blockScope.defNodes[k].defNode.def_ref = blockScope.defNodes[k].defNode.def;
+            delete blockScope.defNodes[k].defNode.def;//把def改成def_ref
+            for (let loadNode of blockScope.defNodes[k].loads) {
+                loadNode.load_ref = loadNode.load;
+                delete loadNode.load;//把load改成load_ref
+            }
+        }
     }
     return ret;
 }
@@ -560,7 +567,7 @@ function ClassScan(classScope: ClassScope) {
                     prop.type = initType;//如果是需要推导的类型，进行填充
                 }
             } else if (prop.type?.FunctionType) {
-                let blockScope = new BlockScope(classScope, true, prop.type?.FunctionType.body!);
+                let blockScope = new BlockScope(classScope, prop.type?.FunctionType, prop.type?.FunctionType.body!);
                 functionScan(blockScope, prop.type?.FunctionType);
             }
         } else {
@@ -576,6 +583,29 @@ function programScan() {
         ClassScan(programScope.getClassScope(typeName));
     }
     //扫描property
+    fs.writeFileSync(`./src/example/toy-language/output/stage-2.json`, JSON.stringify(program, null, 4));
 }
+console.time('扫描耗时');
 programScan();
-//变量类型循环推导已经测试，函数类型循环推导还未测试
+console.timeEnd('扫描耗时');
+
+
+/*1.变量类型循环推导已经测试，函数类型循环推导还未测试
+2.多层捕获，多层传递
+{
+    var a;
+    {
+        var b;
+        {
+            var c;
+            function f1(){
+                function f2(){
+                    function f3(){
+                        a+b+c;
+                    }
+                }
+            }
+        }
+    }
+}
+*/

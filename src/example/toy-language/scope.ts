@@ -67,15 +67,17 @@ class ClassScope extends Scope {
         }
     }
 }
+let debugID = 0;
 class BlockScope extends Scope {
     public parent: BlockScope | undefined;
     public block?: Block;//记录当前scope是属于哪个block,处理闭包时插入指令
-    public isFunctionScope: boolean = false;//是否是一个function scope，用于判断闭包捕获
+    public fun: FunctionType | undefined;//是否是一个function scope，用于判断闭包捕获
     public captured: Set<string> = new Set();//本scope被捕获的变量
     public defNodes: { [key: string]: { defNode: ASTNode, loads: ASTNode[] } } = {};//def:哪个节点定义的变量,loads:被哪些节点读取
     public programScope: ProgramScope;
     public classScope: ClassScope | undefined;
-    constructor(scope: Scope, isFunctionScope: boolean, block: Block) {
+    public ID = debugID++;
+    constructor(scope: Scope, fun: FunctionType | undefined, block: Block) {
         super(undefined);
         if (scope instanceof ProgramScope) {
             this.parent = undefined;
@@ -92,7 +94,7 @@ class BlockScope extends Scope {
         } else {
             throw `scope只能是上面三种情况`;
         }
-        this.isFunctionScope = !!isFunctionScope;
+        this.fun = fun;
         this.block = block;
     }
     public setProp(name: string, variableProperties: VariableProperties, defNode: ASTNode): void {
@@ -106,18 +108,16 @@ class BlockScope extends Scope {
     public getProp(name: string): { prop: VariableProperties, scope: Scope } {
         let prop: VariableProperties | undefined;
         let level = 0;
-        let flag = false;
-        let scope: BlockScope | undefined = this;
-        for (; scope != undefined; scope = scope.parent) {
-            if (flag) {//每越过一个functionScope，层级+1
+        let needCaptureFun: FunctionType[] = [];
+        let fast: BlockScope | undefined = this;
+        let low: BlockScope | undefined = undefined;
+        for (; fast != undefined; low = fast, fast = fast.parent) {
+            if (low?.fun != undefined) {//每越过一个functionScope，层级+1
+                needCaptureFun.push(low!.fun!);//刚好越过一个函数，慢指针肯定指向一个函数
                 level++;
-                flag = false;
             }
-            if (scope instanceof BlockScope && scope.isFunctionScope) {
-                flag = true;
-            }
-            if (scope.property[name] != undefined) {
-                prop = scope.property[name];
+            if (fast.property[name] != undefined) {
+                prop = fast.property[name];
                 break;
             }
         }
@@ -126,9 +126,15 @@ class BlockScope extends Scope {
         }
         if (prop != undefined) {
             if (level > 0) {
-                this.captured.add(name);
+                for (let f of needCaptureFun) {
+                    if (prop.type == undefined) {
+                        throw `定义在block中的变量没有完成类型推导`;//定义在block中的变量肯定已经推导过类型
+                    }
+                    f.capture[name] = prop.type;
+                }
+                fast!.captured.add(name);//如果能找到变量,fast一定不是undeinfed
             }
-            return { prop: prop, scope: scope! };
+            return { prop: prop, scope: fast! };
         } else {
             if (this.classScope != undefined) {
                 return this.classScope.getProp(name);

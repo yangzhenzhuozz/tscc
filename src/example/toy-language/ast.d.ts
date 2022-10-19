@@ -55,6 +55,7 @@ interface FunctionType {
     _arguments: VariableDescriptor;
     body?: Block;//函数体,根据有无body判断是函数类型声明还是定义
     retType?: TypeUsed;//返回类型，可选，如果为undefined则需要进行类型推导
+    capture: { [key: string]: TypeUsed } = {};//捕获列表
     templates?: string[];//模板列表
     _construct_for_type?: string;//是某个类型的构造函数
 }
@@ -75,9 +76,11 @@ interface ASTNode {
     loadException?: TypeUsed;//读取异常
     loadArgument?: { index: number, type: TypeUsed },//读取参数
     def?: VariableDescriptor;
+    def_ref?: VariableDescriptor;//定义一个引用变量，用于闭包
     accessField?: { obj: ASTNode, field: string };
     call?: { functionObj: ASTNode, _arguments: ASTNode[], templateSpecialization_list?: TypeUsed[] };
     load?: string;//读取某个变量
+    load_ref?: string;//读取某个引用变量，用于闭包
     _super?: "";
     _this?: string;
     _program?: "";//访问program对象

@@ -221,7 +221,7 @@ import { FunctionSingle, FunctionSingleWithoutRetType } from "./lib.js"
                     let ret_type = $[6] as TypeUsed | undefined;
                     let statements = $[8] as Block;
                     let ret: VariableDescriptor = JSON.parse("{}");//为了生成的解析器不报红
-                    ret[id] = { variable: 'val', type: { FunctionType: { _arguments: parameter_declare, body: statements, templates: template_declare, retType: ret_type } } };
+                    ret[id] = { variable: 'val', type: { FunctionType: { capture: {}, _arguments: parameter_declare, body: statements, templates: template_declare, retType: ret_type } } };
                     return ret;
                 }
             }
@@ -342,7 +342,7 @@ import { FunctionSingle, FunctionSingleWithoutRetType } from "./lib.js"
                     }
                     let parameter_declare = $[2] as VariableDescriptor;
                     let ret_type = $[5] as TypeUsed;
-                    return { FunctionType: { templates: template_definition, _arguments: parameter_declare, retType: ret_type } };
+                    return { FunctionType: { capture: {}, templates: template_definition, _arguments: parameter_declare, retType: ret_type } };
                 }
             }
         },//泛型函数类型
@@ -352,7 +352,7 @@ import { FunctionSingle, FunctionSingleWithoutRetType } from "./lib.js"
                 action: function ($, s): TypeUsed {
                     let parameter_declare = $[1] as VariableDescriptor;
                     let ret_type = $[4] as TypeUsed;
-                    return { FunctionType: { _arguments: parameter_declare, retType: ret_type } };
+                    return { FunctionType: { capture: {}, _arguments: parameter_declare, retType: ret_type } };
                 }
             }
         },//函数类型
@@ -506,6 +506,7 @@ import { FunctionSingle, FunctionSingleWithoutRetType } from "./lib.js"
                     ret[id] = {
                         variable: 'var',
                         getter: {
+                            capture: {},
                             _arguments: {},
                             body: statements,
                             retType: retType
@@ -531,6 +532,7 @@ import { FunctionSingle, FunctionSingleWithoutRetType } from "./lib.js"
                     ret[id] = {
                         variable: 'var',
                         setter: {
+                            capture: {},
                             _arguments: argument,
                             body: statements,
                             retType: {
@@ -551,7 +553,7 @@ import { FunctionSingle, FunctionSingleWithoutRetType } from "./lib.js"
                     let parameter_declare = $[2] as VariableDescriptor;
                     let statements = $[5] as Block;
                     let ret: { [key: string]: FunctionType } = JSON.parse("{}");//为了生成的解析器不报红
-                    let functionType: FunctionType = { _construct_for_type: basic_type.SimpleType!.name, _arguments: parameter_declare, body: statements, retType: { SimpleType: { name: 'void' } } };
+                    let functionType: FunctionType = { capture: {}, _construct_for_type: basic_type.SimpleType!.name, _arguments: parameter_declare, body: statements, retType: { SimpleType: { name: 'void' } } };
                     let single: string = FunctionSingle(functionType);
                     ret[single] = functionType;
                     return [ret];
@@ -570,6 +572,7 @@ import { FunctionSingle, FunctionSingleWithoutRetType } from "./lib.js"
                     return {
                         "+":
                         {
+                            capture: {},
                             _arguments: argument,
                             body: statements,
                             retType: retType
@@ -590,6 +593,7 @@ import { FunctionSingle, FunctionSingleWithoutRetType } from "./lib.js"
                     return {
                         "-":
                         {
+                            capture: {},
                             _arguments: argument,
                             body: statements,
                             retType: retType
@@ -610,6 +614,7 @@ import { FunctionSingle, FunctionSingleWithoutRetType } from "./lib.js"
                     return {
                         "*":
                         {
+                            capture: {},
                             _arguments: argument,
                             body: statements,
                             retType: retType
@@ -630,6 +635,7 @@ import { FunctionSingle, FunctionSingleWithoutRetType } from "./lib.js"
                     return {
                         "/":
                         {
+                            capture: {},
                             _arguments: argument,
                             body: statements,
                             retType: retType
@@ -650,6 +656,7 @@ import { FunctionSingle, FunctionSingleWithoutRetType } from "./lib.js"
                     return {
                         "<":
                         {
+                            capture: {},
                             _arguments: argument,
                             body: statements,
                             retType: retType
@@ -670,6 +677,7 @@ import { FunctionSingle, FunctionSingleWithoutRetType } from "./lib.js"
                     return {
                         "<=":
                         {
+                            capture: {},
                             _arguments: argument,
                             body: statements,
                             retType: retType
@@ -690,6 +698,7 @@ import { FunctionSingle, FunctionSingleWithoutRetType } from "./lib.js"
                     return {
                         ">":
                         {
+                            capture: {},
                             _arguments: argument,
                             body: statements,
                             retType: retType
@@ -710,6 +719,7 @@ import { FunctionSingle, FunctionSingleWithoutRetType } from "./lib.js"
                     return {
                         ">=":
                         {
+                            capture: {},
                             _arguments: argument,
                             body: statements,
                             retType: retType
@@ -730,6 +740,7 @@ import { FunctionSingle, FunctionSingleWithoutRetType } from "./lib.js"
                     return {
                         "==":
                         {
+                            capture: {},
                             _arguments: argument,
                             body: statements,
                             retType: retType
@@ -750,6 +761,7 @@ import { FunctionSingle, FunctionSingleWithoutRetType } from "./lib.js"
                     return {
                         "||":
                         {
+                            capture: {},
                             _arguments: argument,
                             body: statements,
                             retType: retType
@@ -770,6 +782,7 @@ import { FunctionSingle, FunctionSingleWithoutRetType } from "./lib.js"
                     return {
                         "&&":
                         {
+                            capture: {},
                             _arguments: argument,
                             body: statements,
                             retType: retType
@@ -1355,14 +1368,14 @@ import { FunctionSingle, FunctionSingleWithoutRetType } from "./lib.js"
                     for (let t of template_definition) {
                         userTypeDictionary.delete(t);
                     }
-                    return { desc: "ASTNode", immediate: { functionValue: { _arguments: $[2] as VariableDescriptor, body: $[6] as Block, templates: $[0] as string[] } } };
+                    return { desc: "ASTNode", immediate: { functionValue: { capture: {}, _arguments: $[2] as VariableDescriptor, body: $[6] as Block, templates: $[0] as string[] } } };
                 }
             }
         },//模板lambda
         {
             "object:( parameter_declare ) => { statements }": {
                 action: function ($, s): ASTNode {
-                    return { desc: "ASTNode", immediate: { functionValue: { _arguments: $[1] as VariableDescriptor, body: $[5] as Block } } };
+                    return { desc: "ASTNode", immediate: { functionValue: { capture: {}, _arguments: $[1] as VariableDescriptor, body: $[5] as Block } } };
                 }
             }
         },//lambda
