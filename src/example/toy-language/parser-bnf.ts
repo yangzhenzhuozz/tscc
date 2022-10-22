@@ -2,11 +2,11 @@ import fs from "fs";
 import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
 import { userTypeDictionary } from './lexrule.js';
-import { FunctionSingle, FunctionSingleWithoutRetType } from "./lib.js"
+import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
 let grammar: Grammar = {
     userCode: `
 import { userTypeDictionary } from './lexrule.js';
-import { FunctionSingle, FunctionSingleWithoutRetType } from "./lib.js"
+import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
     `,
     tokens: ['var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'throw', 'super', 'basic_type', 'instanceof'],
     association: [
@@ -184,7 +184,7 @@ import { FunctionSingle, FunctionSingleWithoutRetType } from "./lib.js"
                     let modifier = $[0] as 'valuetype' | 'sealed' | undefined;
                     let extends_declare = $[4] as TypeUsed | undefined;
                     let class_units = $[6] as {
-                        operatorOverload: { [key in opType]: { [key: string]: FunctionType } },
+                        operatorOverload: { [key in opType|opType2]: { [key: string]: FunctionType } },
                         property: VariableDescriptor,
                         _constructor: { [key: string]: FunctionType };
                     };
@@ -438,7 +438,7 @@ import { FunctionSingle, FunctionSingleWithoutRetType } from "./lib.js"
                     } else {
                         for (let k in class_unit) {
                             if (class_unit[k].hasOwnProperty("_arguments")) {//是操作符重载,VariableDescriptor没有argument属性,k一定是'='|'+'|'-'|'*'|'/'|'<'|'<='|'>'|'>='|'=='|'||'|'&&'中的一个
-                                let single = FunctionSingleWithoutRetType((class_unit as { [key: string]: FunctionType })[k]);
+                                let single = FunctionSignWithoutRetType((class_unit as { [key: string]: FunctionType })[k]);
                                 if (class_units.operatorOverload[k] == undefined) {
                                     class_units.operatorOverload[k] = {};
                                 }
@@ -554,7 +554,7 @@ import { FunctionSingle, FunctionSingleWithoutRetType } from "./lib.js"
                     let statements = $[5] as Block;
                     let ret: { [key: string]: FunctionType } = JSON.parse("{}");//为了生成的解析器不报红
                     let functionType: FunctionType = { capture: {}, _construct_for_type: basic_type.SimpleType!.name, _arguments: parameter_declare, body: statements, retType: { SimpleType: { name: 'void' } } };
-                    let single: string = FunctionSingle(functionType);
+                    let single: string = FunctionSign(functionType);
                     ret[single] = functionType;
                     return [ret];
                 }
@@ -784,6 +784,61 @@ import { FunctionSingle, FunctionSingleWithoutRetType } from "./lib.js"
                         {
                             capture: {},
                             _arguments: argument,
+                            body: statements,
+                            retType: retType
+                        }
+                    };
+                }
+            }
+        },
+        {
+            "operator_overload:operator [ ] ( id : type ) : type { statements } ;": {
+                action: function ($, s): { [key: string]: FunctionType } {
+                    let id = $[4] as string;
+                    let parameterType = $[6] as TypeUsed;
+                    let statements = $[11] as Block;
+                    let retType = $[9] as TypeUsed;
+                    let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
+                    argument[id] = { variable: 'var', type: parameterType };
+                    return {
+                        "[]":
+                        {
+                            capture: {},
+                            _arguments: argument,
+                            body: statements,
+                            retType: retType
+                        }
+                    };
+                }
+            }
+        },
+        {
+            "operator_overload:operator ++ ( ) : type { statements } ;": {
+                action: function ($, s): { [key: string]: FunctionType } {
+                    let statements = $[7] as Block;
+                    let retType = $[5] as TypeUsed;
+                    return {
+                        "++":
+                        {
+                            capture: {},
+                            _arguments: {},
+                            body: statements,
+                            retType: retType
+                        }
+                    };
+                }
+            }
+        },
+        {
+            "operator_overload:operator -- ( ) : type { statements } ;": {
+                action: function ($, s): { [key: string]: FunctionType } {
+                    let statements = $[7] as Block;
+                    let retType = $[5] as TypeUsed;
+                    return {
+                        "--":
+                        {
+                            capture: {},
+                            _arguments: {},
                             body: statements,
                             retType: retType
                         }

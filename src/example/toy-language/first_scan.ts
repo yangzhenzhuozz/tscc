@@ -1,10 +1,37 @@
+import { Sign } from 'crypto';
 import fs from 'fs'
-import { FunctionSingle, TypeUsedSingle, FunctionSingleWithArgument } from './lib.js';
+import { FunctionSign, TypeUsedSign, FunctionSignWithArgument } from './lib.js';
 import { Scope, BlockScope, ClassScope, ProgramScope } from './scope.js';
 let program: Program;
 let programScope: ProgramScope;
-function OperatorOverLoad(scope: Scope, leftObj: ASTNode, rightObj: ASTNode | undefined, op: opType | opType2): TypeUsed {
-    throw `unimplemented`;
+function OperatorOverLoad(scope: Scope, leftObj: ASTNode, rightObj: ASTNode | undefined, originNode: ASTNode, op: opType | opType2): TypeUsed {
+    let leftType = nodeRecursion(scope, leftObj, []).type;
+    if (rightObj != undefined) {
+        //双目运算符
+        let rightType = nodeRecursion(scope, rightObj, []).type;
+        let sign = FunctionSignWithArgument([rightType]);
+        let opFunction = program.definedType[leftType.SimpleType!.name].operatorOverload[op as opType][sign];
+        if (opFunction == undefined) {
+            throw `类型${TypeUsedSign(leftType)}没有 ${op} (${TypeUsedSign(rightType)})的重载函数`;
+        } else if (opFunction.isMagic != undefined && opFunction.isMagic) {
+            delete originNode[op];//删除原来的操作符
+            originNode.call = { functionObj: { desc: 'ASTNode', loadOperatorOverload: [op, sign] }, _arguments: [rightObj] };
+        } else {
+            //不管，由vm实现
+        }
+        return opFunction.retType!;
+    } else {
+        //单目运算符
+        let sign = FunctionSignWithArgument([]);
+        let opFunction = program.definedType[leftType.SimpleType!.name].operatorOverload[op as opType][sign];
+        if (opFunction.isMagic != undefined && opFunction.isMagic) {
+            delete originNode[op];//删除原来的操作符
+            originNode.call = { functionObj: { desc: 'ASTNode', loadOperatorOverload: [op, sign] }, _arguments: [] };
+        } else {
+            //不管，由vm实现
+        }
+        return opFunction.retType!;
+    }
 }
 /**
  * 推导AST类型
@@ -200,57 +227,57 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
     }
     else if (node["+"] != undefined) {
         let op = '+' as opType;
-        let retType = OperatorOverLoad(scope, node[op]!.leftChild!, node[op]!.rightChild, op);
+        let retType = OperatorOverLoad(scope, node[op]!.leftChild!, node[op]!.rightChild, node, op);
         return { type: retType, hasRet: false };
     }
     else if (node["-"] != undefined) {
         let op = '-' as opType;
-        let retType = OperatorOverLoad(scope, node[op]!.leftChild, node[op]!.rightChild, op);
+        let retType = OperatorOverLoad(scope, node[op]!.leftChild, node[op]!.rightChild, node, op);
         return { type: retType, hasRet: false };
     }
     else if (node["*"] != undefined) {
         let op = '*' as opType;
-        let retType = OperatorOverLoad(scope, node[op]!.leftChild, node[op]!.rightChild, op);
+        let retType = OperatorOverLoad(scope, node[op]!.leftChild, node[op]!.rightChild, node, op);
         return { type: retType, hasRet: false };
     }
     else if (node["/"] != undefined) {
         let op = '/' as opType;
-        let retType = OperatorOverLoad(scope, node[op]!.leftChild, node[op]!.rightChild, op);
+        let retType = OperatorOverLoad(scope, node[op]!.leftChild, node[op]!.rightChild, node, op);
         return { type: retType, hasRet: false };
     }
     else if (node["<"] != undefined) {
         let op = '<' as opType;
-        let retType = OperatorOverLoad(scope, node[op]!.leftChild, node[op]!.rightChild, op);
+        let retType = OperatorOverLoad(scope, node[op]!.leftChild, node[op]!.rightChild, node, op);
         return { type: retType, hasRet: false };
     }
     else if (node["<="] != undefined) {
         let op = '<=' as opType;
-        let retType = OperatorOverLoad(scope, node[op]!.leftChild, node[op]!.rightChild, op);
+        let retType = OperatorOverLoad(scope, node[op]!.leftChild, node[op]!.rightChild, node, op);
         return { type: retType, hasRet: false };
     }
     else if (node[">"] != undefined) {
         let op = '>' as opType;
-        let retType = OperatorOverLoad(scope, node[op]!.leftChild, node[op]!.rightChild, op);
+        let retType = OperatorOverLoad(scope, node[op]!.leftChild, node[op]!.rightChild, node, op);
         return { type: retType, hasRet: false };
     }
     else if (node[">="] != undefined) {
         let op = '>=' as opType;
-        let retType = OperatorOverLoad(scope, node[op]!.leftChild, node[op]!.rightChild, op);
+        let retType = OperatorOverLoad(scope, node[op]!.leftChild, node[op]!.rightChild, node, op);
         return { type: retType, hasRet: false };
     }
     else if (node["=="] != undefined) {
         let op = '==' as opType;
-        let retType = OperatorOverLoad(scope, node[op]!.leftChild, node[op]!.rightChild, op);
+        let retType = OperatorOverLoad(scope, node[op]!.leftChild, node[op]!.rightChild, node, op);
         return { type: retType, hasRet: false };
     }
     else if (node["||"] != undefined) {
         let op = '||' as opType;
-        let retType = OperatorOverLoad(scope, node[op]!.leftChild, node[op]!.rightChild, op);
+        let retType = OperatorOverLoad(scope, node[op]!.leftChild, node[op]!.rightChild, node, op);
         return { type: retType, hasRet: false };
     }
     else if (node["&&"] != undefined) {
         let op = '&&' as opType;
-        let retType = OperatorOverLoad(scope, node[op]!.leftChild, node[op]!.rightChild, op);
+        let retType = OperatorOverLoad(scope, node[op]!.leftChild, node[op]!.rightChild, node, op);
         return { type: retType, hasRet: false };
     }
     else if (node["trycatch"] != undefined) {
@@ -411,15 +438,16 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
         return { hasRet: false, type: { SimpleType: { name: 'bool' } } };
     }
     else if (node["++"] != undefined) {
-        let retType = OperatorOverLoad(scope, node['++'], undefined, '++');
+        let retType = OperatorOverLoad(scope, node['++'], undefined, node, '++');
         return { type: retType, hasRet: false };
     }
     else if (node["--"] != undefined) {
-        let retType = OperatorOverLoad(scope, node["--"], undefined, '--');
+        let retType = OperatorOverLoad(scope, node["--"], undefined, node, '--');
         return { type: retType, hasRet: false };
     }
     else if (node["[]"] != undefined) {
-        let retType = OperatorOverLoad(scope, node["[]"].leftChild, node["[]"].rightChild, '[]');
+        let op = '[]' as opType;
+        let retType = OperatorOverLoad(scope, node[op]!.leftChild, node[op]!.rightChild, node, op);
         return { type: retType, hasRet: false };
     }
     else if (node["ternary"] != undefined) {
@@ -438,13 +466,13 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
         for (let n of node["_new"]._arguments) {
             ts.push(nodeRecursion(scope, n, label).type);
         }
-        let callSingle: string = FunctionSingleWithArgument(ts, { SimpleType: { name: 'void' } });//根据调用参数生成一个签名,构造函数没有返回值
+        let callsign: string = FunctionSignWithArgument(ts);//根据调用参数生成一个签名,构造函数没有返回值
         if (scope instanceof ProgramScope) {
-            if (scope.program.definedType[node["_new"].type.SimpleType!.name]._constructor[callSingle] == undefined) {
+            if (scope.program.definedType[node["_new"].type.SimpleType!.name]._constructor[callsign] == undefined) {
                 throw '无法找到合适的构造函数'
             }
         } else if (scope instanceof BlockScope || scope instanceof ClassScope) {
-            if (scope.programScope.program.definedType[node["_new"].type.SimpleType!.name]._constructor[callSingle] == undefined) {
+            if (scope.programScope.program.definedType[node["_new"].type.SimpleType!.name]._constructor[callsign] == undefined) {
                 throw '无法找到合适的构造函数'
             }
         } else {
@@ -490,10 +518,10 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
     }
 }
 function typeCheck(a: TypeUsed, b: TypeUsed, msg: string) {
-    let ta = TypeUsedSingle(a);
-    let tb = TypeUsedSingle(b);
+    let ta = TypeUsedSign(a);
+    let tb = TypeUsedSign(b);
     if (ta != tb) {
-        throw `类型不匹配:${ta}<----->${tb}:${msg}`;
+        throw `类型不匹配:${ta} - ${tb}:   ${msg}`;
     }
 }
 /**
@@ -550,15 +578,17 @@ function functionScan(blockScope: BlockScope, fun: FunctionType): TypeUsed {
     }
     let blockret = BlockScan(blockScope, []);
     if (blockret == undefined) {
-        return { SimpleType: { name: 'void' } };//block没有任何返回语句，则说明返回void
-    } else {
-        return blockret;
+        blockret = { SimpleType: { name: 'void' } };//block没有任何返回语句，则说明返回void
     }
+    if (fun.retType != undefined) {
+        typeCheck(fun.retType, blockret, `函数声明返回值类型和语句实际返回值类型不一致`);
+    }
+    return blockret;
 }
 function ClassScan(classScope: ClassScope) {
-    for (let propName of classScope.getPropNames()) {
+    for (let propName of classScope.getPropNames()) {//扫描所有成员
         let prop = classScope.getProp(propName).prop;
-        if (prop.getter == undefined && prop.setter == undefined) {
+        if (prop.getter == undefined && prop.setter == undefined) {//扫描field
             if (prop.initAST) {
                 let initType = nodeRecursion(classScope, prop.initAST, []).type;
                 if (prop.type) {
@@ -570,8 +600,22 @@ function ClassScan(classScope: ClassScope) {
                 let blockScope = new BlockScope(classScope, prop.type?.FunctionType, prop.type?.FunctionType.body!);
                 functionScan(blockScope, prop.type?.FunctionType);
             }
-        } else {
-            throw `unimplemented`;//属性还没有扫描
+        } else {//扫描prop
+            if (prop.getter != undefined) {
+                let blockScope = new BlockScope(classScope, prop.getter, prop.getter.body!);
+                functionScan(blockScope, prop.getter);
+            }
+            if (prop.setter != undefined) {
+                let blockScope = new BlockScope(classScope, prop.getter, prop.setter.body!);
+                functionScan(blockScope, prop.setter);
+            }
+        }
+    }
+    let operatorOverloads = program.definedType[classScope.className].operatorOverload;
+    for (let op in operatorOverloads) {//扫描重载操作符
+        for (let sign in operatorOverloads[op as opType | opType2]) {
+            let blockScope = new BlockScope(classScope, operatorOverloads[op as opType | opType2][sign], operatorOverloads[op as opType | opType2][sign].body!);
+            functionScan(blockScope, operatorOverloads[op as opType | opType2][sign]);
         }
     }
 }
@@ -583,29 +627,19 @@ function programScan() {
         ClassScan(programScope.getClassScope(typeName));
     }
     //扫描property
+    for (let variableName in program.property) {
+        var p = program.property[variableName];
+        if (p.initAST != undefined) {
+            let initType = nodeRecursion(programScope, p.initAST, []).type;
+            if (p.type != undefined) {
+                typeCheck(p.type, initType, `初始化的值类型和声明类型不一致:${variableName}`);
+            } else {
+                p.type = initType;
+            }
+        }
+    }
     fs.writeFileSync(`./src/example/toy-language/output/stage-2.json`, JSON.stringify(program, null, 4));
 }
 console.time('扫描耗时');
 programScan();
 console.timeEnd('扫描耗时');
-
-
-/*1.变量类型循环推导已经测试，函数类型循环推导还未测试
-2.多层捕获，多层传递
-{
-    var a;
-    {
-        var b;
-        {
-            var c;
-            function f1(){
-                function f2(){
-                    function f3(){
-                        a+b+c;
-                    }
-                }
-            }
-        }
-    }
-}
-*/

@@ -117,6 +117,9 @@ let grammar: Grammar = {
         { "operator_overload:operator == ( id : type ) : type { statements } ;": {} },
         { "operator_overload:operator || ( id : type ) : type { statements } ;": {} },
         { "operator_overload:operator && ( id : type ) : type { statements } ;": {} },
+        { "operator_overload:operator [ ] ( id : type ) : type { statements } ;": {} },
+        { "operator_overload:operator ++ ( ) : type { statements } ;": {} },
+        { "operator_overload:operator -- ( ) : type { statements } ;": {} },
         { "statements:statements statement": {} },//statements可以由多个statement组成
         { "statements:": {} },//statements可以为空
         { "statement:declare ;": {} },//statement可以是一条声明语句

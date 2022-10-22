@@ -20,8 +20,8 @@ interface TypeDef {//定义的类型
     templates?: string[];//模板列表
     extends?: TypeUsed;//基类
     operatorOverload: {//重载列表
-        [key in opType]: {//key为操作符
-            [key: string]: FunctionType//key为函数签名(不包含返回值的签名)
+        [key in opType | opType2]: {//key为操作符
+            [key: string]: FunctionType;//key为函数签名(不包含返回值的签名),magic表示该操作由vm实现，翻译的时候原样保留
         }
     };
     property: VariableDescriptor;//属性列表
@@ -52,6 +52,7 @@ interface ArrayType {
     innerType: TypeUsed;
 }
 interface FunctionType {
+    isMagic?: boolean;
     _arguments: VariableDescriptor;
     body?: Block;//函数体,根据有无body判断是函数类型声明还是定义
     retType?: TypeUsed;//返回类型，可选，如果为undefined则需要进行类型推导
@@ -73,6 +74,7 @@ interface Program {
 //一条语句就是一个Noe
 interface ASTNode {
     desc: 'ASTNode';
+    loadOperatorOverload?: [string, string];//读取重载操作符函数
     loadException?: TypeUsed;//读取异常
     loadArgument?: { index: number, type: TypeUsed },//读取参数
     def?: VariableDescriptor;
