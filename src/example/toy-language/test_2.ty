@@ -1,13 +1,6 @@
-class int{
-    operator + ( id : int ) : void { } ;
-    operator [] ( id : int ) : void { } ;
-    operator ++ () : void { } ;
-}
-var a:int;
-var b:int;
-var c=a+b;
 function fun(){
-    var a:int;
-    var b:int;
-    var c=a+b;
+    return f1();
+};
+function f1():int{
+    return 1;
 };

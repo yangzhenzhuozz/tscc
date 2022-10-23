@@ -13,7 +13,7 @@ function OperatorOverLoad(scope: Scope, leftObj: ASTNode, rightObj: ASTNode | un
         let opFunction = program.definedType[leftType.SimpleType!.name].operatorOverload[op as opType][sign];
         if (opFunction == undefined) {
             throw `类型${TypeUsedSign(leftType)}没有 ${op} (${TypeUsedSign(rightType)})的重载函数`;
-        } else if (opFunction.isMagic != undefined && opFunction.isMagic) {
+        } else if (opFunction.isMagic == undefined && !opFunction.isMagic) {
             delete originNode[op];//删除原来的操作符
             originNode.call = { functionObj: { desc: 'ASTNode', loadOperatorOverload: [op, sign] }, _arguments: [rightObj] };
         } else {
@@ -24,7 +24,7 @@ function OperatorOverLoad(scope: Scope, leftObj: ASTNode, rightObj: ASTNode | un
         //单目运算符
         let sign = FunctionSignWithArgument([]);
         let opFunction = program.definedType[leftType.SimpleType!.name].operatorOverload[op as opType][sign];
-        if (opFunction.isMagic != undefined && opFunction.isMagic) {
+        if (opFunction.isMagic == undefined && !opFunction.isMagic) {
             delete originNode[op];//删除原来的操作符
             originNode.call = { functionObj: { desc: 'ASTNode', loadOperatorOverload: [op, sign] }, _arguments: [] };
         } else {
@@ -119,7 +119,9 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
         return { type: funType.retType!, hasRet: false };
     }
     else if (node["accessField"] != undefined) {
+        let accessName = node["accessField"].field;
         let accessedType = nodeRecursion(scope, node["accessField"].obj, label).type;
+        let type: undefined | TypeUsed;
         if (accessedType.ArrayType != undefined) {
             if (node["accessField"].field != 'length') {
                 throw `数组只有length属性可访问`;
@@ -128,15 +130,34 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
             }
         } else if (accessedType.FunctionType != undefined) {
             throw `函数目前没有任何属性可访问`;
+        } else if (accessedType.ProgramType != undefined) {
+            let prop = program.property[accessName];
+            if (prop == undefined) {
+                throw `访问了program中不存在的属性${accessName}`;
+            }
+            type = prop.type;
+            if (type == undefined) {
+                let initAST = prop.initAST!;
+                if ((initAST as any).flag) {
+                    throw `类型推导出现了循环:program.${accessName}`;
+                }
+                (initAST as any).flag = true;//标记一下这个属性已经在推导路径中被使用过了
+                type = nodeRecursion(programScope, initAST, label).type;
+                delete (initAST as any).flag;//删除标记,回溯常用手法
+            }
+            if (assignmentObj != undefined) {
+                if (prop.variable == 'val') {
+                    throw `program.${accessName}声明为val,禁止赋值`;
+                }
+            }
+            return { type: type, hasRet: false, location: 'field' };
         } else {
             let className = accessedType.SimpleType!.name;
-            let accessName = node["accessField"].field;
             let prop = program.definedType[className].property[accessName];
             if (prop == undefined) {
                 throw `访问了类型${className}中不存在的属性${accessName}`;
             }
             let classScope = programScope.getClassScope(className);//切换scope
-            let type: undefined | TypeUsed;
             if (prop.getter != undefined || prop.setter != undefined) {
                 if (assignmentObj) {
                     if (prop.setter == undefined) {
@@ -169,8 +190,10 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
                     type = nodeRecursion(classScope, initAST, label).type;
                     delete (initAST as any).flag;//删除标记,回溯常用手法
                 }
-                if (prop.variable == 'val') {//load不可能变成access
-                    throw `${className}.${accessName}声明为val,禁止赋值`;
+                if (assignmentObj != undefined) {
+                    if (prop.variable == 'val') {
+                        throw `${className}.${accessName}声明为val,禁止赋值`;
+                    }
                 }
                 return { type: type, hasRet: false, location: 'field' };
             }
@@ -576,20 +599,25 @@ function functionScan(blockScope: BlockScope, fun: FunctionType): TypeUsed {
         fun.body!.body.unshift(defNode);//插入args的def指令
         argIndex++;
     }
-    let blockret = BlockScan(blockScope, []);
-    if (blockret == undefined) {
-        blockret = { SimpleType: { name: 'void' } };//block没有任何返回语句，则说明返回void
+    let blockRetType = BlockScan(blockScope, []);
+    if(blockRetType==undefined&&fun.retType==undefined){
+        throw `函数类型和函数内部必须至少有一个返回类型标记`;
+    }
+    if (blockRetType == undefined) {
+        blockRetType = { SimpleType: { name: 'void' } };//block没有任何返回语句，则说明返回void
     }
     if (fun.retType != undefined) {
-        typeCheck(fun.retType, blockret, `函数声明返回值类型和语句实际返回值类型不一致`);
+        typeCheck(fun.retType, blockRetType, `函数声明返回值类型和语句实际返回值类型不一致`);
+    } else {
+        fun.retType = blockRetType;
     }
-    return blockret;
+    return blockRetType;
 }
 function ClassScan(classScope: ClassScope) {
     for (let propName of classScope.getPropNames()) {//扫描所有成员
         let prop = classScope.getProp(propName).prop;
         if (prop.getter == undefined && prop.setter == undefined) {//扫描field
-            if (prop.initAST) {
+            if (prop.initAST != undefined) {
                 let initType = nodeRecursion(classScope, prop.initAST, []).type;
                 if (prop.type) {
                     typeCheck(initType, prop.type, `属性${propName}声明类型和初始化类型不一致`);
@@ -619,8 +647,8 @@ function ClassScan(classScope: ClassScope) {
         }
     }
 }
-function programScan() {
-    program = JSON.parse(fs.readFileSync(`./src/example/toy-language/output/stage-1.json`).toString()) as Program;
+export function programScan(out: string, stage1: Program) {
+    program = stage1;
     programScope = new ProgramScope(program);
     //扫描definedType
     for (let typeName in program.definedType) {
@@ -628,18 +656,18 @@ function programScan() {
     }
     //扫描property
     for (let variableName in program.property) {
-        var p = program.property[variableName];
-        if (p.initAST != undefined) {
-            let initType = nodeRecursion(programScope, p.initAST, []).type;
-            if (p.type != undefined) {
-                typeCheck(p.type, initType, `初始化的值类型和声明类型不一致:${variableName}`);
+        var prop = program.property[variableName];
+        if (prop.initAST != undefined) {
+            let initType = nodeRecursion(programScope, prop.initAST, []).type;
+            if (prop.type != undefined) {
+                typeCheck(prop.type, initType, `初始化的值类型和声明类型不一致:${variableName}`);
             } else {
-                p.type = initType;
+                prop.type = initType;
             }
+        } if (prop.type?.FunctionType) {
+            let blockScope = new BlockScope(programScope, prop.type?.FunctionType, prop.type?.FunctionType.body!);
+            functionScan(blockScope, prop.type?.FunctionType);
         }
     }
-    fs.writeFileSync(`./src/example/toy-language/output/stage-2.json`, JSON.stringify(program, null, 4));
+    fs.writeFileSync(out, JSON.stringify(program, null, 4));
 }
-console.time('扫描耗时');
-programScan();
-console.timeEnd('扫描耗时');
