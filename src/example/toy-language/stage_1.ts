@@ -1,4 +1,4 @@
-import { Sign } from 'crypto';
+//预处理AST
 import fs from 'fs'
 import { FunctionSign, TypeUsedSign, FunctionSignWithArgument } from './lib.js';
 import { Scope, BlockScope, ClassScope, ProgramScope } from './scope.js';
@@ -425,7 +425,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
             nodeRecursion(scope, node["_for"].init, label);
         }
         if (node["_for"].condition) {
-            let type=nodeRecursion(scope, node["_for"].condition, label).type;
+            let type = nodeRecursion(scope, node["_for"].condition, label).type;
             typeCheck(type, { SimpleType: { name: 'bool' } }, `for条件只能是bool值或者空`);
         }
         if (node["_for"].step) {
@@ -652,8 +652,8 @@ function ClassScan(classScope: ClassScope) {
         }
     }
 }
-export function programScan(out: string, stage1: Program) {
-    program = stage1;
+export function programScan(primitiveProgram: Program) {
+    program = primitiveProgram;
     programScope = new ProgramScope(program);
     //扫描definedType
     for (let typeName in program.definedType) {
@@ -674,5 +674,5 @@ export function programScan(out: string, stage1: Program) {
             functionScan(blockScope, prop.type?.FunctionType);
         }
     }
-    fs.writeFileSync(out, JSON.stringify(program, null, 4));
+    return program;
 }
