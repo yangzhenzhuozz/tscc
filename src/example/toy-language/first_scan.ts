@@ -345,7 +345,8 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
         return { hasRet: true, type: type };
     }
     else if (node["ifStmt"] != undefined) {
-        nodeRecursion(scope, node["ifStmt"].condition, label);
+        let type = nodeRecursion(scope, node["ifStmt"].condition, label).type;
+        typeCheck(type, { SimpleType: { name: 'bool' } }, `if条件只能是bool值`);
         if (node["ifStmt"].stmt.desc == 'ASTNode') {
             nodeRecursion(scope, node["ifStmt"].stmt as ASTNode, label);
         } else {
@@ -355,7 +356,8 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
         return { hasRet: false, type: { SimpleType: { name: 'void' } } };
     }
     else if (node["ifElseStmt"] != undefined) {
-        nodeRecursion(scope, node["ifElseStmt"].condition, label);
+        let type = nodeRecursion(scope, node["ifElseStmt"].condition, label).type;
+        typeCheck(type, { SimpleType: { name: 'bool' } }, `if条件只能是bool值`);
         let type1: TypeUsed | undefined;
         let type2: TypeUsed | undefined;
         if (node["ifElseStmt"].stmt1.desc == 'ASTNode') {
@@ -389,7 +391,8 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
         if (node["do_while"].label != undefined) {
             label.push(node["do_while"].label)
         }
-        nodeRecursion(scope, node["do_while"].condition, label);
+        let type = nodeRecursion(scope, node["do_while"].condition, label).type;
+        typeCheck(type, { SimpleType: { name: 'bool' } }, `do while条件只能是bool值`);
         if (node["do_while"].stmt.desc == 'ASTNode') {
             nodeRecursion(scope, node["do_while"].stmt as ASTNode, label);
         } else {
@@ -403,7 +406,8 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
         if (node["_while"].label != undefined) {
             label.push(node["_while"].label)
         }
-        nodeRecursion(scope, node["_while"].condition, label);
+        let type = nodeRecursion(scope, node["_while"].condition, label).type;
+        typeCheck(type, { SimpleType: { name: 'bool' } }, `while条件只能是bool值`);
         if (node["_while"].stmt.desc == 'ASTNode') {
             nodeRecursion(scope, node["_while"].stmt as ASTNode, label);
         } else {
@@ -421,7 +425,8 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
             nodeRecursion(scope, node["_for"].init, label);
         }
         if (node["_for"].condition) {
-            nodeRecursion(scope, node["_for"].condition, label);
+            let type=nodeRecursion(scope, node["_for"].condition, label).type;
+            typeCheck(type, { SimpleType: { name: 'bool' } }, `for条件只能是bool值或者空`);
         }
         if (node["_for"].step) {
             nodeRecursion(scope, node["_for"].step, label);
@@ -475,7 +480,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
     }
     else if (node["ternary"] != undefined) {
         let conditionType = nodeRecursion(scope, node["ternary"].condition, label).type;
-        typeCheck(conditionType, { SimpleType: { name: 'bool' } }, `三目运算符的条件必须是bool`);
+        typeCheck(conditionType, { SimpleType: { name: 'bool' } }, `三目运算符的条件必须是bool值`);
         let t1 = nodeRecursion(scope, node["ternary"].obj1, label).type;
         let t2 = nodeRecursion(scope, node["ternary"].obj2, label).type;
         typeCheck(t1, t2, `三目运算符左右类型不一致`);
@@ -600,7 +605,7 @@ function functionScan(blockScope: BlockScope, fun: FunctionType): TypeUsed {
         argIndex++;
     }
     let blockRetType = BlockScan(blockScope, []);
-    if(blockRetType==undefined&&fun.retType==undefined){
+    if (blockRetType == undefined && fun.retType == undefined) {
         throw `函数类型和函数内部必须至少有一个返回类型标记`;
     }
     if (blockRetType == undefined) {
