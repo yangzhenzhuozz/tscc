@@ -1,6 +1,9 @@
+let debugID = 0;
 abstract class Scope {
+    public ID;//用于调试的ID
     protected property: VariableDescriptor;
     constructor(prop: VariableDescriptor | undefined) {
+        this.ID = debugID++;
         if (prop == undefined) {
             this.property = {};
         } else {
@@ -67,7 +70,6 @@ class ClassScope extends Scope {
         }
     }
 }
-let debugID = 0;
 class BlockScope extends Scope {
     public parent: BlockScope | undefined;
     public block?: Block;//记录当前scope是属于哪个block,处理闭包时插入指令
@@ -76,7 +78,6 @@ class BlockScope extends Scope {
     public defNodes: { [key: string]: { defNode: ASTNode, loads: ASTNode[] } } = {};//def:哪个节点定义的变量,loads:被哪些节点读取
     public programScope: ProgramScope;
     public classScope: ClassScope | undefined;
-    public ID = debugID++;
     constructor(scope: Scope, fun: FunctionType | undefined, block: Block) {
         super(undefined);
         if (scope instanceof ProgramScope) {
