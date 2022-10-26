@@ -8,7 +8,7 @@ let grammar: Grammar = {
 import { userTypeDictionary } from './lexrule.js';
 import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
     `,
-    tokens: ['var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'throw', 'super', 'basic_type', 'instanceof'],
+    tokens: ['native', 'var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'throw', 'super', 'basic_type', 'instanceof'],
     association: [
         { 'right': ['='] },
         { 'right': ['?'] },
@@ -184,7 +184,7 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
                     let modifier = $[0] as 'valuetype' | 'sealed' | undefined;
                     let extends_declare = $[4] as TypeUsed | undefined;
                     let class_units = $[6] as {
-                        operatorOverload: { [key in opType|opType2]: { [key: string]: FunctionType } },
+                        operatorOverload: { [key in opType | opType2]: { [key: string]: FunctionType } },
                         property: VariableDescriptor,
                         _constructor: { [key: string]: FunctionType };
                     };
@@ -208,7 +208,7 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
             }
         },//继承,虽然文法是允许继承任意类型,但是在语义分析的时候再具体决定该class能不能被继承
         {
-            "function_definition:function id template_declare ( parameter_declare ) ret_type { statements }": {
+            "function_definition:function id template_declare ( parameter_declare ) { statements }": {
                 action: function ($, s): VariableDescriptor {
                     let template_declare = $[2] as string[] | undefined;
                     if (template_declare != undefined) {
@@ -218,22 +218,50 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
                     }
                     let id = $[1] as string;
                     let parameter_declare = $[4] as VariableDescriptor;
-                    let ret_type = $[6] as TypeUsed | undefined;
-                    let statements = $[8] as Block;
+                    let statements = $[7] as Block;
+                    let ret: VariableDescriptor = JSON.parse("{}");//为了生成的解析器不报红
+                    ret[id] = { variable: 'val', type: { FunctionType: { capture: {}, _arguments: parameter_declare, body: statements, templates: template_declare } } };
+                    return ret;
+                }
+            }
+        },//函数定义语句，同样太长，不列表,返回值类型可以不声明，自动推导,lambda就不用写返回值声明
+        {
+            "function_definition:function id template_declare ( parameter_declare ) : type { statements }": {
+                action: function ($, s): VariableDescriptor {
+                    let template_declare = $[2] as string[] | undefined;
+                    if (template_declare != undefined) {
+                        for (let t of template_declare) {
+                            userTypeDictionary.delete(t);
+                        }
+                    }
+                    let id = $[1] as string;
+                    let parameter_declare = $[4] as VariableDescriptor;
+                    let ret_type = $[7] as TypeUsed;
+                    let statements = $[9] as Block;
                     let ret: VariableDescriptor = JSON.parse("{}");//为了生成的解析器不报红
                     ret[id] = { variable: 'val', type: { FunctionType: { capture: {}, _arguments: parameter_declare, body: statements, templates: template_declare, retType: ret_type } } };
                     return ret;
                 }
             }
         },//函数定义语句，同样太长，不列表
-        { "ret_type:": {} },//返回值类型可以不声明，自动推导,lambda就不用写返回值声明
         {
-            "ret_type: : type": {
-                action: function ($, s): TypeUsed {
-                    return $[1] as TypeUsed;
+            "function_definition:function id template_declare ( parameter_declare ) : type { native }": {
+                action: function ($, s): VariableDescriptor {
+                    let template_declare = $[2] as string[] | undefined;
+                    if (template_declare != undefined) {
+                        for (let t of template_declare) {
+                            userTypeDictionary.delete(t);
+                        }
+                    }
+                    let id = $[1] as string;
+                    let parameter_declare = $[4] as VariableDescriptor;
+                    let ret_type = $[7] as TypeUsed;
+                    let ret: VariableDescriptor = JSON.parse("{}");//为了生成的解析器不报红
+                    ret[id] = { variable: 'val', type: { FunctionType: { capture: {}, _arguments: parameter_declare, isNative: true, templates: template_declare, retType: ret_type } } };
+                    return ret;
                 }
             }
-        },//可以声明返回值类型,function fun() : int {codes}
+        },//函数定义语句，native函数
         {
             "modifier:valuetype": {
                 action: function ($, s): string {
@@ -448,7 +476,7 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
                                     class_units.operatorOverload[k][single] = (class_unit as { [key: string]: FunctionType })[k];
                                 }
                             } else {//是普通成员
-                                if (class_units.property[k] == undefined) {//之前没有定义过这个成员
+                                if (!class_units.property.hasOwnProperty(k)) {//之前没有定义过这个成员
                                     class_units.property[k] = (class_unit as VariableDescriptor)[k];
                                 } else {//可能是定义了同名的getter或者setter，检查是否为重复定义
                                     if ((class_unit as VariableDescriptor)[k].getter != undefined) {//class_unit是一个getter
@@ -564,20 +592,21 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
             "operator_overload:operator + ( id : type ) : type { statements } ;": {
                 action: function ($, s): { [key: string]: FunctionType } {
                     let id = $[3] as string;
+                    let op: opType | opType2 = $[1];
                     let parameterType = $[5] as TypeUsed;
                     let statements = $[10] as Block;
                     let retType = $[8] as TypeUsed;
                     let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
                     argument[id] = { variable: 'var', type: parameterType };
-                    return {
-                        "+":
-                        {
-                            capture: {},
-                            _arguments: argument,
-                            body: statements,
-                            retType: retType
-                        }
+                    let fun: FunctionType = {
+                        capture: {},
+                        _arguments: argument,
+                        body: statements,
+                        retType: retType
                     };
+                    let ret: { [key: string]: FunctionType } = JSON.parse('{}');
+                    ret[op] = fun;
+                    return ret;
                 }
             }
         },
@@ -585,20 +614,21 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
             "operator_overload:operator - ( id : type ) : type { statements } ;": {
                 action: function ($, s): { [key: string]: FunctionType } {
                     let id = $[3] as string;
+                    let op: opType | opType2 = $[1];
                     let parameterType = $[5] as TypeUsed;
                     let statements = $[10] as Block;
                     let retType = $[8] as TypeUsed;
                     let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
                     argument[id] = { variable: 'var', type: parameterType };
-                    return {
-                        "-":
-                        {
-                            capture: {},
-                            _arguments: argument,
-                            body: statements,
-                            retType: retType
-                        }
+                    let fun: FunctionType = {
+                        capture: {},
+                        _arguments: argument,
+                        body: statements,
+                        retType: retType
                     };
+                    let ret: { [key: string]: FunctionType } = JSON.parse('{}');
+                    ret[op] = fun;
+                    return ret;
                 }
             }
         },
@@ -606,20 +636,21 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
             "operator_overload:operator * ( id : type ) : type { statements } ;": {
                 action: function ($, s): { [key: string]: FunctionType } {
                     let id = $[3] as string;
+                    let op: opType | opType2 = $[1];
                     let parameterType = $[5] as TypeUsed;
                     let statements = $[10] as Block;
                     let retType = $[8] as TypeUsed;
                     let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
                     argument[id] = { variable: 'var', type: parameterType };
-                    return {
-                        "*":
-                        {
-                            capture: {},
-                            _arguments: argument,
-                            body: statements,
-                            retType: retType
-                        }
+                    let fun: FunctionType = {
+                        capture: {},
+                        _arguments: argument,
+                        body: statements,
+                        retType: retType
                     };
+                    let ret: { [key: string]: FunctionType } = JSON.parse('{}');
+                    ret[op] = fun;
+                    return ret;
                 }
             }
         },
@@ -627,20 +658,21 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
             "operator_overload:operator / ( id : type ) : type { statements } ;": {
                 action: function ($, s): { [key: string]: FunctionType } {
                     let id = $[3] as string;
+                    let op: opType | opType2 = $[1];
                     let parameterType = $[5] as TypeUsed;
                     let statements = $[10] as Block;
                     let retType = $[8] as TypeUsed;
                     let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
                     argument[id] = { variable: 'var', type: parameterType };
-                    return {
-                        "/":
-                        {
-                            capture: {},
-                            _arguments: argument,
-                            body: statements,
-                            retType: retType
-                        }
+                    let fun: FunctionType = {
+                        capture: {},
+                        _arguments: argument,
+                        body: statements,
+                        retType: retType
                     };
+                    let ret: { [key: string]: FunctionType } = JSON.parse('{}');
+                    ret[op] = fun;
+                    return ret;
                 }
             }
         },
@@ -648,20 +680,21 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
             "operator_overload:operator < ( id : type ) : type { statements } ;": {
                 action: function ($, s): { [key: string]: FunctionType } {
                     let id = $[3] as string;
+                    let op: opType | opType2 = $[1];
                     let parameterType = $[5] as TypeUsed;
                     let statements = $[10] as Block;
                     let retType = $[8] as TypeUsed;
                     let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
                     argument[id] = { variable: 'var', type: parameterType };
-                    return {
-                        "<":
-                        {
-                            capture: {},
-                            _arguments: argument,
-                            body: statements,
-                            retType: retType
-                        }
+                    let fun: FunctionType = {
+                        capture: {},
+                        _arguments: argument,
+                        body: statements,
+                        retType: retType
                     };
+                    let ret: { [key: string]: FunctionType } = JSON.parse('{}');
+                    ret[op] = fun;
+                    return ret;
                 }
             }
         },
@@ -669,20 +702,21 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
             "operator_overload:operator <= ( id : type ) : type { statements } ;": {
                 action: function ($, s): { [key: string]: FunctionType } {
                     let id = $[3] as string;
+                    let op: opType | opType2 = $[1];
                     let parameterType = $[5] as TypeUsed;
                     let statements = $[10] as Block;
                     let retType = $[8] as TypeUsed;
                     let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
                     argument[id] = { variable: 'var', type: parameterType };
-                    return {
-                        "<=":
-                        {
-                            capture: {},
-                            _arguments: argument,
-                            body: statements,
-                            retType: retType
-                        }
+                    let fun: FunctionType = {
+                        capture: {},
+                        _arguments: argument,
+                        body: statements,
+                        retType: retType
                     };
+                    let ret: { [key: string]: FunctionType } = JSON.parse('{}');
+                    ret[op] = fun;
+                    return ret;
                 }
             }
         },
@@ -690,20 +724,21 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
             "operator_overload:operator > ( id : type ) : type { statements } ;": {
                 action: function ($, s): { [key: string]: FunctionType } {
                     let id = $[3] as string;
+                    let op: opType | opType2 = $[1];
                     let parameterType = $[5] as TypeUsed;
                     let statements = $[10] as Block;
                     let retType = $[8] as TypeUsed;
                     let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
                     argument[id] = { variable: 'var', type: parameterType };
-                    return {
-                        ">":
-                        {
-                            capture: {},
-                            _arguments: argument,
-                            body: statements,
-                            retType: retType
-                        }
+                    let fun: FunctionType = {
+                        capture: {},
+                        _arguments: argument,
+                        body: statements,
+                        retType: retType
                     };
+                    let ret: { [key: string]: FunctionType } = JSON.parse('{}');
+                    ret[op] = fun;
+                    return ret;
                 }
             }
         },
@@ -711,20 +746,21 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
             "operator_overload:operator >= ( id : type ) : type { statements } ;": {
                 action: function ($, s): { [key: string]: FunctionType } {
                     let id = $[3] as string;
+                    let op: opType | opType2 = $[1];
                     let parameterType = $[5] as TypeUsed;
                     let statements = $[10] as Block;
                     let retType = $[8] as TypeUsed;
                     let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
                     argument[id] = { variable: 'var', type: parameterType };
-                    return {
-                        ">=":
-                        {
-                            capture: {},
-                            _arguments: argument,
-                            body: statements,
-                            retType: retType
-                        }
+                    let fun: FunctionType = {
+                        capture: {},
+                        _arguments: argument,
+                        body: statements,
+                        retType: retType
                     };
+                    let ret: { [key: string]: FunctionType } = JSON.parse('{}');
+                    ret[op] = fun;
+                    return ret;
                 }
             }
         },
@@ -732,20 +768,21 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
             "operator_overload:operator == ( id : type ) : type { statements } ;": {
                 action: function ($, s): { [key: string]: FunctionType } {
                     let id = $[3] as string;
+                    let op: opType | opType2 = $[1];
                     let parameterType = $[5] as TypeUsed;
                     let statements = $[10] as Block;
                     let retType = $[8] as TypeUsed;
                     let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
                     argument[id] = { variable: 'var', type: parameterType };
-                    return {
-                        "==":
-                        {
-                            capture: {},
-                            _arguments: argument,
-                            body: statements,
-                            retType: retType
-                        }
+                    let fun: FunctionType = {
+                        capture: {},
+                        _arguments: argument,
+                        body: statements,
+                        retType: retType
                     };
+                    let ret: { [key: string]: FunctionType } = JSON.parse('{}');
+                    ret[op] = fun;
+                    return ret;
                 }
             }
         },
@@ -753,20 +790,21 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
             "operator_overload:operator || ( id : type ) : type { statements } ;": {
                 action: function ($, s): { [key: string]: FunctionType } {
                     let id = $[3] as string;
+                    let op: opType | opType2 = $[1];
                     let parameterType = $[5] as TypeUsed;
                     let statements = $[10] as Block;
                     let retType = $[8] as TypeUsed;
                     let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
                     argument[id] = { variable: 'var', type: parameterType };
-                    return {
-                        "||":
-                        {
-                            capture: {},
-                            _arguments: argument,
-                            body: statements,
-                            retType: retType
-                        }
+                    let fun: FunctionType = {
+                        capture: {},
+                        _arguments: argument,
+                        body: statements,
+                        retType: retType
                     };
+                    let ret: { [key: string]: FunctionType } = JSON.parse('{}');
+                    ret[op] = fun;
+                    return ret;
                 }
             }
         },
@@ -774,41 +812,43 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
             "operator_overload:operator && ( id : type ) : type { statements } ;": {
                 action: function ($, s): { [key: string]: FunctionType } {
                     let id = $[3] as string;
+                    let op: opType | opType2 = $[1];
                     let parameterType = $[5] as TypeUsed;
                     let statements = $[10] as Block;
                     let retType = $[8] as TypeUsed;
                     let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
                     argument[id] = { variable: 'var', type: parameterType };
-                    return {
-                        "&&":
-                        {
-                            capture: {},
-                            _arguments: argument,
-                            body: statements,
-                            retType: retType
-                        }
+                    let fun: FunctionType = {
+                        capture: {},
+                        _arguments: argument,
+                        body: statements,
+                        retType: retType
                     };
+                    let ret: { [key: string]: FunctionType } = JSON.parse('{}');
+                    ret[op] = fun;
+                    return ret;
                 }
             }
         },
         {
             "operator_overload:operator [ ] ( id : type ) : type { statements } ;": {
                 action: function ($, s): { [key: string]: FunctionType } {
-                    let id = $[4] as string;
-                    let parameterType = $[6] as TypeUsed;
-                    let statements = $[11] as Block;
-                    let retType = $[9] as TypeUsed;
+                    let id = $[3] as string;
+                    let op: opType | opType2 = $[1];
+                    let parameterType = $[5] as TypeUsed;
+                    let statements = $[10] as Block;
+                    let retType = $[8] as TypeUsed;
                     let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
                     argument[id] = { variable: 'var', type: parameterType };
-                    return {
-                        "[]":
-                        {
-                            capture: {},
-                            _arguments: argument,
-                            body: statements,
-                            retType: retType
-                        }
+                    let fun: FunctionType = {
+                        capture: {},
+                        _arguments: argument,
+                        body: statements,
+                        retType: retType
                     };
+                    let ret: { [key: string]: FunctionType } = JSON.parse('{}');
+                    ret[op] = fun;
+                    return ret;
                 }
             }
         },
@@ -817,15 +857,16 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
                 action: function ($, s): { [key: string]: FunctionType } {
                     let statements = $[7] as Block;
                     let retType = $[5] as TypeUsed;
-                    return {
-                        "++":
-                        {
-                            capture: {},
-                            _arguments: {},
-                            body: statements,
-                            retType: retType
-                        }
+                    let op: opType | opType2 = $[1];
+                    let fun: FunctionType = {
+                        capture: {},
+                        _arguments: {},
+                        body: statements,
+                        retType: retType
                     };
+                    let ret: { [key: string]: FunctionType } = JSON.parse('{}');
+                    ret[op] = fun;
+                    return ret;
                 }
             }
         },
@@ -834,15 +875,302 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
                 action: function ($, s): { [key: string]: FunctionType } {
                     let statements = $[7] as Block;
                     let retType = $[5] as TypeUsed;
-                    return {
-                        "--":
-                        {
-                            capture: {},
-                            _arguments: {},
-                            body: statements,
-                            retType: retType
-                        }
+                    let op: opType | opType2 = $[1];
+                    let fun: FunctionType = {
+                        capture: {},
+                        _arguments: {},
+                        body: statements,
+                        retType: retType
                     };
+                    let ret: { [key: string]: FunctionType } = JSON.parse('{}');
+                    ret[op] = fun;
+                    return ret;
+                }
+            }
+        },
+        {
+            "operator_overload:operator + ( id : type ) : type { native } ;": {
+                action: function ($, s): { [key: string]: FunctionType } {
+                    let id = $[3] as string;
+                    let op: opType | opType2 = $[1];
+                    let parameterType = $[5] as TypeUsed;
+                    let retType = $[8] as TypeUsed;
+                    let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
+                    argument[id] = { variable: 'var', type: parameterType };
+                    let fun: FunctionType = {
+                        capture: {},
+                        _arguments: argument,
+                        isNative: true,
+                        retType: retType
+                    };
+                    let ret: { [key: string]: FunctionType } = JSON.parse('{}');
+                    ret[op] = fun;
+                    return ret;
+                }
+            }
+        },
+        {
+            "operator_overload:operator - ( id : type ) : type { native } ;": {
+                action: function ($, s): { [key: string]: FunctionType } {
+                    let id = $[3] as string;
+                    let op: opType | opType2 = $[1];
+                    let parameterType = $[5] as TypeUsed;
+                    let retType = $[8] as TypeUsed;
+                    let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
+                    argument[id] = { variable: 'var', type: parameterType };
+                    let fun: FunctionType = {
+                        capture: {},
+                        _arguments: argument,
+                        isNative: true,
+                        retType: retType
+                    };
+                    let ret: { [key: string]: FunctionType } = JSON.parse('{}');
+                    ret[op] = fun;
+                    return ret;
+                }
+            }
+        },
+        {
+            "operator_overload:operator * ( id : type ) : type { native } ;": {
+                action: function ($, s): { [key: string]: FunctionType } {
+                    let id = $[3] as string;
+                    let op: opType | opType2 = $[1];
+                    let parameterType = $[5] as TypeUsed;
+                    let retType = $[8] as TypeUsed;
+                    let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
+                    argument[id] = { variable: 'var', type: parameterType };
+                    let fun: FunctionType = {
+                        capture: {},
+                        _arguments: argument,
+                        isNative: true,
+                        retType: retType
+                    };
+                    let ret: { [key: string]: FunctionType } = JSON.parse('{}');
+                    ret[op] = fun;
+                    return ret;
+                }
+            }
+        },
+        {
+            "operator_overload:operator / ( id : type ) : type { native } ;": {
+                action: function ($, s): { [key: string]: FunctionType } {
+                    let id = $[3] as string;
+                    let op: opType | opType2 = $[1];
+                    let parameterType = $[5] as TypeUsed;
+                    let retType = $[8] as TypeUsed;
+                    let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
+                    argument[id] = { variable: 'var', type: parameterType };
+                    let fun: FunctionType = {
+                        capture: {},
+                        _arguments: argument,
+                        isNative: true,
+                        retType: retType
+                    };
+                    let ret: { [key: string]: FunctionType } = JSON.parse('{}');
+                    ret[op] = fun;
+                    return ret;
+                }
+            }
+        },
+        {
+            "operator_overload:operator < ( id : type ) : type { native } ;": {
+                action: function ($, s): { [key: string]: FunctionType } {
+                    let id = $[3] as string;
+                    let op: opType | opType2 = $[1];
+                    let parameterType = $[5] as TypeUsed;
+                    let retType = $[8] as TypeUsed;
+                    let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
+                    argument[id] = { variable: 'var', type: parameterType };
+                    let fun: FunctionType = {
+                        capture: {},
+                        _arguments: argument,
+                        isNative: true,
+                        retType: retType
+                    };
+                    let ret: { [key: string]: FunctionType } = JSON.parse('{}');
+                    ret[op] = fun;
+                    return ret;
+                }
+            }
+        },
+        {
+            "operator_overload:operator <= ( id : type ) : type { native } ;": {
+                action: function ($, s): { [key: string]: FunctionType } {
+                    let id = $[3] as string;
+                    let op: opType | opType2 = $[1];
+                    let parameterType = $[5] as TypeUsed;
+                    let retType = $[8] as TypeUsed;
+                    let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
+                    argument[id] = { variable: 'var', type: parameterType };
+                    let fun: FunctionType = {
+                        capture: {},
+                        _arguments: argument,
+                        isNative: true,
+                        retType: retType
+                    };
+                    let ret: { [key: string]: FunctionType } = JSON.parse('{}');
+                    ret[op] = fun;
+                    return ret;
+                }
+            }
+        },
+        {
+            "operator_overload:operator > ( id : type ) : type { native } ;": {
+                action: function ($, s): { [key: string]: FunctionType } {
+                    let id = $[3] as string;
+                    let op: opType | opType2 = $[1];
+                    let parameterType = $[5] as TypeUsed;
+                    let retType = $[8] as TypeUsed;
+                    let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
+                    argument[id] = { variable: 'var', type: parameterType };
+                    let fun: FunctionType = {
+                        capture: {},
+                        _arguments: argument,
+                        isNative: true,
+                        retType: retType
+                    };
+                    let ret: { [key: string]: FunctionType } = JSON.parse('{}');
+                    ret[op] = fun;
+                    return ret;
+                }
+            }
+        },
+        {
+            "operator_overload:operator >= ( id : type ) : type { native } ;": {
+                action: function ($, s): { [key: string]: FunctionType } {
+                    let id = $[3] as string;
+                    let op: opType | opType2 = $[1];
+                    let parameterType = $[5] as TypeUsed;
+                    let retType = $[8] as TypeUsed;
+                    let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
+                    argument[id] = { variable: 'var', type: parameterType };
+                    let fun: FunctionType = {
+                        capture: {},
+                        _arguments: argument,
+                        isNative: true,
+                        retType: retType
+                    };
+                    let ret: { [key: string]: FunctionType } = JSON.parse('{}');
+                    ret[op] = fun;
+                    return ret;
+                }
+            }
+        },
+        {
+            "operator_overload:operator == ( id : type ) : type { native } ;": {
+                action: function ($, s): { [key: string]: FunctionType } {
+                    let id = $[3] as string;
+                    let op: opType | opType2 = $[1];
+                    let parameterType = $[5] as TypeUsed;
+                    let retType = $[8] as TypeUsed;
+                    let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
+                    argument[id] = { variable: 'var', type: parameterType };
+                    let fun: FunctionType = {
+                        capture: {},
+                        _arguments: argument,
+                        isNative: true,
+                        retType: retType
+                    };
+                    let ret: { [key: string]: FunctionType } = JSON.parse('{}');
+                    ret[op] = fun;
+                    return ret;
+                }
+            }
+        },
+        {
+            "operator_overload:operator || ( id : type ) : type { native } ;": {
+                action: function ($, s): { [key: string]: FunctionType } {
+                    let id = $[3] as string;
+                    let op: opType | opType2 = $[1];
+                    let parameterType = $[5] as TypeUsed;
+                    let retType = $[8] as TypeUsed;
+                    let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
+                    argument[id] = { variable: 'var', type: parameterType };
+                    let fun: FunctionType = {
+                        capture: {},
+                        _arguments: argument,
+                        isNative: true,
+                        retType: retType
+                    };
+                    let ret: { [key: string]: FunctionType } = JSON.parse('{}');
+                    ret[op] = fun;
+                    return ret;
+                }
+            }
+        },
+        {
+            "operator_overload:operator && ( id : type ) : type { native } ;": {
+                action: function ($, s): { [key: string]: FunctionType } {
+                    let id = $[3] as string;
+                    let op: opType | opType2 = $[1];
+                    let parameterType = $[5] as TypeUsed;
+                    let retType = $[8] as TypeUsed;
+                    let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
+                    argument[id] = { variable: 'var', type: parameterType };
+                    let fun: FunctionType = {
+                        capture: {},
+                        _arguments: argument,
+                        isNative: true,
+                        retType: retType
+                    };
+                    let ret: { [key: string]: FunctionType } = JSON.parse('{}');
+                    ret[op] = fun;
+                    return ret;
+                }
+            }
+        },
+        {
+            "operator_overload:operator [ ] ( id : type ) : type { native } ;": {
+                action: function ($, s): { [key: string]: FunctionType } {
+                    let id = $[3] as string;
+                    let op: opType | opType2 = $[1];
+                    let parameterType = $[5] as TypeUsed;
+                    let retType = $[8] as TypeUsed;
+                    let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
+                    argument[id] = { variable: 'var', type: parameterType };
+                    let fun: FunctionType = {
+                        capture: {},
+                        _arguments: argument,
+                        isNative: true,
+                        retType: retType
+                    };
+                    let ret: { [key: string]: FunctionType } = JSON.parse('{}');
+                    ret[op] = fun;
+                    return ret;
+                }
+            }
+        },
+        {
+            "operator_overload:operator ++ ( ) : type { native } ;": {
+                action: function ($, s): { [key: string]: FunctionType } {
+                    let retType = $[5] as TypeUsed;
+                    let op: opType | opType2 = $[1];
+                    let fun: FunctionType = {
+                        capture: {},
+                        _arguments: {},
+                        isNative: true,
+                        retType: retType
+                    };
+                    let ret: { [key: string]: FunctionType } = JSON.parse('{}');
+                    ret[op] = fun;
+                    return ret;
+                }
+            }
+        },
+        {
+            "operator_overload:operator -- ( ) : type { native } ;": {
+                action: function ($, s): { [key: string]: FunctionType } {
+                    let retType = $[5] as TypeUsed;
+                    let op: opType | opType2 = $[1];
+                    let fun: FunctionType = {
+                        capture: {},
+                        _arguments: {},
+                        isNative: true,
+                        retType: retType
+                    };
+                    let ret: { [key: string]: FunctionType } = JSON.parse('{}');
+                    ret[op] = fun;
+                    return ret;
                 }
             }
         },

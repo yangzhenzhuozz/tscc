@@ -13,7 +13,7 @@ function OperatorOverLoad(scope: Scope, leftObj: ASTNode, rightObj: ASTNode | un
         let opFunction = program.definedType[leftType.SimpleType!.name].operatorOverload[op as opType][sign];
         if (opFunction == undefined) {
             throw `类型${TypeUsedSign(leftType)}没有 ${op} (${TypeUsedSign(rightType)})的重载函数`;
-        } else if (opFunction.isMagic == undefined && !opFunction.isMagic) {
+        } else if (opFunction.isNative == undefined && !opFunction.isNative) {
             delete originNode[op];//删除原来的操作符
             originNode.call = { functionObj: { desc: 'ASTNode', loadOperatorOverload: [op, sign] }, _arguments: [rightObj] };
         } else {
@@ -24,7 +24,7 @@ function OperatorOverLoad(scope: Scope, leftObj: ASTNode, rightObj: ASTNode | un
         //单目运算符
         let sign = FunctionSignWithArgument([]);
         let opFunction = program.definedType[leftType.SimpleType!.name].operatorOverload[op as opType][sign];
-        if (opFunction.isMagic == undefined && !opFunction.isMagic) {
+        if (opFunction.isNative == undefined && !opFunction.isNative) {
             delete originNode[op];//删除原来的操作符
             originNode.call = { functionObj: { desc: 'ASTNode', loadOperatorOverload: [op, sign] }, _arguments: [] };
         } else {
@@ -591,7 +591,7 @@ function functionScan(blockScope: BlockScope, fun: FunctionType): TypeUsed {
     } else {
         (fun as any).hasFunctionScan = true;
     }
-    if (fun.body == undefined) {//函数体,根据有无body判断是函数类型声明还是定义，声明语句不做扫描
+    if (fun.isNative || fun.body == undefined) {//函数体,根据有无body判断是函数类型声明还是定义，声明语句不做扫描
         if (fun.retType == undefined) {
             throw `函数声明一定有返回值声明`;
         }
@@ -676,3 +676,4 @@ export function programScan(primitiveProgram: Program) {
     }
     return program;
 }
+// throw `值类型循环包含没检查`;

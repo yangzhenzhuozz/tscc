@@ -15,6 +15,7 @@ lexer.addRule(['(a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z|A|B|C|D|E|F
             return 'id';
         }
     }]);
+lexer.addRule(['native', (arg) => { arg.value = arg.yytext; return `native`; }]);
 lexer.addRule(['var', (arg) => { arg.value = arg.yytext; return `var`; }]);
 lexer.addRule(['val', (arg) => { arg.value = arg.yytext; return `val`; }]);
 lexer.addRule(['=>', (arg) => { arg.value = arg.yytext; return `=>`; }]);

@@ -27,7 +27,7 @@ function main() {
         console.time(`阶段二耗时`);
         program = programScan(program);
         console.timeEnd(`阶段二耗时`);
-        fs.writeFileSync(`./src/example/toy-language/output/stage-1.json`, JSON.stringify(program, null, 4));
+        fs.writeFileSync(`./src/example/toy-language/output/stage-2.json`, JSON.stringify(program, null, 4));
     } catch (e: unknown) {
         if (e instanceof Error) {
             console.error(e.stack);

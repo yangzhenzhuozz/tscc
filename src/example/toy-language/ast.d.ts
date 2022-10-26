@@ -52,7 +52,7 @@ interface ArrayType {
     innerType: TypeUsed;
 }
 interface FunctionType {
-    isMagic?: boolean;
+    isNative?: boolean;//是否为native函数
     _arguments: VariableDescriptor;
     body?: Block;//函数体,根据有无body判断是函数类型声明还是定义
     retType?: TypeUsed;//返回类型，可选，如果为undefined则需要进行类型推导

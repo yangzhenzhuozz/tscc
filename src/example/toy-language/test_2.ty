@@ -1,6 +1,4 @@
-function fun(){
-    return f1();
-};
-function f1():int{
-    return 1;
-};
+valuetype class int{
+    operator + ( id : int ) : int { native } ;
+    function toString () : int { native } ;
+}

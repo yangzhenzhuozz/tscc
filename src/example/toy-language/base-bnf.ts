@@ -2,7 +2,7 @@ import fs from "fs";
 import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
 let grammar: Grammar = {
-    tokens: ['var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'throw', 'super', 'basic_type', 'instanceof'],
+    tokens: ['native', 'var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'throw', 'super', 'basic_type', 'instanceof'],
     association: [
         { 'right': ['='] },
         { 'right': ['?'] },
@@ -47,9 +47,9 @@ let grammar: Grammar = {
         { "class_definition:modifier class basic_type template_declare extends_declare { class_units }": {} },//class定义语句由修饰符等组成(太长了我就不一一列举)
         { "extends_declare:": {} },//继承可以为空
         { "extends_declare:extends type": {} },//继承,虽然文法是允许继承任意类型,但是在语义分析的时候再具体决定该class能不能被继承
-        { "function_definition:function id template_declare ( parameter_declare ) ret_type { statements }": {} },//函数定义语句，同样太长，不列表
-        { "ret_type:": {} },//返回值类型可以不声明，自动推导,lambda就不用写返回值声明
-        { "ret_type: : type": {} },//可以声明返回值类型,function fun() : int {codes}
+        { "function_definition:function id template_declare ( parameter_declare ) { statements }": {} },//函数定义语句，同样太长，不列表,返回值类型可以不声明，自动推导,lambda就不用写返回值声明
+        { "function_definition:function id template_declare ( parameter_declare ) : type { statements }": {} },//函数定义语句，同样太长，不列表
+        { "function_definition:function id template_declare ( parameter_declare ) : type { native }": {} },//函数定义语句，native函数,返回值必须声明
         { "modifier:valuetype": {} },//modifier可以是"valuetype"
         { "modifier:sealed": {} },//modifier可以是"sealed"
         { "modifier:": {} },//modifier可以为空
@@ -120,6 +120,20 @@ let grammar: Grammar = {
         { "operator_overload:operator [ ] ( id : type ) : type { statements } ;": {} },
         { "operator_overload:operator ++ ( ) : type { statements } ;": {} },
         { "operator_overload:operator -- ( ) : type { statements } ;": {} },
+        { "operator_overload:operator + ( id : type ) : type { native } ;": {} },
+        { "operator_overload:operator - ( id : type ) : type { native } ;": {} },
+        { "operator_overload:operator * ( id : type ) : type { native } ;": {} },
+        { "operator_overload:operator / ( id : type ) : type { native } ;": {} },
+        { "operator_overload:operator < ( id : type ) : type { native } ;": {} },
+        { "operator_overload:operator <= ( id : type ) : type { native } ;": {} },
+        { "operator_overload:operator > ( id : type ) : type { native } ;": {} },
+        { "operator_overload:operator >= ( id : type ) : type { native } ;": {} },
+        { "operator_overload:operator == ( id : type ) : type { native } ;": {} },
+        { "operator_overload:operator || ( id : type ) : type { native } ;": {} },
+        { "operator_overload:operator && ( id : type ) : type { native } ;": {} },
+        { "operator_overload:operator [ ] ( id : type ) : type { native } ;": {} },
+        { "operator_overload:operator ++ ( ) : type { native } ;": {} },
+        { "operator_overload:operator -- ( ) : type { native } ;": {} },
         { "statements:statements statement": {} },//statements可以由多个statement组成
         { "statements:": {} },//statements可以为空
         { "statement:declare ;": {} },//statement可以是一条声明语句
