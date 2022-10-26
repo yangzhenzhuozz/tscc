@@ -676,4 +676,4 @@ export function programScan(primitiveProgram: Program) {
     }
     return program;
 }
-// throw `值类型循环包含没检查`;
+throw `值类型循环包含没检查`;
