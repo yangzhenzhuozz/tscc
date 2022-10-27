@@ -652,6 +652,20 @@ function ClassScan(classScope: ClassScope) {
         }
     }
 }
+//深度优先搜索，检查是否有值类型直接或者间接包含自身
+function valueTypeRecursiveCheck(typeName: string) {
+    if (program.definedType[typeName].recursiveChecked == true) {
+        throw `值类型${typeName}直接或者间接包含自身`
+    } else {
+        program.definedType[typeName].recursiveChecked = true;
+        for (let fieldName in program.definedType[typeName].property) {
+            let fieldTypeName = program.definedType[typeName].property[fieldName].type!.SimpleType?.name;
+            if (fieldTypeName != undefined && program.definedType[fieldTypeName].modifier == 'valuetype') {//如果有值类型的成员，则递归遍历
+                valueTypeRecursiveCheck(fieldTypeName);
+            }
+        }
+    }
+}
 export function programScan(primitiveProgram: Program) {
     program = primitiveProgram;
     programScope = new ProgramScope(program);
@@ -674,6 +688,10 @@ export function programScan(primitiveProgram: Program) {
             functionScan(blockScope, prop.type?.FunctionType);
         }
     }
+    for (let typeName in program.definedType) {
+        if (program.definedType[typeName].recursiveChecked != true && program.definedType[typeName].modifier == 'valuetype') {
+            valueTypeRecursiveCheck(typeName);
+        }
+    }
     return program;
 }
-throw `值类型循环包含没检查`;

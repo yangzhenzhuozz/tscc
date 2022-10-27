@@ -1,4 +1,6 @@
-valuetype class int{
-    operator + ( id : int ) : int { native } ;
-    function toString () : int { native } ;
+valuetype class A{
+    var b:B;
+}
+class B{
+    var a:A;
 }
