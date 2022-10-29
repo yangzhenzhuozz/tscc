@@ -2,7 +2,7 @@ import Parser from "./parser.js";
 import lexer from './lexrule.js';
 import fs from 'fs';
 import { userTypeDictionary } from './lexrule.js';
-import { programScan } from './stage_1.js'
+import { programScan } from './typeInfer.js'
 function basic_typeScan(source: string) {
     //把所有用户定义的class设置为basic_type
     let regularExpression: RegExp = /class\s+([a-zA-Z_][a-zA-Z_0-9]*)/g;
