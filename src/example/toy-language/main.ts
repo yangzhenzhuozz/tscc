@@ -2,7 +2,8 @@ import Parser from "./parser.js";
 import lexer from './lexrule.js';
 import fs from 'fs';
 import { userTypeDictionary } from './lexrule.js';
-import { programScan } from './typeInfer.js'
+import typeInfer from './typeInfer.js'
+import codeGen from './codeGen.js'
 function basic_typeScan(source: string) {
     //把所有用户定义的class设置为basic_type
     let regularExpression: RegExp = /class\s+([a-zA-Z_][a-zA-Z_0-9]*)/g;
@@ -14,6 +15,7 @@ function basic_typeScan(source: string) {
 function main() {
     userTypeDictionary.add('int');//注册系统类型
     userTypeDictionary.add('double');
+    userTypeDictionary.add('bool');
     userTypeDictionary.add('void');
     let source = fs.readFileSync("./src/example/toy-language/test_2.ty", 'utf-8').toString();
     lexer.setSource(source);
@@ -25,9 +27,10 @@ function main() {
         console.timeEnd("解析源码耗时");
         fs.writeFileSync(`./src/example/toy-language/output/stage-1.json`, JSON.stringify(program, null, 4));
         console.time(`阶段二耗时`);
-        program = programScan(program);
+        program = typeInfer(program);
         console.timeEnd(`阶段二耗时`);
         fs.writeFileSync(`./src/example/toy-language/output/stage-2.json`, JSON.stringify(program, null, 4));
+        codeGen(program);
     } catch (e: unknown) {
         if (e instanceof Error) {
             console.error(e.stack);

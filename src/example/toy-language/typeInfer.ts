@@ -34,6 +34,24 @@ function OperatorOverLoad(scope: Scope, leftObj: ASTNode, rightObj: ASTNode | un
     }
 }
 /**
+ * 类型检查并合并,如果要求a、b类型必须相同，any可以匹配任意类型
+ * @param a 
+ * @param b 
+ */
+function typeCheck(a: TypeUsed, b: TypeUsed, msg: string): TypeUsed {
+    let ta = TypeUsedSign(a);
+    let tb = TypeUsedSign(b);
+    if (ta != 'any' && tb != 'any' && (ta != tb)) {
+        throw `类型不匹配:${ta} - ${tb}:   ${msg}`;
+    } else {
+        if (ta == 'any') {
+            return b;
+        } else {
+            return a;
+        }
+    }
+}
+/**
  * 推导AST类型
  * @param scope 
  * @param node 
@@ -96,12 +114,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
     else if (node["call"] != undefined) {
         let funType = nodeRecursion(scope, node["call"].functionObj, label).type.FunctionType!;//FunctionType不可能为undefined
         if (funType.retType == undefined) {//说明函数没有被推导过
-            if ((funType as any).flag) {
-                return { type: {}, hasRet: false };//返回一个空值
-            }
-            (funType as any).flag = true;//标记
             functionScan(new BlockScope(scope, funType, funType.body!), funType);
-            delete (funType as any).flag;//删除标记
         }
         if (funType == undefined) {
             throw `必须调用一个函数`;
@@ -138,12 +151,12 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
             type = prop.type;
             if (type == undefined) {
                 let initAST = prop.initAST!;
-                if ((initAST as any).flag) {
+                if ((initAST).hasTypeInferRecursion) {
                     throw `类型推导出现了循环:program.${accessName}`;
                 }
-                (initAST as any).flag = true;//标记一下这个属性已经在推导路径中被使用过了
+                (initAST).hasTypeInferRecursion = true;//标记一下这个属性已经在推导路径中被使用过了
                 type = nodeRecursion(programScope, initAST, label).type;
-                delete (initAST as any).flag;//删除标记,回溯常用手法
+                delete (initAST).hasTypeInferRecursion;//删除标记,回溯常用手法
             }
             if (assignmentObj != undefined) {
                 if (prop.variable == 'val') {
@@ -183,12 +196,12 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
                 type = prop.type;
                 if (type == undefined) {
                     let initAST = prop.initAST!;
-                    if ((initAST as any).flag) {
+                    if ((initAST).hasTypeInferRecursion) {
                         throw `类型推导出现了循环:${className}.${accessName}`;
                     }
-                    (initAST as any).flag = true;//标记一下这个属性已经在推导路径中被使用过了
+                    (initAST).hasTypeInferRecursion = true;//标记一下这个属性已经在推导路径中被使用过了
                     type = nodeRecursion(classScope, initAST, label).type;
-                    delete (initAST as any).flag;//删除标记,回溯常用手法
+                    delete (initAST).hasTypeInferRecursion;//删除标记,回溯常用手法
                 }
                 if (assignmentObj != undefined) {
                     if (prop.variable == 'val') {
@@ -233,7 +246,15 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
                 return { type: { SimpleType: { name: 'int' } }, hasRet: false };
             }
         } else {//是一个函数体
-            return { type: functionScan(new BlockScope(scope, node["immediate"].functionValue!, node["immediate"].functionValue!.body!), node["immediate"].functionValue!), hasRet: false };
+            functionScan(new BlockScope(scope, node["immediate"].functionValue!, node["immediate"].functionValue!.body!), node["immediate"].functionValue!);
+            let functionType: FunctionType = {
+                isNative: node["immediate"].functionValue!.isNative,
+                _arguments: node["immediate"].functionValue!._arguments,
+                retType: node["immediate"].functionValue!.retType,
+                capture: node["immediate"].functionValue!.capture,
+                templates: node["immediate"].functionValue!.templates,
+            };
+            return { type: { FunctionType: functionType }, hasRet: false };
         }
     }
     else if (node["="] != undefined) {
@@ -379,8 +400,8 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
             type2 = BlockScan(blockScope, label);
         }
         if (type1 != undefined && type2 != undefined) {
-            typeCheck(type1, type2, `if语句和else语句返回值类型不一致`);
-            return { hasRet: true, type: type1 };
+            let retType = typeCheck(type1, type2, `if语句和else语句返回值类型不一致`);
+            return { hasRet: true, type: retType };
         } else if (type1 == undefined && type2 == undefined) {
             return { hasRet: false, type: { SimpleType: { name: 'void' } } };
         } else {
@@ -545,13 +566,6 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
         throw new Error(`未知节点`);
     }
 }
-function typeCheck(a: TypeUsed, b: TypeUsed, msg: string) {
-    let ta = TypeUsedSign(a);
-    let tb = TypeUsedSign(b);
-    if (ta != tb) {
-        throw `类型不匹配:${ta} - ${tb}:   ${msg}`;
-    }
-}
 /**
  * 返回值表示是否为一个ret block
  */
@@ -586,10 +600,25 @@ function BlockScan(blockScope: BlockScope, label: string[]): TypeUsed | undefine
     return ret;
 }
 function functionScan(blockScope: BlockScope, fun: FunctionType): TypeUsed {
-    if ((fun as any).hasFunctionScan) {//避免已经处理过的函数被重复处理
+    if ((fun).hasFunctionScan) {//避免已经处理过的函数被重复处理
+        /**
+         * 因为可能出现这种情况
+         * function a(){
+         *  if xxx
+         *      return a();//这里暂时把返回值设置为any
+         *  else
+         *      return 1;
+         * }
+         * 此时应该将函数的返回值类型推导为int
+         * 
+         * any只有在函数递归推导时才会出现
+         */
+        if (fun.retType == undefined) {
+            fun.retType = { SimpleType: { name: 'any' } }
+        }
         return fun.retType!;//已经处理过的函数retType一定有值
     } else {
-        (fun as any).hasFunctionScan = true;
+        (fun).hasFunctionScan = true;
     }
     if (fun.isNative || fun.body == undefined) {//函数体,根据有无body判断是函数类型声明还是定义，声明语句不做扫描
         if (fun.retType == undefined) {
@@ -605,18 +634,28 @@ function functionScan(blockScope: BlockScope, fun: FunctionType): TypeUsed {
         argIndex++;
     }
     let blockRetType = BlockScan(blockScope, []);
-    if (blockRetType == undefined && fun.retType == undefined) {
-        throw `函数类型和函数内部必须至少有一个返回类型标记`;
-    }
     if (blockRetType == undefined) {
         blockRetType = { SimpleType: { name: 'void' } };//block没有任何返回语句，则说明返回void
     }
-    if (fun.retType != undefined) {
+    if (fun.retType != undefined && TypeUsedSign(fun.retType) != 'any') {//函数明确声明了返回值类型
         typeCheck(fun.retType, blockRetType, `函数声明返回值类型和语句实际返回值类型不一致`);
     } else {
-        fun.retType = blockRetType;
+        /**
+         * function f(){
+         *      return f();//无法推导返回值
+         * }
+         * function f(){
+         *      f();//这种写法就没问题
+         * }
+         */
+        if (TypeUsedSign(blockRetType) == 'any') {
+            throw `无法推导返回值`;
+        }
+        else {
+            fun.retType = blockRetType;
+        }
     }
-    return blockRetType;
+    return fun.retType;
 }
 function ClassScan(classScope: ClassScope) {
     for (let propName of classScope.getPropNames()) {//扫描所有成员
@@ -658,7 +697,7 @@ function valueTypeRecursiveCheck(typeName: string) {
         throw `值类型${typeName}直接或者间接包含自身`
     } else {
         program.definedType[typeName].recursiveChecked = true;
-        for (let fieldName in program.definedType[typeName].property) {
+        for (let fieldName in program.definedType[typeName].property) {//遍历所有成员
             let fieldTypeName = program.definedType[typeName].property[fieldName].type!.SimpleType?.name;
             if (fieldTypeName != undefined && program.definedType[fieldTypeName].modifier == 'valuetype') {//如果有值类型的成员，则递归遍历
                 valueTypeRecursiveCheck(fieldTypeName);
@@ -666,7 +705,7 @@ function valueTypeRecursiveCheck(typeName: string) {
         }
     }
 }
-export function programScan(primitiveProgram: Program) {
+export default function programScan(primitiveProgram: Program) {
     program = primitiveProgram;
     programScope = new ProgramScope(program);
     //扫描definedType

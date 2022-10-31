@@ -53,6 +53,7 @@ interface ArrayType {
     innerType: TypeUsed;
 }
 interface FunctionType {
+    hasFunctionScan?:boolean;//是否已经进行过函数扫描
     isNative?: boolean;//是否为native函数
     _arguments: VariableDescriptor;
     body?: Block;//函数体,根据有无body判断是函数类型声明还是定义
@@ -74,6 +75,7 @@ interface Program {
 }
 //一条语句就是一个Noe
 interface ASTNode {
+    hasTypeInferRecursion?:boolean;//本AST是否已经被递归推导过类型
     desc: 'ASTNode';
     loadOperatorOverload?: [string, string];//读取重载操作符函数
     loadException?: TypeUsed;//读取异常
