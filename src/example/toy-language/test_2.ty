@@ -1,34 +1,23 @@
-class int{
+valuetype class int{
     operator <(b:int):bool{native};
 }
-function f1(){
-    f1();
-};
-function f2(){
-    if(0<0)
-        return f2();
-    else
-        return 0;
-};
-function f3(){
-    if(0<0)
+class myClass{
+    function f1(){
+        f1();
+    };
+    function f2(){
         if(0<0)
-            return f3();
+            return f2();
         else
-            return f3();
-    else
-        return 0;
-};
-
-//error
-function f4(){
-    return f4();
-};
-
-//error
-function f5(){
-    if(0<0)
-        return f5();
-    else
-        return f5();
-};
+            return 0;
+    };
+    function f3(){
+        if(0<0)
+            if(0<0)
+                return f3();
+            else
+                return f3();
+        else
+            return 0;
+    };
+}

@@ -2,6 +2,7 @@
 import fs from 'fs'
 import { FunctionSign, TypeUsedSign, FunctionSignWithArgument } from './lib.js';
 import { Scope, BlockScope, ClassScope, ProgramScope } from './scope.js';
+import { pointSize } from './constant.js'
 let program: Program;
 let programScope: ProgramScope;
 function OperatorOverLoad(scope: Scope, leftObj: ASTNode, rightObj: ASTNode | undefined, originNode: ASTNode, op: opType | opType2): TypeUsed {
@@ -705,6 +706,31 @@ function valueTypeRecursiveCheck(typeName: string) {
         }
     }
 }
+function sizeof(typeName: string): number {
+    let ret = 0;
+    switch (typeName) {
+        case 'int': ret = 4; break;
+        case 'double': ret = 8; break;
+        case 'bool': ret = 1; break;
+        case 'byte': ret = 1; break;
+        default:
+            for (let fieldName in program.definedType[typeName].property) {
+                let field = program.definedType[typeName].property[fieldName];
+                if (field.type!.SimpleType != undefined) {
+                    let fieldTypeName = field.type!.SimpleType.name;
+                    if (program.definedType[fieldTypeName].modifier != 'valuetype') {
+                        ret += pointSize;//非值类型
+                    } else {
+                        ret += sizeof(fieldTypeName);
+                    }
+                } else {
+                    ret += pointSize;//不是普通类型就只能用指针表示
+                }
+            }
+            break;
+    }
+    return ret;
+}
 export default function programScan(primitiveProgram: Program) {
     program = primitiveProgram;
     programScope = new ProgramScope(program);
@@ -731,6 +757,9 @@ export default function programScan(primitiveProgram: Program) {
         if (program.definedType[typeName].recursiveChecked != true && program.definedType[typeName].modifier == 'valuetype') {
             valueTypeRecursiveCheck(typeName);
         }
+    }
+    for (let typeName in program.definedType) {
+        program.definedType[typeName].size = sizeof(typeName);
     }
     return program;
 }

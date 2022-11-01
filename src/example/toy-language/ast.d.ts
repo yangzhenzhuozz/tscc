@@ -17,6 +17,7 @@ type opType = '+' | '-' | '*' | '/' | '<' | '<=' | '>' | '>=' | '==' | '||' | '&
 type opType2 = '++' | '--';//单目运算符
 interface TypeDef {//定义的类型
     modifier?: 'valuetype' | 'sealed';
+    size?:number;
     recursiveChecked?: boolean;//是否已经进行了值类型循环包含的检查
     templates?: string[];//模板列表
     extends?: TypeUsed;//基类
