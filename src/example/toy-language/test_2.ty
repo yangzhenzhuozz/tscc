@@ -1,23 +1,18 @@
 valuetype class int{
     operator <(b:int):bool{native};
+    operator ==(b:int):bool{native};
 }
-class myClass{
-    function f1(){
-        f1();
-    };
-    function f2(){
-        if(0<0)
-            return f2();
-        else
-            return 0;
-    };
-    function f3(){
-        if(0<0)
-            if(0<0)
-                return f3();
-            else
-                return f3();
-        else
-            return 0;
-    };
+class object{}
+class A{
+    
 }
+function f():void{
+    var a=(object)1;
+    var b=(object)1;
+    var c=(int)a;
+    var d=(object)b;
+    switch(c){
+        case 0:c=1;
+        case 1:c=1;
+    }
+};

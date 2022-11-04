@@ -108,6 +108,8 @@ interface ASTNode {
     '--'?: ASTNode;
     ternary?: { condition: ASTNode, obj1: ASTNode, obj2: ASTNode };
     cast?: { obj: ASTNode, type: TypeUsed };
+    box?: { obj: ASTNode, type: TypeUsed };//装箱
+    unbox?: { obj: ASTNode, type: TypeUsed };//拆箱
     _new?: { type: TypeUsed, _arguments: ASTNode[] };
     _newArray?: { type: TypeUsed, initList: ASTNode[], placeholder: number };
     '[]'?: { rightChild: ASTNode, leftChild: ASTNode };
@@ -123,5 +125,5 @@ interface ASTNode {
     "=="?: { rightChild: ASTNode; leftChild: ASTNode; };
     "||"?: { rightChild: ASTNode; leftChild: ASTNode; };
     "&&"?: { rightChild: ASTNode; leftChild: ASTNode; };
-    _switch?: { pattern: ASTNode, defalutStmt?: ASTNode | Block, matchList: { matchObj: ASTNode, stmt: ASTNode | Block }[] };//default没有matchObj
+    _switch?: { pattern: ASTNode, defalutStmt?: ASTNode | Block, matchList: { matchObj?: ASTNode,condition?:ASTNode, stmt: ASTNode | Block }[] };//default没有matchObj
 }

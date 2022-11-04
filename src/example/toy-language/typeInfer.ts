@@ -11,7 +11,7 @@ function OperatorOverLoad(scope: Scope, leftObj: ASTNode, rightObj: ASTNode | un
         //双目运算符
         let rightType = nodeRecursion(scope, rightObj, []).type;
         let sign = FunctionSignWithArgument([rightType]);
-        let opFunction = program.definedType[leftType.SimpleType!.name].operatorOverload[op as opType][sign];
+        let opFunction = program.definedType[leftType.SimpleType!.name].operatorOverload[op as opType]?.[sign];
         if (opFunction == undefined) {
             throw `类型${TypeUsedSign(leftType)}没有 ${op} (${TypeUsedSign(rightType)})的重载函数`;
         } else if (opFunction.isNative == undefined && !opFunction.isNative) {
@@ -479,7 +479,10 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
         return { hasRet: false, type: { SimpleType: { name: 'void' } } };
     }
     else if (node["_instanceof"] != undefined) {
-        nodeRecursion(scope, node["_instanceof"].obj, label);
+        let objType=nodeRecursion(scope, node["_instanceof"].obj, label).type;
+        if(objType.SimpleType?.name!='object'){
+            throw `只有object类型才可以instanceof`;
+        }
         return { hasRet: false, type: { SimpleType: { name: 'bool' } } };
     }
     else if (node["not"] != undefined) {
@@ -509,7 +512,29 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
         return { type: t1, hasRet: false };
     }
     else if (node["cast"] != undefined) {
-        throw `不支持强制转型`;
+        let srcType = nodeRecursion(scope, node["cast"].obj, label).type;
+        let targetType = node['cast'].type;
+        if (targetType.SimpleType?.name == 'object') {
+            //任何对象都可以转换为object
+            if (srcType.SimpleType != undefined) {
+                if (program.definedType[srcType.SimpleType.name].modifier == 'valuetype') {
+                    node['box'] = node["cast"];//装箱
+                    delete node["cast"];
+                }
+            }
+        } else {
+            if (srcType.SimpleType?.name == 'object') {
+                if (targetType.SimpleType != undefined) {
+                    if (program.definedType[targetType.SimpleType.name].modifier == 'valuetype') {
+                        node['unbox'] = node["cast"];//拆箱
+                        delete node["cast"];
+                    }
+                }
+            } else {
+                throw `只有object类型对象才能转换为其他类型`;
+            }
+        }
+        return { type: targetType, hasRet: false };
     }
     else if (node["_new"] != undefined) {
         let ts: TypeUsed[] = [];
@@ -537,9 +562,15 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
         return { type: { ArrayType: { innerType: node["_newArray"].type } }, hasRet: false };
     }
     else if (node["_switch"] != undefined) {
-        nodeRecursion(scope, node["_switch"].pattern, label);
         for (let caseStmt of node["_switch"].matchList) {
-            nodeRecursion(scope, caseStmt.matchObj, label);
+            let leftObj=node["_switch"].pattern;
+            let rightObj=caseStmt.matchObj!;
+            caseStmt.condition = { desc: 'ASTNode', '==': { leftChild: leftObj, rightChild: rightObj} };//把switch的case改为if判断
+            delete caseStmt.matchObj;//删除matchobj
+            let conditionType=OperatorOverLoad(scope, leftObj, rightObj,caseStmt.condition,'==');
+            if(conditionType.SimpleType?.name!='bool'){
+                throw `case列表和switch object必须可以进行==操作，且返回值必须为bool`;
+            }
             if (caseStmt.stmt.desc == 'Block') {
                 BlockScan(new BlockScope(scope, undefined, caseStmt.stmt), label);
             } else if (caseStmt.stmt.desc == 'ASTNode') {
@@ -552,8 +583,6 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], assignmentO
             BlockScan(new BlockScope(scope, undefined, node["_switch"].defalutStmt), label);
         } else if (node["_switch"].defalutStmt?.desc == 'ASTNode') {
             nodeRecursion(scope, node["_switch"].defalutStmt as ASTNode, label);
-        } else {
-            throw `未知类型`;
         }
         return { type: { SimpleType: { name: 'void' } }, hasRet: false };
     }
