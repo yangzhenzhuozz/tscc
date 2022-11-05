@@ -25,8 +25,8 @@ export function FunctionSignWithArgument(ts: TypeUsed[]) {
 
 //类型签名
 export function TypeUsedSign(type: TypeUsed): string {
-    if (type.SimpleType != undefined) {
-        return type.SimpleType.name;
+    if (type.PlainType != undefined) {
+        return type.PlainType.name;
     } else if (type.ArrayType != undefined) {
         return `Array<${TypeUsedSign(type.ArrayType.innerType)}>`;
     } else {

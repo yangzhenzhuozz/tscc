@@ -189,12 +189,12 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
                         _constructor: { [key: string]: FunctionType };
                     };
                     for (let k in class_units._constructor) {
-                        if (class_units._constructor[k]._construct_for_type != basic_type.SimpleType!.name) {
-                            throw new Error(`类型${basic_type.SimpleType!.name}内部不能定义非${basic_type.SimpleType!.name}的构造函数${class_units._constructor[k]._construct_for_type}`);
+                        if (class_units._constructor[k]._construct_for_type != basic_type.PlainType!.name) {
+                            throw new Error(`类型${basic_type.PlainType!.name}内部不能定义非${basic_type.PlainType!.name}的构造函数${class_units._constructor[k]._construct_for_type}`);
                         }
                     }
                     let ret: { [key: string]: TypeDef } = JSON.parse("{}");//为了生成的解析器不报红
-                    ret[basic_type.SimpleType!.name] = { modifier: modifier, property: class_units.property, operatorOverload: class_units.operatorOverload, extends: extends_declare, _constructor: class_units._constructor };
+                    ret[basic_type.PlainType!.name] = { modifier: modifier, property: class_units.property, operatorOverload: class_units.operatorOverload, extends: extends_declare, _constructor: class_units._constructor };
                     return ret;
                 }
             }
@@ -356,7 +356,7 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
                 action: function ($, s): TypeUsed {
                     let basic_type = $[0] as TypeUsed;
                     let templateSpecialization = $[1] as TypeUsed[];
-                    return { SimpleType: { name: basic_type.SimpleType!.name, templateSpecialization: templateSpecialization } };
+                    return { PlainType: { name: basic_type.PlainType!.name, templateSpecialization: templateSpecialization } };
                 }
             }
         },//type可以是一个base_type templateSpecialization
@@ -564,7 +564,7 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
                             _arguments: argument,
                             body: statements,
                             retType: {
-                                SimpleType: {
+                                PlainType: {
                                     name: 'void'
                                 }
                             }
@@ -581,7 +581,7 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
                     let parameter_declare = $[2] as VariableDescriptor;
                     let statements = $[5] as Block;
                     let ret: { [key: string]: FunctionType } = JSON.parse("{}");//为了生成的解析器不报红
-                    let functionType: FunctionType = { capture: {}, _construct_for_type: basic_type.SimpleType!.name, _arguments: parameter_declare, body: statements, retType: { SimpleType: { name: 'void' } } };
+                    let functionType: FunctionType = { capture: {}, _construct_for_type: basic_type.PlainType!.name, _arguments: parameter_declare, body: statements, retType: { PlainType: { name: 'void' } } };
                     let single: string = FunctionSign(functionType);
                     ret[single] = functionType;
                     return [ret];
@@ -596,7 +596,7 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
                     let parameterType = $[5] as TypeUsed;
                     let statements = $[10] as Block;
                     let retType = $[8] as TypeUsed;
-                    let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
+                    let argument: VariableDescriptor = JSON.parse("{}");//为了生成的解析器不报红 
                     argument[id] = { variable: 'var', type: parameterType };
                     let fun: FunctionType = {
                         capture: {},
@@ -618,7 +618,7 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
                     let parameterType = $[5] as TypeUsed;
                     let statements = $[10] as Block;
                     let retType = $[8] as TypeUsed;
-                    let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
+                    let argument: VariableDescriptor = JSON.parse("{}");//为了生成的解析器不报红 
                     argument[id] = { variable: 'var', type: parameterType };
                     let fun: FunctionType = {
                         capture: {},
@@ -640,7 +640,7 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
                     let parameterType = $[5] as TypeUsed;
                     let statements = $[10] as Block;
                     let retType = $[8] as TypeUsed;
-                    let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
+                    let argument: VariableDescriptor = JSON.parse("{}");//为了生成的解析器不报红 
                     argument[id] = { variable: 'var', type: parameterType };
                     let fun: FunctionType = {
                         capture: {},
@@ -662,7 +662,7 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
                     let parameterType = $[5] as TypeUsed;
                     let statements = $[10] as Block;
                     let retType = $[8] as TypeUsed;
-                    let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
+                    let argument: VariableDescriptor = JSON.parse("{}");//为了生成的解析器不报红 
                     argument[id] = { variable: 'var', type: parameterType };
                     let fun: FunctionType = {
                         capture: {},
@@ -684,7 +684,7 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
                     let parameterType = $[5] as TypeUsed;
                     let statements = $[10] as Block;
                     let retType = $[8] as TypeUsed;
-                    let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
+                    let argument: VariableDescriptor = JSON.parse("{}");//为了生成的解析器不报红 
                     argument[id] = { variable: 'var', type: parameterType };
                     let fun: FunctionType = {
                         capture: {},
@@ -706,7 +706,7 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
                     let parameterType = $[5] as TypeUsed;
                     let statements = $[10] as Block;
                     let retType = $[8] as TypeUsed;
-                    let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
+                    let argument: VariableDescriptor = JSON.parse("{}");//为了生成的解析器不报红 
                     argument[id] = { variable: 'var', type: parameterType };
                     let fun: FunctionType = {
                         capture: {},
@@ -728,7 +728,7 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
                     let parameterType = $[5] as TypeUsed;
                     let statements = $[10] as Block;
                     let retType = $[8] as TypeUsed;
-                    let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
+                    let argument: VariableDescriptor = JSON.parse("{}");//为了生成的解析器不报红 
                     argument[id] = { variable: 'var', type: parameterType };
                     let fun: FunctionType = {
                         capture: {},
@@ -750,7 +750,7 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
                     let parameterType = $[5] as TypeUsed;
                     let statements = $[10] as Block;
                     let retType = $[8] as TypeUsed;
-                    let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
+                    let argument: VariableDescriptor = JSON.parse("{}");//为了生成的解析器不报红 
                     argument[id] = { variable: 'var', type: parameterType };
                     let fun: FunctionType = {
                         capture: {},
@@ -772,7 +772,7 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
                     let parameterType = $[5] as TypeUsed;
                     let statements = $[10] as Block;
                     let retType = $[8] as TypeUsed;
-                    let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
+                    let argument: VariableDescriptor = JSON.parse("{}");//为了生成的解析器不报红 
                     argument[id] = { variable: 'var', type: parameterType };
                     let fun: FunctionType = {
                         capture: {},
@@ -794,7 +794,7 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
                     let parameterType = $[5] as TypeUsed;
                     let statements = $[10] as Block;
                     let retType = $[8] as TypeUsed;
-                    let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
+                    let argument: VariableDescriptor = JSON.parse("{}");//为了生成的解析器不报红 
                     argument[id] = { variable: 'var', type: parameterType };
                     let fun: FunctionType = {
                         capture: {},
@@ -816,7 +816,7 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
                     let parameterType = $[5] as TypeUsed;
                     let statements = $[10] as Block;
                     let retType = $[8] as TypeUsed;
-                    let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
+                    let argument: VariableDescriptor = JSON.parse("{}");//为了生成的解析器不报红 
                     argument[id] = { variable: 'var', type: parameterType };
                     let fun: FunctionType = {
                         capture: {},
@@ -838,7 +838,7 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
                     let parameterType = $[5] as TypeUsed;
                     let statements = $[10] as Block;
                     let retType = $[8] as TypeUsed;
-                    let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
+                    let argument: VariableDescriptor = JSON.parse("{}");//为了生成的解析器不报红 
                     argument[id] = { variable: 'var', type: parameterType };
                     let fun: FunctionType = {
                         capture: {},
@@ -895,7 +895,7 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
                     let op: opType | opType2 = $[1];
                     let parameterType = $[5] as TypeUsed;
                     let retType = $[8] as TypeUsed;
-                    let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
+                    let argument: VariableDescriptor = JSON.parse("{}");//为了生成的解析器不报红 
                     argument[id] = { variable: 'var', type: parameterType };
                     let fun: FunctionType = {
                         capture: {},
@@ -916,7 +916,7 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
                     let op: opType | opType2 = $[1];
                     let parameterType = $[5] as TypeUsed;
                     let retType = $[8] as TypeUsed;
-                    let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
+                    let argument: VariableDescriptor = JSON.parse("{}");//为了生成的解析器不报红 
                     argument[id] = { variable: 'var', type: parameterType };
                     let fun: FunctionType = {
                         capture: {},
@@ -937,7 +937,7 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
                     let op: opType | opType2 = $[1];
                     let parameterType = $[5] as TypeUsed;
                     let retType = $[8] as TypeUsed;
-                    let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
+                    let argument: VariableDescriptor = JSON.parse("{}");//为了生成的解析器不报红 
                     argument[id] = { variable: 'var', type: parameterType };
                     let fun: FunctionType = {
                         capture: {},
@@ -958,7 +958,7 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
                     let op: opType | opType2 = $[1];
                     let parameterType = $[5] as TypeUsed;
                     let retType = $[8] as TypeUsed;
-                    let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
+                    let argument: VariableDescriptor = JSON.parse("{}");//为了生成的解析器不报红 
                     argument[id] = { variable: 'var', type: parameterType };
                     let fun: FunctionType = {
                         capture: {},
@@ -979,7 +979,7 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
                     let op: opType | opType2 = $[1];
                     let parameterType = $[5] as TypeUsed;
                     let retType = $[8] as TypeUsed;
-                    let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
+                    let argument: VariableDescriptor = JSON.parse("{}");//为了生成的解析器不报红 
                     argument[id] = { variable: 'var', type: parameterType };
                     let fun: FunctionType = {
                         capture: {},
@@ -1000,7 +1000,7 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
                     let op: opType | opType2 = $[1];
                     let parameterType = $[5] as TypeUsed;
                     let retType = $[8] as TypeUsed;
-                    let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
+                    let argument: VariableDescriptor = JSON.parse("{}");//为了生成的解析器不报红 
                     argument[id] = { variable: 'var', type: parameterType };
                     let fun: FunctionType = {
                         capture: {},
@@ -1021,7 +1021,7 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
                     let op: opType | opType2 = $[1];
                     let parameterType = $[5] as TypeUsed;
                     let retType = $[8] as TypeUsed;
-                    let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
+                    let argument: VariableDescriptor = JSON.parse("{}");//为了生成的解析器不报红 
                     argument[id] = { variable: 'var', type: parameterType };
                     let fun: FunctionType = {
                         capture: {},
@@ -1042,7 +1042,7 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
                     let op: opType | opType2 = $[1];
                     let parameterType = $[5] as TypeUsed;
                     let retType = $[8] as TypeUsed;
-                    let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
+                    let argument: VariableDescriptor = JSON.parse("{}");//为了生成的解析器不报红 
                     argument[id] = { variable: 'var', type: parameterType };
                     let fun: FunctionType = {
                         capture: {},
@@ -1063,7 +1063,7 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
                     let op: opType | opType2 = $[1];
                     let parameterType = $[5] as TypeUsed;
                     let retType = $[8] as TypeUsed;
-                    let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
+                    let argument: VariableDescriptor = JSON.parse("{}");//为了生成的解析器不报红 
                     argument[id] = { variable: 'var', type: parameterType };
                     let fun: FunctionType = {
                         capture: {},
@@ -1084,7 +1084,7 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
                     let op: opType | opType2 = $[1];
                     let parameterType = $[5] as TypeUsed;
                     let retType = $[8] as TypeUsed;
-                    let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
+                    let argument: VariableDescriptor = JSON.parse("{}");//为了生成的解析器不报红 
                     argument[id] = { variable: 'var', type: parameterType };
                     let fun: FunctionType = {
                         capture: {},
@@ -1105,7 +1105,7 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
                     let op: opType | opType2 = $[1];
                     let parameterType = $[5] as TypeUsed;
                     let retType = $[8] as TypeUsed;
-                    let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
+                    let argument: VariableDescriptor = JSON.parse("{}");//为了生成的解析器不报红 
                     argument[id] = { variable: 'var', type: parameterType };
                     let fun: FunctionType = {
                         capture: {},
@@ -1126,7 +1126,7 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
                     let op: opType | opType2 = $[1];
                     let parameterType = $[5] as TypeUsed;
                     let retType = $[8] as TypeUsed;
-                    let argument: VariableDescriptor = JSON.parse("{}");// //为了生成的解析器不报红 
+                    let argument: VariableDescriptor = JSON.parse("{}");//为了生成的解析器不报红 
                     argument[id] = { variable: 'var', type: parameterType };
                     let fun: FunctionType = {
                         capture: {},
@@ -1257,6 +1257,9 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
                 action: function ($, s): ASTNode {
                     let condition = $[2] as ASTNode;
                     let stmt = $[4] as Block | ASTNode;
+                    if (stmt.desc == 'ASTNode') {//如果case是单条语句，为其创建一个block
+                        stmt = { desc: 'Block', body: [stmt] };
+                    }
                     return { desc: "ASTNode", ifStmt: { condition: condition, stmt: stmt } };
                 }
             }
@@ -1301,6 +1304,12 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
                     let condition = $[2] as ASTNode;
                     let stmt1 = $[4] as Block | ASTNode;
                     let stmt2 = $[6] as Block | ASTNode;
+                    if (stmt1.desc == 'ASTNode') {//如果case是单条语句，为其创建一个block
+                        stmt1 = { desc: 'Block', body: [stmt1] };
+                    }
+                    if (stmt2.desc == 'ASTNode') {//如果case是单条语句，为其创建一个block
+                        stmt2 = { desc: 'Block', body: [stmt2] };
+                    }
                     return { desc: "ASTNode", ifElseStmt: { condition: condition, stmt1: stmt1, stmt2: stmt2 } };
                 }
             }
@@ -1364,9 +1373,9 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
             "statement:switch ( object ) { switch_bodys }": {
                 action: function ($, s): ASTNode {
                     let pattern = $[2] as ASTNode;
-                    let switch_bodys = $[5] as { matchObj: ASTNode | null, stmt: ASTNode | Block, isDefault: boolean }[];
-                    let defalutStmt: ASTNode | Block | undefined;
-                    let matchList: { matchObj: ASTNode, stmt: ASTNode | Block }[] = [];
+                    let switch_bodys = $[5] as { matchObj: ASTNode | null, stmt: Block, isDefault: boolean }[];
+                    let defalutStmt: Block | undefined;
+                    let matchList: { matchObj: ASTNode, stmt: Block }[] = [];
                     let defaultCount = 0;
                     for (let i = 0; i < switch_bodys.length; i++) {
                         if (switch_bodys[i].isDefault) {
@@ -1469,9 +1478,9 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
         },//switch_bodys可为空
         {
             "switch_bodys:switch_bodys switch_body": {
-                action: function ($, s): { matchObj: ASTNode | null, stmt: ASTNode | Block, isDefault: boolean }[] {
-                    let switch_bodys = $[0] as { matchObj: ASTNode | null, stmt: ASTNode | Block, isDefault: boolean }[];
-                    let switch_body = $[1] as { matchObj: ASTNode | null, stmt: ASTNode | Block, isDefault: boolean };
+                action: function ($, s): { matchObj: ASTNode | null, stmt: Block, isDefault: boolean }[] {
+                    let switch_bodys = $[0] as { matchObj: ASTNode | null, stmt: Block, isDefault: boolean }[];
+                    let switch_body = $[1] as { matchObj: ASTNode | null, stmt: Block, isDefault: boolean };
                     switch_bodys.push(switch_body);
                     return switch_bodys;
                 }
@@ -1479,15 +1488,25 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
         },//switch_bodys可以由多个switch_body组成
         {
             "switch_body:case object : statement": {
-                action: function ($, s): { matchObj: ASTNode | null, stmt: ASTNode | Block, isDefault: boolean } {
-                    return { matchObj: $[1] as ASTNode, stmt: $[3] as ASTNode | Block, isDefault: false };
+                action: function ($, s): { matchObj: ASTNode | null, stmt: Block, isDefault: boolean } {
+                    let stmt = $[3] as ASTNode | Block;
+                    if (stmt.desc == 'ASTNode') {//如果case是单条语句，为其创建一个block
+                        stmt = { desc: 'Block', body: [stmt] };
+                    }
+                    return {
+                        matchObj: $[1] as ASTNode, stmt: stmt, isDefault: false
+                    };
                 }
             }
         },//case 语句
         {
             "switch_body:default : statement": {
-                action: function ($, s): { matchObj: ASTNode | null, stmt: ASTNode | Block, isDefault: boolean } {
-                    return { matchObj: null, stmt: $[2] as ASTNode | Block, isDefault: true };
+                action: function ($, s): { matchObj: ASTNode | null, stmt: Block, isDefault: boolean } {
+                    let stmt = $[2] as ASTNode | Block;
+                    if (stmt.desc == 'ASTNode') {//如果是单条语句，为其创建一个block
+                        stmt = { desc: 'Block', body: [stmt] };
+                    }
+                    return { matchObj: null, stmt: stmt, isDefault: true };
                 }
             }
         },//default语句

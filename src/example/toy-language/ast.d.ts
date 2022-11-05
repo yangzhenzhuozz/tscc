@@ -11,13 +11,13 @@ Reflect.ownKeys({
   4: '',
   kirby: '',
 })
-// ['4', '18', 'star', 'kirby', Symbol(07akioni)]
+> ['4', '18', 'star', 'kirby', Symbol(07akioni)]
 */
-type opType = '+' | '-' | '*' | '/' | '<' | '<=' | '>' | '>=' | '==' | '||' | '&&' | '[]';
+type opType = '+' | '-' | '*' | '/' | '<' | '<=' | '>' | '>=' | '==' | '||' | '&&' | '[]';//双目运算符
 type opType2 = '++' | '--';//单目运算符
 interface TypeDef {//定义的类型
     modifier?: 'valuetype' | 'sealed';
-    size?:number;
+    size?: number;
     recursiveChecked?: boolean;//是否已经进行了值类型循环包含的检查
     templates?: string[];//模板列表
     extends?: TypeUsed;//基类
@@ -41,12 +41,12 @@ interface VariableProperties {
     loadedNodes?: ASTNode[];//记录load本属性的node，在确定本属性为闭包捕获属性后，把这些load节点全部换成load闭包里面的属性
 }
 interface TypeUsed {
-    SimpleType?: SimpleType;
+    PlainType?: PlainType;
     FunctionType?: FunctionType;
     ArrayType?: ArrayType;
     ProgramType?: "";//整个program对象
 }
-interface SimpleType {
+interface PlainType {
     name: string;//使用的类型
     templateSpecialization?: TypeUsed[];//实例化模板的类型
 }
@@ -54,7 +54,7 @@ interface ArrayType {
     innerType: TypeUsed;
 }
 interface FunctionType {
-    hasFunctionScan?:boolean;//是否已经进行过函数扫描
+    hasFunctionScan?: boolean;//是否已经进行过函数扫描
     isNative?: boolean;//是否为native函数
     _arguments: VariableDescriptor;
     body?: Block;//函数体,根据有无body判断是函数类型声明还是定义
@@ -76,7 +76,7 @@ interface Program {
 }
 //一条语句就是一个Noe
 interface ASTNode {
-    hasTypeInferRecursion?:boolean;//本AST是否已经被递归推导过类型
+    hasTypeInferRecursion?: boolean;//本AST是否已经被递归推导过类型
     desc: 'ASTNode';
     loadOperatorOverload?: [string, string];//读取重载操作符函数
     loadException?: TypeUsed;//读取异常
@@ -95,8 +95,8 @@ interface ASTNode {
     setter?: { left: ASTNode, right: ASTNode };
     throwStmt?: ASTNode;
     ret?: ASTNode | "";
-    ifStmt?: { condition: ASTNode, stmt: ASTNode | Block };
-    ifElseStmt?: { condition: ASTNode, stmt1: ASTNode | Block, stmt2: ASTNode | Block };
+    ifStmt?: { condition: ASTNode, stmt: Block };
+    ifElseStmt?: { condition: ASTNode, stmt1: | Block, stmt2: Block };
     do_while?: { condition: ASTNode, stmt: ASTNode | Block, label?: string };
     _while?: { condition: ASTNode, stmt: ASTNode | Block, label?: string };
     _for?: { init?: ASTNode, condition?: ASTNode, step?: ASTNode, stmt: ASTNode | Block, label: string | undefined };
@@ -125,5 +125,5 @@ interface ASTNode {
     "=="?: { rightChild: ASTNode; leftChild: ASTNode; };
     "||"?: { rightChild: ASTNode; leftChild: ASTNode; };
     "&&"?: { rightChild: ASTNode; leftChild: ASTNode; };
-    _switch?: { pattern: ASTNode, defalutStmt?: ASTNode | Block, matchList: { matchObj?: ASTNode,condition?:ASTNode, stmt: ASTNode | Block }[] };//default没有matchObj
+    _switch?: { pattern: ASTNode, defalutStmt?: Block, matchList: { matchObj?: ASTNode, condition?: ASTNode, stmt: Block }[] };//default没有matchObj
 }

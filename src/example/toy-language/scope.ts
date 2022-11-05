@@ -1,13 +1,38 @@
+import { pointSize } from "./constant.js";
+
 let debugID = 0;
 abstract class Scope {
     public ID;//用于调试的ID
     protected property: VariableDescriptor;
-    constructor(prop: VariableDescriptor | undefined) {
+    public fieldOffsetMap?: { [key: string]: { size: number, offset: number } };
+    /**
+     * 
+     * @param prop 
+     * @param offsetPatch 在执行完类型推导之后，可以计算各个变量的偏移
+     */
+    constructor(prop: VariableDescriptor | undefined, offsetPatch?: { program: Program }) {
         this.ID = debugID++;
         if (prop == undefined) {
             this.property = {};
         } else {
             this.property = prop;
+        }
+        if (offsetPatch) {
+            let { program } = offsetPatch;
+            this.fieldOffsetMap = {};
+            let offset = 0;
+            for (let k in this.property) {
+                let type = this.property[k].type!;
+                if (type.PlainType && program.definedType[type.PlainType.name].modifier == 'valuetype') {//是值类型,offset累加size大小
+                    let typeName = type.PlainType.name;
+                    let size = program.definedType[typeName].size!;
+                    this.fieldOffsetMap[k] = { size: size, offset: offset };
+                    offset += size;
+                } else {//否则按照指针处理
+                    this.fieldOffsetMap[k] = { size: pointSize, offset: offset };
+                    offset += pointSize;
+                }
+            }
         }
     }
     public abstract getProp(name: string): { prop: VariableProperties, scope: Scope };
@@ -18,8 +43,8 @@ class ProgramScope extends Scope {
     public setProp(name: string, variableProperties: VariableProperties): void {
         this.property[name] = variableProperties;
     }
-    constructor(program: Program) {
-        super(program.property);
+    constructor(program: Program, offsetPatch?: { program: Program }) {
+        super(program.property, offsetPatch);
         this.program = program;
         //创建所有的classScope
         for (let typeName in program.definedType) {
@@ -49,16 +74,13 @@ class ProgramScope extends Scope {
 class ClassScope extends Scope {
     public className: string;
     public programScope: ProgramScope;
-    constructor(prop: VariableDescriptor | undefined, className: string, programScope: ProgramScope) {
-        super(prop);
+    constructor(prop: VariableDescriptor | undefined, className: string, programScope: ProgramScope, offsetPatch?: { program: Program }) {
+        super(prop, offsetPatch);
         this.programScope = programScope;
         this.className = className;
     }
     public getPropNames() {
         return Object.keys(this.property);
-    }
-    public setProp(name: string, variableProperties: VariableProperties): void {
-        this.property[name] = variableProperties;
     }
     public getProp(name: string): { prop: VariableProperties, scope: Scope } {
         let scope: ClassScope | undefined = this;
@@ -78,8 +100,9 @@ class BlockScope extends Scope {
     public defNodes: { [key: string]: { defNode: ASTNode, loads: ASTNode[] } } = {};//def:哪个节点定义的变量,loads:被哪些节点读取
     public programScope: ProgramScope;
     public classScope: ClassScope | undefined;
-    constructor(scope: Scope, fun: FunctionType | undefined, block: Block) {
-        super(undefined);
+    public offset: number;
+    constructor(scope: Scope, fun: FunctionType | undefined, block: Block, offsetPatch?: { program: Program }) {
+        super(undefined, offsetPatch);
         if (scope instanceof ProgramScope) {
             this.parent = undefined;
             this.programScope = scope;
@@ -95,6 +118,11 @@ class BlockScope extends Scope {
         } else {
             throw `scope只能是上面三种情况`;
         }
+        if (this.parent == undefined) {
+            this.offset = 0;
+        } else {
+            this.offset = this.parent.offset;
+        }
         this.fun = fun;
         this.block = block;
     }
@@ -104,6 +132,20 @@ class BlockScope extends Scope {
         } else {
             this.property[name] = variableProperties;
             this.defNodes[name] = { defNode: defNode, loads: [] };
+
+            if (this.fieldOffsetMap) {//如果需要填充变量偏移
+                let type = variableProperties.type!;
+                let program = this.programScope.program;
+                if (type.PlainType && program.definedType[type.PlainType.name].modifier == 'valuetype') {//是值类型,offset累加size大小
+                    let typeName = type.PlainType.name;
+                    let size = program.definedType[typeName].size!;
+                    this.fieldOffsetMap[name] = { size: size, offset: this.offset };
+                    this.offset += size;
+                } else {//否则按照指针处理
+                    this.fieldOffsetMap[name] = { size: pointSize, offset: this.offset };
+                    this.offset += pointSize;
+                }
+            }
         }
     }
     public getProp(name: string): { prop: VariableProperties, scope: Scope } {
