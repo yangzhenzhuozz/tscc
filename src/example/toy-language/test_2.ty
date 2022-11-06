@@ -1,12 +1,7 @@
-var i=1;
-function f():void{
-    var a=i;
-    var b=a;
-    var c:bool;
-    if(c){
-        return c;
-    }
+var g:bool;
+function f1(){
+    if(g)
+        return f1();
+    else
+        return 0;
 };
-class int{
-    
-}

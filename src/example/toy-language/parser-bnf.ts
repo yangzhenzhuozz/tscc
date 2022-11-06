@@ -1320,6 +1320,9 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
                     let label_def = $[0] as string | undefined;
                     let stmt = $[2] as Block | ASTNode;
                     let condition = $[5] as ASTNode;
+                    if (stmt.desc == 'ASTNode') {//如果是单条语句，为其创建一个block
+                        stmt = { desc: 'Block', body: [stmt] };
+                    }
                     return { desc: "ASTNode", do_while: { condition: condition, stmt: stmt, label: label_def } };
                 }
             }
@@ -1330,6 +1333,9 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
                     let label_def = $[0] as string | undefined;
                     let condition = $[3] as ASTNode;
                     let stmt = $[5] as Block | ASTNode;
+                    if (stmt.desc == 'ASTNode') {//如果是单条语句，为其创建一个block
+                        stmt = { desc: 'Block', body: [stmt] };
+                    }
                     return { desc: "ASTNode", _while: { condition: condition, stmt: stmt, label: label_def } };
                 }
             }
