@@ -1,7 +1,4 @@
 var g:bool;
-function f1(){
-    if(g)
-        return f1();
-    else
-        return 0;
+function f1():int{
+    throw g;
 };

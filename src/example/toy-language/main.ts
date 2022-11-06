@@ -2,7 +2,7 @@ import Parser from "./parser.js";
 import lexer from './lexrule.js';
 import fs from 'fs';
 import { userTypeDictionary } from './lexrule.js';
-import typeInfer from './typeInfer.js'
+import semanticCheck from './semanticCheck.js'
 import codeGen from './codeGen.js'
 function basic_typeScan(source: string) {
     //把所有用户定义的class设置为basic_type
@@ -27,7 +27,7 @@ function main() {
         console.timeEnd("解析源码耗时");
         fs.writeFileSync(`./src/example/toy-language/output/stage-1.json`, JSON.stringify(program, null, 4));
         console.time(`阶段二耗时`);
-        program = typeInfer(program);
+        program = semanticCheck(program);
         console.timeEnd(`阶段二耗时`);
         fs.writeFileSync(`./src/example/toy-language/output/stage-2.json`, JSON.stringify(program, null, 4));
         // codeGen(program);
