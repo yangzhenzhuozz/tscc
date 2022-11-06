@@ -4,7 +4,7 @@ let debugID = 0;
 abstract class Scope {
     public ID;//用于调试的ID
     protected property: VariableDescriptor;
-    public fieldOffsetMap?: { [key: string]: { size: number, offset: number } };
+    protected fieldOffsetMap?: { [key: string]: { size: number, offset: number } };
     /**
      * 
      * @param prop 
@@ -34,6 +34,12 @@ abstract class Scope {
                 }
             }
         }
+    }
+    public getPropOffset(name: string): { size: number, offset: number } {
+        if(this.fieldOffsetMap![name]==undefined){
+            throw `试图获取未知的属性:${name}`;
+        }
+        return this.fieldOffsetMap![name];
     }
     public abstract getProp(name: string): { prop: VariableProperties, scope: Scope };
 }

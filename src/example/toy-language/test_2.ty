@@ -1,4 +1,10 @@
-var g:bool;
-function f1():int{
-    throw g;
-};
+var a:int;
+var b:int;
+var c=a<b?a:b;
+class myClass{
+    
+}
+valuetype class int{
+    operator +(b:int):int{native};
+    operator <(b:int):bool{native};
+}

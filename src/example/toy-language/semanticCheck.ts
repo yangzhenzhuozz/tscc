@@ -748,13 +748,29 @@ export default function semanticCheck(primitiveProgram: Program) {
             functionScan(blockScope, prop.type?.FunctionType);
         }
     }
-    for (let typeName in program.definedType) {
+    for (let typeName in program.definedType) {//检查值类型是否递归包含
         if (program.definedType[typeName].recursiveChecked != true && program.definedType[typeName].modifier == 'valuetype') {
             valueTypeRecursiveCheck(typeName);
         }
     }
-    for (let typeName in program.definedType) {
+    for (let typeName in program.definedType) {//计算每个类型的size
         program.definedType[typeName].size = sizeof(typeName);
     }
+    let programSize=0;
+    //计算program的size
+    for (let fieldName in program.property) {
+        let field = program.property[fieldName];
+        if (field.type!.PlainType != undefined) {
+            let fieldTypeName = field.type!.PlainType.name;
+            if (program.definedType[fieldTypeName].modifier != 'valuetype') {
+                programSize += pointSize;//非值类型
+            } else {
+                programSize += sizeof(fieldTypeName);
+            }
+        } else {
+            programSize += pointSize;//不是普通类型就只能用指针表示
+        }
+    }
+    program.size=programSize;
     return program;
 }

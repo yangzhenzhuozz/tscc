@@ -73,6 +73,7 @@ interface Program {
         [key: string]: TypeDef
     };
     property: VariableDescriptor;
+    size?:number;
 }
 //一条语句就是一个Noe
 interface ASTNode {
