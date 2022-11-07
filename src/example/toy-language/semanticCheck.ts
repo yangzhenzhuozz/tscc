@@ -14,22 +14,47 @@ function OperatorOverLoad(scope: Scope, leftObj: ASTNode, rightObj: ASTNode | un
         let opFunction = program.definedType[leftType.PlainType!.name].operatorOverload[op as opType]?.[sign];
         if (opFunction == undefined) {
             throw `类型${TypeUsedSign(leftType)}没有 ${op} (${TypeUsedSign(rightType)})的重载函数`;
-        } else if (opFunction.isNative == undefined && !opFunction.isNative) {
+        } else if (opFunction.isNative == undefined || !opFunction.isNative) {
             delete originNode[op];//删除原来的操作符
-            originNode.call = { functionObj: { desc: 'ASTNode', loadOperatorOverload: [op, sign] }, _arguments: [rightObj] };
-        } else {
-            //不管，由vm实现
+            originNode.call = { functionObj: { desc: 'ASTNode', loadOperatorOverload: [op, sign] }, _arguments: [rightObj] };//改为函数调用
+        } else {//由vm实现
+            if (op == '+') {
+                if (leftType.PlainType?.name == 'int' && rightType.PlainType?.name == 'int') {
+                    originNode['i32_+'] = originNode[op];
+                    delete originNode[op];//删除原来的操作符
+                } else {
+                    throw `类型暂未+操作符`
+                }
+            } if (op == '<') {
+                if (leftType.PlainType?.name == 'int' && rightType.PlainType?.name == 'int') {
+                    originNode['i32_<'] = originNode[op];
+                    delete originNode[op];//删除原来的操作符
+                } else {
+                    throw `类型暂未<操作符`
+                }
+            } else {
+                throw `暂未实现的操作符${op}`;
+            }
         }
         return opFunction.retType!;
     } else {
         //单目运算符
         let sign = FunctionSignWithArgument([]);
         let opFunction = program.definedType[leftType.PlainType!.name].operatorOverload[op as opType][sign];
-        if (opFunction.isNative == undefined && !opFunction.isNative) {
+        if (opFunction.isNative == undefined || !opFunction.isNative) {
             delete originNode[op];//删除原来的操作符
             originNode.call = { functionObj: { desc: 'ASTNode', loadOperatorOverload: [op, sign] }, _arguments: [] };
-        } else {
-            //不管，由vm实现
+        } else {//由vm实现
+            if (op == '++') {
+                if (leftType.PlainType?.name == 'int') {
+                    originNode['i32_++'] = originNode[op];
+                    delete originNode[op];//删除原来的操作符
+                } else {
+                    throw `类型暂未+操作符`
+                }
+            } else {
+                throw `暂未实现的操作符${op}`;
+            }
         }
         return opFunction.retType!;
     }
@@ -756,7 +781,7 @@ export default function semanticCheck(primitiveProgram: Program) {
     for (let typeName in program.definedType) {//计算每个类型的size
         program.definedType[typeName].size = sizeof(typeName);
     }
-    let programSize=0;
+    let programSize = 0;
     //计算program的size
     for (let fieldName in program.property) {
         let field = program.property[fieldName];
@@ -771,6 +796,6 @@ export default function semanticCheck(primitiveProgram: Program) {
             programSize += pointSize;//不是普通类型就只能用指针表示
         }
     }
-    program.size=programSize;
+    program.size = programSize;
     return program;
 }

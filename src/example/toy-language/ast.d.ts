@@ -126,5 +126,8 @@ interface ASTNode {
     "=="?: { rightChild: ASTNode; leftChild: ASTNode; };
     "||"?: { rightChild: ASTNode; leftChild: ASTNode; };
     "&&"?: { rightChild: ASTNode; leftChild: ASTNode; };
+    "i32_+"?: { rightChild: ASTNode; leftChild: ASTNode; };
+    'i32_++'?: ASTNode;
+    "i32_<"?: { rightChild: ASTNode; leftChild: ASTNode; };
     _switch?: { pattern: ASTNode, defalutStmt?: Block, matchList: { matchObj?: ASTNode, condition?: ASTNode, stmt: Block }[] };//default没有matchObj
 }

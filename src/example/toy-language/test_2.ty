@@ -1,10 +1,14 @@
 var a:int;
 var b:int;
-var c=a<b?a:b;
+var c=a<b;
 class myClass{
-    
+    function f1(){
+        var d=a<b?a<b?a:b:b;
+    };
 }
 valuetype class int{
     operator +(b:int):int{native};
     operator <(b:int):bool{native};
+}
+valuetype class bool{
 }
