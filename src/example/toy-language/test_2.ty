@@ -1,7 +1,8 @@
-var a:int;
-var b:int;
-var c=a<b;
 class myClass{
+    var a:int;
+    var b:int;
+    var con:bool;
+    var c=con?a:b;
     function f1(){
         var d=a<b?a<b?a:b:b;
     };

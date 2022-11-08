@@ -16,6 +16,8 @@ type opcode =
     'i_if_lt' |
     'i_if_eq' |
     'i_if_ne' |
+    'if_eq' |
+    'if_ne' |
     'jmp'
 let irIndex = 0;
 export const codes: IR[] = [];
@@ -29,5 +31,8 @@ export class IR {
         this.operand = operand;
         this.opSize = opSize;
         codes.push(this);
+    }
+    public toString(): string {
+        return `${this.index}\t${this.opCode}\t${this.operand}\t${this.opSize}`;
     }
 }
