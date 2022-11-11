@@ -82,6 +82,7 @@ interface ASTNode {
     loadOperatorOverload?: [string, string];//读取重载操作符函数
     loadException?: TypeUsed;//读取异常
     loadArgument?: { index: number, type: TypeUsed },//读取参数
+    type?:TypeUsed;//表达式的类型
     def?: VariableDescriptor;
     def_ref?: VariableDescriptor;//定义一个引用变量，用于闭包
     accessField?: { obj: ASTNode, field: string };
@@ -126,8 +127,5 @@ interface ASTNode {
     "=="?: { rightChild: ASTNode; leftChild: ASTNode; };
     "||"?: { rightChild: ASTNode; leftChild: ASTNode; };
     "&&"?: { rightChild: ASTNode; leftChild: ASTNode; };
-    "i32_+"?: { rightChild: ASTNode; leftChild: ASTNode; };
-    'i32_++'?: ASTNode;
-    "i32_<"?: { rightChild: ASTNode; leftChild: ASTNode; };
     _switch?: { pattern: ASTNode, defalutStmt?: Block, matchList: { matchObj?: ASTNode, condition?: ASTNode, stmt: Block }[] };//default没有matchObj
 }

@@ -12,13 +12,21 @@ function merge(a: IR[], b: IR[]) {
         a.push(ir);
     }
 }
-function nodeRecursion(scope: Scope, node: ASTNode, label: string[]): { startIR: IR, truelist: IR[], falselist: IR[] } {
+/**
+ * 
+ * @param scope 
+ * @param node 
+ * @param label 
+ * @param inFunction 是否在函数中，这个参数决定了this的取值方式
+ * @returns 
+ */
+function nodeRecursion(scope: Scope, node: ASTNode, label: string[], inFunction: boolean): { startIR: IR, truelist: IR[], falselist: IR[] } {
     if (node['_program'] != undefined) {
         let ir = new IR('p_load');
         return { startIR: ir, truelist: [], falselist: [] };
     }
     else if (node['accessField'] != undefined) {
-        let irs = nodeRecursion(scope, node['accessField']!.obj, label);
+        let irs = nodeRecursion(scope, node['accessField']!.obj, label, inFunction);
         let prop = scope.getPropOffset(node['accessField']!.field);
         new IR('getfield', prop.offset, prop.size);
         return { startIR: irs.startIR, truelist: [], falselist: [] };
@@ -31,28 +39,37 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[]): { startIR:
             return { startIR: ir, truelist: [], falselist: [] };
         }
     }
-    else if (node['i32_+'] != undefined) {
-        let irs1 = nodeRecursion(scope, node['+']!.leftChild, label);
-        let irs2 = nodeRecursion(scope, node['+']!.rightChild, label);
-        let ir = new IR('i32_add');
+    else if (node['+'] != undefined) {
+        let irs1 = nodeRecursion(scope, node['+']!.leftChild, label, inFunction);
+        let irs2 = nodeRecursion(scope, node['+']!.rightChild, label, inFunction);
+        if (node['+']!.leftChild.type?.PlainType?.name == 'int' && node['+']!.rightChild.type?.PlainType?.name == 'int') {
+            let ir = new IR('i32_add');
+        } else {
+            throw `暂为支持的+操作`;
+        }
         return { startIR: irs1.startIR, truelist: [], falselist: [] };
     }
-    else if (node['i32_<'] != undefined) {
-        let irs1 = nodeRecursion(scope, node['i32_<']!.leftChild, label);
-        let irs2 = nodeRecursion(scope, node['i32_<']!.rightChild, label);
-        let jmp: IR = new IR('i_if_ge');
+    else if (node['<'] != undefined) {
+        let irs1 = nodeRecursion(scope, node['<']!.leftChild, label, inFunction);
+        let irs2 = nodeRecursion(scope, node['<']!.rightChild, label, inFunction);
+        let jmp: IR;
+        if (node['<']!.leftChild.type?.PlainType?.name == 'int' && node['<']!.rightChild.type?.PlainType?.name == 'int') {
+            jmp = new IR('i_if_ge');
+        } else {
+            throw `暂为支持的+操作`;
+        }
         return { startIR: irs1.startIR, truelist: [], falselist: [jmp] };
     }
     else if (node['ternary'] != undefined) {
         let condition = node['ternary']!.condition;
-        let a = nodeRecursion(scope, condition, label);
+        let a = nodeRecursion(scope, condition, label, inFunction);
         let falselist: IR[] = [];
         if (a.falselist.length == 0) {//如果bool值不是通过布尔运算得到的，则必须为其插入一个判断指令
             let ir = new IR('if_ne');
             falselist.push(ir);
         }
-        let b = nodeRecursion(scope, node['ternary']!.obj1, label);
-        let c = nodeRecursion(scope, node['ternary']!.obj2, label);
+        let b = nodeRecursion(scope, node['ternary']!.obj1, label, inFunction);
+        let c = nodeRecursion(scope, node['ternary']!.obj2, label, inFunction);
         if (a.falselist.length == 0) {
             backPatch(falselist, c.startIR);//回填
         } else {
@@ -99,7 +116,7 @@ export default function programScan(primitiveProgram: Program) {
         var prop = program.property[variableName];
         if (prop.initAST != undefined) {
             new IR('p_load');
-            let nr = nodeRecursion(programScope, prop.initAST, []);
+            let nr = nodeRecursion(programScope, prop.initAST, [], false);
             let description = programScope.getPropOffset(variableName);
             fieldAssign(prop.type!, description.offset, nr.falselist);
         } else if (prop.type?.FunctionType) {
