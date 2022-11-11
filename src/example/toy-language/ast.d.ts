@@ -21,6 +21,7 @@ interface TypeDef {//定义的类型
     recursiveChecked?: boolean;//是否已经进行了值类型循环包含的检查
     templates?: string[];//模板列表
     extends?: TypeUsed;//基类
+    typeIndex?:number;//类型索引
     operatorOverload: {//重载列表
         [key in opType | opType2]: {//key为操作符
             [key: string]: FunctionType;//key为函数签名(不包含返回值的签名),magic表示该操作由vm实现，翻译的时候原样保留

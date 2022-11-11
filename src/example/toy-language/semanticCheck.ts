@@ -568,7 +568,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
     else {
         throw new Error(`未知节点`);
     }
-    node.type=result.type;
+    node.type = result.type;
     return result;
 }
 /**
@@ -757,8 +757,10 @@ export default function semanticCheck(primitiveProgram: Program) {
             valueTypeRecursiveCheck(typeName);
         }
     }
-    for (let typeName in program.definedType) {//计算每个类型的size
+    let index = 0;
+    for (let typeName in program.definedType) {//计算每个类型的size和索引
         program.definedType[typeName].size = sizeof(typeName);
+        program.definedType[typeName].typeIndex = index++;
     }
     let programSize = 0;
     //计算program的size
