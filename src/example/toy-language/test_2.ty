@@ -1,10 +1,13 @@
 class myClass{
-    var a:int;
-    var b:int;
+    var a:int=1;
+    var b:int=a;
     var con:bool;
     var c=con?a:b;
-    function f1(){
-        var d=a<b?a<b?a:b:b;
+    function f1(h:int){
+        var d=a<b?a<b?a:h:b;
+        function f1(h:int){
+            var m=d;
+        };
     };
 }
 valuetype class int{

@@ -4,8 +4,8 @@ type opcode =
     'p_store' |//把栈中指针推出给program
     'getfield' |
     'putfield' |
-    'load' |
-    'store' |
+    'v_load' |
+    'v_store' |
     'const_i32_load' |
     'const_i8_load' |
     'i32_add' |
@@ -18,7 +18,8 @@ type opcode =
     'i_if_ne' |
     'if_eq' |
     'if_ne' |
-    'jmp'
+    'jmp' |
+    'ret';
 let irIndex = 0;
 export const codes: IR[] = [];
 export class IR {

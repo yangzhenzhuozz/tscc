@@ -4,7 +4,7 @@ let debugID = 0;
 abstract class Scope {
     public ID;//用于调试的ID
     protected property: VariableDescriptor;
-    protected fieldOffsetMap?: { [key: string]: { size: number, offset: number } };
+    protected fieldOffsetMap?: { [key: string]: { size: number, offset: number } };//在代码生成阶段使用
     /**
      * 
      * @param prop 
@@ -35,12 +35,7 @@ abstract class Scope {
             }
         }
     }
-    public getPropOffset(name: string): { size: number, offset: number } {
-        if(this.fieldOffsetMap![name]==undefined){
-            throw `试图获取未知的属性:${name}`;
-        }
-        return this.fieldOffsetMap![name];
-    }
+    public abstract getPropOffset(name: string): { size: number, offset: number };//只需要在自己的scope范围内搜索，不用向上搜索到class和program了
     public abstract getProp(name: string): { prop: VariableProperties, scope: Scope };
 }
 class ProgramScope extends Scope {
@@ -58,7 +53,7 @@ class ProgramScope extends Scope {
             if (type.extends != undefined) {//有继承于其他类
                 throw `不支持extends:${typeName}`;
             } else {
-                this.classMap[typeName] = new ClassScope(program.definedType[typeName].property, typeName, this);
+                this.classMap[typeName] = new ClassScope(program.definedType[typeName].property, typeName, this, offsetPatch);
             }
         }
     }
@@ -75,6 +70,12 @@ class ProgramScope extends Scope {
         } else {
             throw `试图读取未定义的标识符:${name}`;
         }
+    }
+    public getPropOffset(name: string): { size: number, offset: number } {
+        if (this.fieldOffsetMap![name] == undefined) {
+            throw `试图获取未知的属性:${name}`;
+        }
+        return this.fieldOffsetMap![name];
     }
 }
 class ClassScope extends Scope {
@@ -97,16 +98,22 @@ class ClassScope extends Scope {
             return this.programScope.getProp(name);
         }
     }
+    public getPropOffset(name: string): { size: number, offset: number } {
+        if (this.fieldOffsetMap![name] == undefined) {
+            throw `试图获取未知的属性:${name}`;
+        }
+        return this.fieldOffsetMap![name];
+    }
 }
 class BlockScope extends Scope {
     public parent: BlockScope | undefined;
     public block?: Block;//记录当前scope是属于哪个block,处理闭包时插入指令
     public fun: FunctionType | undefined;//是否是一个function scope，用于判断闭包捕获
     public captured: Set<string> = new Set();//本scope被捕获的变量
-    public defNodes: { [key: string]: { defNode: ASTNode, loads: ASTNode[] } } = {};//def:哪个节点定义的变量,loads:被哪些节点读取
+    public defNodes: { [key: string]: { defNode: ASTNode, loads: ASTNode[] } } = {};//def:哪个节点定义的变量,loads:被哪些节点读取，在处理闭包捕获时用到
     public programScope: ProgramScope;
     public classScope: ClassScope | undefined;
-    public offset: number;
+    public baseOffset: number;
     constructor(scope: Scope, fun: FunctionType | undefined, block: Block, offsetPatch?: { program: Program }) {
         super(undefined, offsetPatch);
         if (scope instanceof ProgramScope) {
@@ -125,31 +132,37 @@ class BlockScope extends Scope {
             throw `scope只能是上面三种情况`;
         }
         if (this.parent == undefined) {
-            this.offset = 0;
+            this.baseOffset = pointSize;//是functionScope,预留this和闭包位置
         } else {
-            this.offset = this.parent.offset;
+            this.baseOffset = this.parent.baseOffset;
         }
         this.fun = fun;
         this.block = block;
     }
-    public setProp(name: string, variableProperties: VariableProperties, defNode: ASTNode): void {
+    /**
+     * @param name 
+     * @param variableProperties 
+     * @param defNode 语义分析阶段使用，参加defNodes说明，在代码生成阶段不使用
+     */
+    public setProp(name: string, variableProperties: VariableProperties, defNode?: ASTNode): void {
         if (this.property[name] != undefined) {
             throw `重复定义变量${name}`;
         } else {
             this.property[name] = variableProperties;
-            this.defNodes[name] = { defNode: defNode, loads: [] };
-
+            if (defNode != undefined) {
+                this.defNodes[name] = { defNode: defNode, loads: [] };
+            }
             if (this.fieldOffsetMap) {//如果需要填充变量偏移
                 let type = variableProperties.type!;
                 let program = this.programScope.program;
                 if (type.PlainType && program.definedType[type.PlainType.name].modifier == 'valuetype') {//是值类型,offset累加size大小
                     let typeName = type.PlainType.name;
                     let size = program.definedType[typeName].size!;
-                    this.fieldOffsetMap[name] = { size: size, offset: this.offset };
-                    this.offset += size;
+                    this.fieldOffsetMap[name] = { size: size, offset: this.baseOffset };
+                    this.baseOffset += size;
                 } else {//否则按照指针处理
-                    this.fieldOffsetMap[name] = { size: pointSize, offset: this.offset };
-                    this.offset += pointSize;
+                    this.fieldOffsetMap[name] = { size: pointSize, offset: this.baseOffset };
+                    this.baseOffset += pointSize;
                 }
             }
         }
@@ -191,6 +204,15 @@ class BlockScope extends Scope {
                 return this.programScope.getProp(name);
             }
         }
+    }
+    public getPropOffset(name: string): { size: number, offset: number } {
+        let scope:BlockScope|undefined=this;
+        for(;scope!=undefined;scope=scope.parent){
+            if (scope.fieldOffsetMap![name] != undefined) {
+                return scope.fieldOffsetMap![name];
+            }
+        }
+        throw `试图获取未知的属性:${name}`;
     }
 }
 export { Scope, BlockScope, ClassScope, ProgramScope };

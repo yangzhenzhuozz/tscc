@@ -5,6 +5,7 @@ import { Scope, BlockScope, ClassScope, ProgramScope } from './scope.js';
 import { pointSize } from './constant.js'
 let program: Program;
 let programScope: ProgramScope;
+let wrapIndex=0;
 function OperatorOverLoad(scope: Scope, leftObj: ASTNode, rightObj: ASTNode | undefined, originNode: ASTNode, op: opType | opType2): TypeUsed {
     let leftType = nodeRecursion(scope, leftObj, [], {}).type;
     if (rightObj != undefined) {
@@ -24,7 +25,7 @@ function OperatorOverLoad(scope: Scope, leftObj: ASTNode, rightObj: ASTNode | un
     } else {
         //单目运算符
         let sign = FunctionSignWithArgument([]);
-        let opFunction = program.definedType[leftType.PlainType!.name].operatorOverload[op as opType][sign];
+        let opFunction = program.definedType[leftType.PlainType!.name].operatorOverload[op as opType]![sign];
         if (opFunction.isNative == undefined || !opFunction.isNative) {
             delete originNode[op];//删除原来的操作符
             originNode.call = { functionObj: { desc: 'ASTNode', loadOperatorOverload: [op, sign] }, _arguments: [] };
@@ -571,6 +572,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
     node.type = result.type;
     return result;
 }
+
 /**
  * 返回值表示是否为一个ret block
  * declareRetType 声明的返回值
@@ -595,6 +597,8 @@ function BlockScan(blockScope: BlockScope, label: string[], declareRetType: { re
         }
     }
     if (blockScope.captured.size > 0) {
+        //为每个被捕获的变量创建一个包裹类型
+        同时不再使用def_ref和load_ref
         for (let k of [...blockScope.captured]) {
             blockScope.defNodes[k].defNode.def_ref = blockScope.defNodes[k].defNode.def;
             delete blockScope.defNodes[k].defNode.def;//把def改成def_ref
@@ -636,7 +640,7 @@ function functionScan(blockScope: BlockScope, fun: FunctionType): TypeUsed {
         return fun.retType;
     }
     let argIndex = 0;
-    for (let argumentName in fun._arguments) {
+    for (let argumentName in fun._arguments) {//注册参数
         let defNode: ASTNode = { desc: 'ASTNode', def: {} };
         defNode.def![argumentName] = { variable: 'var', initAST: { desc: 'ASTNode', loadArgument: { index: argIndex, type: fun._arguments[argumentName].type! } } };
         fun.body!.body.unshift(defNode);//插入args的def指令
@@ -686,8 +690,8 @@ function ClassScan(classScope: ClassScope) {
     let operatorOverloads = program.definedType[classScope.className].operatorOverload;
     for (let op in operatorOverloads) {//扫描重载操作符
         for (let sign in operatorOverloads[op as opType | opType2]) {
-            let blockScope = new BlockScope(classScope, operatorOverloads[op as opType | opType2][sign], operatorOverloads[op as opType | opType2][sign].body!);
-            functionScan(blockScope, operatorOverloads[op as opType | opType2][sign]);
+            let blockScope = new BlockScope(classScope, operatorOverloads[op as opType | opType2]![sign], operatorOverloads[op as opType | opType2]![sign].body!);
+            functionScan(blockScope, operatorOverloads[op as opType | opType2]![sign]);
         }
     }
 }

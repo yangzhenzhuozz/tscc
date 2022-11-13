@@ -21,9 +21,9 @@ interface TypeDef {//定义的类型
     recursiveChecked?: boolean;//是否已经进行了值类型循环包含的检查
     templates?: string[];//模板列表
     extends?: TypeUsed;//基类
-    typeIndex?:number;//类型索引
+    typeIndex?: number;//类型索引
     operatorOverload: {//重载列表
-        [key in opType | opType2]: {//key为操作符
+        [key in opType | opType2]?: {//key为操作符
             [key: string]: FunctionType;//key为函数签名(不包含返回值的签名),magic表示该操作由vm实现，翻译的时候原样保留
         }
     };
@@ -74,7 +74,7 @@ interface Program {
         [key: string]: TypeDef
     };
     property: VariableDescriptor;
-    size?:number;
+    size?: number;
 }
 //一条语句就是一个Noe
 interface ASTNode {
@@ -83,7 +83,7 @@ interface ASTNode {
     loadOperatorOverload?: [string, string];//读取重载操作符函数
     loadException?: TypeUsed;//读取异常
     loadArgument?: { index: number, type: TypeUsed },//读取参数
-    type?:TypeUsed;//表达式的类型
+    type?: TypeUsed;//表达式的类型
     def?: VariableDescriptor;
     def_ref?: VariableDescriptor;//定义一个引用变量，用于闭包
     accessField?: { obj: ASTNode, field: string };
