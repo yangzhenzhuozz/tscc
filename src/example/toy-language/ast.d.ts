@@ -85,11 +85,9 @@ interface ASTNode {
     loadArgument?: { index: number, type: TypeUsed },//读取参数
     type?: TypeUsed;//表达式的类型
     def?: VariableDescriptor;
-    def_ref?: VariableDescriptor;//定义一个引用变量，用于闭包
     accessField?: { obj: ASTNode, field: string };
     call?: { functionObj: ASTNode, _arguments: ASTNode[], templateSpecialization_list?: TypeUsed[] };
     load?: string;//读取某个变量
-    load_ref?: string;//读取某个引用变量，用于闭包
     _super?: "";
     _this?: string;
     _program?: "";//访问program对象

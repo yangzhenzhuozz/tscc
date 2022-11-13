@@ -598,7 +598,7 @@ function BlockScan(blockScope: BlockScope, label: string[], declareRetType: { re
     }
     if (blockScope.captured.size > 0) {
         //为每个被捕获的变量创建一个包裹类型
-        同时不再使用def_ref和load_ref
+        //同时不再使用def_ref和load_ref
         for (let k of [...blockScope.captured]) {
             blockScope.defNodes[k].defNode.def_ref = blockScope.defNodes[k].defNode.def;
             delete blockScope.defNodes[k].defNode.def;//把def改成def_ref
