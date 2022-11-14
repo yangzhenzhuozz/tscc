@@ -57,6 +57,13 @@ class ProgramScope extends Scope {
             }
         }
     }
+    /**
+     * 注册因为闭包捕获而新增的类型
+     * @param name 
+     */
+    public registerClassForCapture(name: string) {
+        this.classMap[name] = new ClassScope(this.program.definedType[name].property, name, this);
+    }
     public getClassScope(className: string): ClassScope {
         if (this.classMap[className] != undefined) {
             return this.classMap[className];
@@ -206,8 +213,8 @@ class BlockScope extends Scope {
         }
     }
     public getPropOffset(name: string): { size: number, offset: number } {
-        let scope:BlockScope|undefined=this;
-        for(;scope!=undefined;scope=scope.parent){
+        let scope: BlockScope | undefined = this;
+        for (; scope != undefined; scope = scope.parent) {
             if (scope.fieldOffsetMap![name] != undefined) {
                 return scope.fieldOffsetMap![name];
             }

@@ -5,7 +5,7 @@ class myClass{
     var c=con?a:b;
     function f1(h:int){
         var d=a<b?a<b?a:h:b;
-        function f1(h:int){
+        function f2(h:int){
             var m=d;
         };
     };

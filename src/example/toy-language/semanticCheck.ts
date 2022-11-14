@@ -1,11 +1,11 @@
 //预处理AST
 import fs from 'fs'
-import { FunctionSign, TypeUsedSign, FunctionSignWithArgument } from './lib.js';
+import { FunctionSign, FunctionSignWithArgumentAndRetType, TypeUsedSign, FunctionSignWithArgument } from './lib.js';
 import { Scope, BlockScope, ClassScope, ProgramScope } from './scope.js';
 import { pointSize } from './constant.js'
 let program: Program;
 let programScope: ProgramScope;
-let wrapIndex=0;
+let wrapIndex = 0;
 function OperatorOverLoad(scope: Scope, leftObj: ASTNode, rightObj: ASTNode | undefined, originNode: ASTNode, op: opType | opType2): TypeUsed {
     let leftType = nodeRecursion(scope, leftObj, [], {}).type;
     if (rightObj != undefined) {
@@ -96,7 +96,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
         let propDesc = scope.getProp(name);
         if (propDesc.scope instanceof ClassScope) {
             delete node.load;//把load改为access
-            node.accessField = { obj: { desc: 'ASTNode', _this: propDesc.scope.className }, field: name };//load阶段还不知道是不是property,由access节点处理进行判断
+            node.accessField = { obj: { desc: 'ASTNode', _this: '' }, field: name };//load阶段还不知道是不是property,由access节点处理进行判断
             return nodeRecursion(scope, node, label, declareRetType, assignmentObj);//处理access节点需要附带这个参数
         } else if (propDesc.scope instanceof ProgramScope) {
             delete node.load;//把load改为access
@@ -220,23 +220,16 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
         throw `不支持super`;
     }
     else if (node["_this"] != undefined) {
-        let s: Scope | undefined = scope;
-        let targeScope: ClassScope | undefined;
-        if (node['_this'] == "") {
-            if (scope instanceof BlockScope) {
-                if (scope.classScope != undefined) {
-                    result = { type: { PlainType: { name: scope.classScope.className } }, hasRet: false };
-                } else {
-                    throw `不在class内部不能使用this`;
-                }
-            } else if (scope instanceof ClassScope) {
-                result = { type: { PlainType: { name: scope.className } }, hasRet: false };
+        if (scope instanceof BlockScope) {
+            if (scope.classScope != undefined) {
+                result = { type: { PlainType: { name: scope.classScope.className } }, hasRet: false };
             } else {
                 throw `不在class内部不能使用this`;
             }
+        } else if (scope instanceof ClassScope) {
+            result = { type: { PlainType: { name: scope.className } }, hasRet: false };
         } else {
-            //通过load转换得到的_this
-            result = { type: { PlainType: { name: node['_this'] } }, hasRet: false };
+            throw `不在class内部不能使用this`;
         }
     }
     else if (node["_program"] != undefined) {
@@ -572,7 +565,8 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
     node.type = result.type;
     return result;
 }
-
+let captureWrapIndex = 0;
+let wrapClassNames: string[] = [];
 /**
  * 返回值表示是否为一个ret block
  * declareRetType 声明的返回值
@@ -597,14 +591,72 @@ function BlockScan(blockScope: BlockScope, label: string[], declareRetType: { re
         }
     }
     if (blockScope.captured.size > 0) {
-        //为每个被捕获的变量创建一个包裹类型
+
         //同时不再使用def_ref和load_ref
         for (let k of [...blockScope.captured]) {
-            blockScope.defNodes[k].defNode.def_ref = blockScope.defNodes[k].defNode.def;
-            delete blockScope.defNodes[k].defNode.def;//把def改成def_ref
+            //为每个被捕获的变量创建一个包裹类型
+            let sourceType = blockScope.defNodes[k].defNode!.def![k].type!;//到这里type已经推导出来了
+            let variable = blockScope.defNodes[k].defNode!.def![k].variable;
+            let initAST = blockScope.defNodes[k].defNode!.def![k].initAST;
+            let wrapClassName = `@captureWrapClass_${captureWrapIndex++}`;
+            let wrapTypeUsed: TypeUsed = { PlainType: { name: wrapClassName } };
+            let wrapTypeDef: TypeDef = {
+                _constructor: {},
+                operatorOverload: {},
+                property: {
+                    "value": {
+                        variable: variable,
+                        type: sourceType
+                    }
+                }
+            };
+            program.definedType[wrapClassName] = wrapTypeDef;
+            wrapClassNames.push(wrapClassName);
+            delete blockScope.defNodes[k].defNode!.def![k];//删除def节点原来的所有内容
+            blockScope.defNodes[k].defNode!.def![k] = {
+                variable: variable,
+                type: wrapTypeUsed
+            };//重新定义def节点
+            if (initAST != undefined) {//如果有初始化部分，则为其创建一个构造函数,并调用构造函数
+                let constructorSign = FunctionSignWithArgumentAndRetType([sourceType], { PlainType: { name: 'void' } });
+                let _arguments: VariableDescriptor = {};
+                _arguments['initVal'] = {
+                    variable: 'var',
+                    type: sourceType
+                };
+                wrapTypeDef._constructor[constructorSign] = {
+                    capture: {},
+                    _construct_for_type: wrapClassName,
+                    _arguments: _arguments,
+                    body: {
+                        desc: 'Block',
+                        body: [{
+                            desc: 'ASTNode',
+                            '=': {
+                                leftChild: {
+                                    desc: 'ASTNode',
+                                    load: 'value'
+                                },
+                                rightChild: {
+                                    desc: 'ASTNode',
+                                    load: 'initVal'
+                                }
+                            }
+                        }]
+                    }
+                };
+                blockScope.defNodes[k].defNode!.def![k].initAST = { desc: 'ASTNode', _new: { type: wrapTypeUsed, _arguments: [initAST] } };
+                //创建和改造结束
+            }
             for (let loadNode of blockScope.defNodes[k].loads) {
-                loadNode.load_ref = loadNode.load;
-                delete loadNode.load;//把load改成load_ref
+                loadNode['accessField'] = {
+                    obj: {
+                        desc: 'ASTNode',
+                        load: k
+                    },
+                    field: "value"
+                };
+                delete loadNode.load;//把load改成accessField
             }
         }
     }
@@ -694,6 +746,12 @@ function ClassScan(classScope: ClassScope) {
             functionScan(blockScope, operatorOverloads[op as opType | opType2]![sign]);
         }
     }
+    //扫描构造函数
+    for (let constructorName in program.definedType[classScope.className]._constructor) {
+        let _constructor = program.definedType[classScope.className]._constructor[constructorName];
+        let blockScope = new BlockScope(classScope, _constructor, _constructor.body!);
+        functionScan(blockScope, _constructor);
+    }
 }
 //深度优先搜索，检查是否有值类型直接或者间接包含自身
 function valueTypeRecursiveCheck(typeName: string) {
@@ -738,7 +796,8 @@ export default function semanticCheck(primitiveProgram: Program) {
     program = primitiveProgram;
     programScope = new ProgramScope(program);
     //扫描definedType
-    for (let typeName in program.definedType) {
+    let primitiveTypeNames = Object.keys(program.definedType);//这是最开始定义的类型，后面还有因为闭包而新增的类型
+    for (let typeName of primitiveTypeNames) {
         ClassScan(programScope.getClassScope(typeName));
     }
     //扫描property
@@ -756,7 +815,13 @@ export default function semanticCheck(primitiveProgram: Program) {
             functionScan(blockScope, prop.type?.FunctionType);
         }
     }
-    for (let typeName in program.definedType) {//检查值类型是否递归包含
+    //扫描因为闭包捕获而新增的类型
+    for (let typeName of wrapClassNames) {
+        programScope.registerClassForCapture(typeName);//因为包裹类不会用到其他未注册的类型，所以可以边注册边使用
+        ClassScan(programScope.getClassScope(typeName));
+    }
+    //检查值类型是否递归包含
+    for (let typeName in program.definedType) {
         if (program.definedType[typeName].recursiveChecked != true && program.definedType[typeName].modifier == 'valuetype') {
             valueTypeRecursiveCheck(typeName);
         }

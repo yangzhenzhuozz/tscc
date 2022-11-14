@@ -123,12 +123,6 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], inFunction:
         let ir = new IR('v_load', desc.offset, desc.size);
         return { startIR: ir, endIR: ir, truelist: [], falselist: [] };
     }
-    else if (node['def_ref'] != undefined) {
-        let name = Object.keys(node['def_ref'])[0];
-        let prop = node['def_ref'][name];
-        let size = propSize(prop.type!);
-        new IR('new',)
-    }
     else { throw `还没支持的AST类型` };
 }
 function fieldAssign(type: TypeUsed, offset: number, falselist: IR[]): { lastIndex: number } {
@@ -197,7 +191,7 @@ function functionGen(blockScope: BlockScope, fun: FunctionType) {
         operatorOverload: {},
         _constructor: {},
         property: property,
-        size: 0；//需要计算函数有多少捕获的变量
+        size: 0//需要计算函数有多少捕获的变量
     };
 }
 function classScan(classScope: ClassScope) {
