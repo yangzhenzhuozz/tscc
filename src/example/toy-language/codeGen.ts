@@ -1,4 +1,4 @@
-import { pointSize } from './constant.js';
+import { globalVariable } from './constant.js';
 import { Scope, BlockScope, ClassScope, ProgramScope } from './scope.js';
 import { IR, codes } from './ir.js'
 let program: Program;
@@ -136,7 +136,7 @@ function fieldAssign(type: TypeUsed, offset: number, falselist: IR[]): { lastInd
         let ir = new IR('putfield', offset, program.definedType[type.PlainType.name].size);
         return { lastIndex: ir.index };
     } else {
-        let ir = new IR('putfield', offset, pointSize);
+        let ir = new IR('putfield', offset, globalVariable.pointSize);
         return { lastIndex: ir.index };
     }
 }
@@ -160,10 +160,10 @@ function propSize(type: TypeUsed): number {
         if (program.definedType[type.PlainType.name].modifier == 'valuetype') {
             return program.definedType[type.PlainType.name].size!;
         } else {
-            return pointSize;
+            return globalVariable.pointSize;
         }
     } else {
-        return pointSize;
+        return globalVariable.pointSize;
     }
 }
 let functionIndex = 0;
@@ -175,24 +175,45 @@ function functionGen(blockScope: BlockScope, fun: FunctionType) {
         argOffset += size;
         argumentMap.push({ offset: argOffset, size: size });
     }
-    BlockScan(blockScope, [], argumentMap);
-    let typeName = `@functionWrap_${functionIndex++}`;
+    let wrapName = `@functionWrap_${functionIndex++}`;
     let property: VariableDescriptor = {};
     if (blockScope.classScope != undefined) {
-        property['_this'] = {
+        property['@this'] = {
             variable: 'val',
             type: {
                 PlainType: { name: blockScope.classScope.className }
             }
         };
     }
+    for (let c in fun.capture) {
+        property[c] = {
+            variable: 'val',
+            type: fun.capture[c]
+        };
+    }
     //注册函数容器
-    program.definedType[typeName] = {
+    let typeIndex = globalVariable.typeIndex++;
+    program.definedType[wrapName] = {
         operatorOverload: {},
         _constructor: {},
         property: property,
-        size: 0//需要计算函数有多少捕获的变量
+        size: globalVariable.pointSize + Object.keys(fun.capture).length * globalVariable.pointSize,
+        typeIndex: typeIndex
     };
+    programScope.registerClassForCapture(wrapName);//注册类型
+    let start = new IR('new', typeIndex);
+    let end: IR;
+    new IR('dup', undefined, globalVariable.pointSize);
+    let _thisDesc = programScope.getClassScope(wrapName).getPropOffset('@this');
+    end = new IR('putfield', _thisDesc.offset, propSize(programScope.getClassScope(wrapName).getProp('@this').prop.type!));
+    let capturedNames = Object.keys(fun.capture);
+    if (capturedNames.length > 0) {
+        for (let capturedName of capturedNames) {
+            new IR('dup', undefined, propSize(blockScope.getProp(capturedName).prop.type!));
+            aa//把待捕获的变量复制到函数容器中
+        }
+    }
+    BlockScan(blockScope, [], argumentMap);
 }
 function classScan(classScope: ClassScope) {
     //扫描property

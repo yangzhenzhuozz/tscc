@@ -1,4 +1,4 @@
-import { pointSize } from "./constant.js";
+import { globalVariable } from './constant.js'
 
 let debugID = 0;
 abstract class Scope {
@@ -29,8 +29,8 @@ abstract class Scope {
                     this.fieldOffsetMap[k] = { size: size, offset: offset };
                     offset += size;
                 } else {//否则按照指针处理
-                    this.fieldOffsetMap[k] = { size: pointSize, offset: offset };
-                    offset += pointSize;
+                    this.fieldOffsetMap[k] = { size: globalVariable.pointSize, offset: offset };
+                    offset += globalVariable.pointSize;
                 }
             }
         }
@@ -139,7 +139,7 @@ class BlockScope extends Scope {
             throw `scope只能是上面三种情况`;
         }
         if (this.parent == undefined) {
-            this.baseOffset = pointSize;//是functionScope,预留this和闭包位置
+            this.baseOffset = globalVariable.pointSize;//是functionScope,预留this和闭包位置
         } else {
             this.baseOffset = this.parent.baseOffset;
         }
@@ -168,8 +168,8 @@ class BlockScope extends Scope {
                     this.fieldOffsetMap[name] = { size: size, offset: this.baseOffset };
                     this.baseOffset += size;
                 } else {//否则按照指针处理
-                    this.fieldOffsetMap[name] = { size: pointSize, offset: this.baseOffset };
-                    this.baseOffset += pointSize;
+                    this.fieldOffsetMap[name] = { size: globalVariable.pointSize, offset: this.baseOffset };
+                    this.baseOffset += globalVariable.pointSize;
                 }
             }
         }

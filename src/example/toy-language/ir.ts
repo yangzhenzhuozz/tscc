@@ -19,6 +19,7 @@ type opcode =
     'if_eq' |
     'if_ne' |
     'jmp' |
+    'dup'|//栈复制
     'ret';
 let irIndex = 0;
 export const codes: IR[] = [];

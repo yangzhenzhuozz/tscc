@@ -2,7 +2,7 @@
 import fs from 'fs'
 import { FunctionSign, FunctionSignWithArgumentAndRetType, TypeUsedSign, FunctionSignWithArgument } from './lib.js';
 import { Scope, BlockScope, ClassScope, ProgramScope } from './scope.js';
-import { pointSize } from './constant.js'
+import { globalVariable } from './constant.js'
 let program: Program;
 let programScope: ProgramScope;
 let wrapIndex = 0;
@@ -780,12 +780,12 @@ function sizeof(typeName: string): number {
                 if (field.type!.PlainType != undefined) {
                     let fieldTypeName = field.type!.PlainType.name;
                     if (program.definedType[fieldTypeName].modifier != 'valuetype') {
-                        ret += pointSize;//非值类型
+                        ret += globalVariable.pointSize;//非值类型
                     } else {
                         ret += sizeof(fieldTypeName);
                     }
                 } else {
-                    ret += pointSize;//不是普通类型就只能用指针表示
+                    ret += globalVariable.pointSize;//不是普通类型就只能用指针表示
                 }
             }
             break;
@@ -826,10 +826,10 @@ export default function semanticCheck(primitiveProgram: Program) {
             valueTypeRecursiveCheck(typeName);
         }
     }
-    let index = 0;
+
     for (let typeName in program.definedType) {//计算每个类型的size和索引
         program.definedType[typeName].size = sizeof(typeName);
-        program.definedType[typeName].typeIndex = index++;
+        program.definedType[typeName].typeIndex = globalVariable.typeIndex++;
     }
     let programSize = 0;
     //计算program的size
@@ -838,12 +838,12 @@ export default function semanticCheck(primitiveProgram: Program) {
         if (field.type!.PlainType != undefined) {
             let fieldTypeName = field.type!.PlainType.name;
             if (program.definedType[fieldTypeName].modifier != 'valuetype') {
-                programSize += pointSize;//非值类型
+                programSize += globalVariable.pointSize;//非值类型
             } else {
                 programSize += sizeof(fieldTypeName);
             }
         } else {
-            programSize += pointSize;//不是普通类型就只能用指针表示
+            programSize += globalVariable.pointSize;//不是普通类型就只能用指针表示
         }
     }
     program.size = programSize;

@@ -1,4 +1,4 @@
-class myClass{
+valuetype class myClass{
     var a:int=1;
     var b:int=a;
     var con:bool;
