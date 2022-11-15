@@ -591,8 +591,6 @@ function BlockScan(blockScope: BlockScope, label: string[], declareRetType: { re
         }
     }
     if (blockScope.captured.size > 0) {
-
-        //同时不再使用def_ref和load_ref
         for (let k of [...blockScope.captured]) {
             //为每个被捕获的变量创建一个包裹类型
             let sourceType = blockScope.defNodes[k].defNode!.def![k].type!;//到这里type已经推导出来了
@@ -755,16 +753,19 @@ function ClassScan(classScope: ClassScope) {
 }
 //深度优先搜索，检查是否有值类型直接或者间接包含自身
 function valueTypeRecursiveCheck(typeName: string) {
-    if (program.definedType[typeName].recursiveChecked == true) {
+    if (program.definedType[typeName].recursiveFlag == true) {
         throw `值类型${typeName}直接或者间接包含自身`
     } else {
-        program.definedType[typeName].recursiveChecked = true;
+        program.definedType[typeName].recursiveFlag = true;
         for (let fieldName in program.definedType[typeName].property) {//遍历所有成员
-            let fieldTypeName = program.definedType[typeName].property[fieldName].type!.PlainType?.name;
-            if (fieldTypeName != undefined && program.definedType[fieldTypeName].modifier == 'valuetype') {//如果有值类型的成员，则递归遍历
-                valueTypeRecursiveCheck(fieldTypeName);
+            if (program.definedType[typeName].property[fieldName].type!.PlainType != undefined) {
+                let fieldTypeName = program.definedType[typeName].property[fieldName].type!.PlainType?.name!;
+                if (program.definedType[fieldTypeName].recursiveChecked != true && fieldTypeName != undefined && program.definedType[fieldTypeName].modifier == 'valuetype') {//如果有值类型的成员，则递归遍历
+                    valueTypeRecursiveCheck(fieldTypeName);
+                }
             }
         }
+        program.definedType[typeName].recursiveChecked = true;
     }
 }
 function sizeof(typeName: string): number {

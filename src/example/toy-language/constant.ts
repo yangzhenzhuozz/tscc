@@ -1,5 +1,6 @@
+const abi = 64;
 //全局变量
 export const globalVariable = {
-    pointSize: 4,
+    pointSize: abi / 8,
     typeIndex: 0
 }

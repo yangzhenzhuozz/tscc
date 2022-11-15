@@ -30,7 +30,7 @@ function main() {
         program = semanticCheck(program);
         console.timeEnd(`阶段二耗时`);
         fs.writeFileSync(`./src/example/toy-language/output/stage-2.json`, JSON.stringify(program, null, 4));
-        // codeGen(program);
+        codeGen(program);
     } catch (e: unknown) {
         if (e instanceof Error) {
             console.error(e.stack);

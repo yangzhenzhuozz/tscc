@@ -5,8 +5,9 @@ valuetype class myClass{
     var c=con?a:b;
     function f1(h:int){
         var d=a<b?a<b?a:h:b;
+        var z1:bool;
         function f2(h:int){
-            var m=d;
+            var m=z1?h:d;
         };
     };
 }

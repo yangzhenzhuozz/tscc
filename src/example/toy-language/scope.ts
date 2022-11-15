@@ -41,9 +41,6 @@ abstract class Scope {
 class ProgramScope extends Scope {
     public program: Program;
     private classMap: { [key: string]: ClassScope } = {};
-    public setProp(name: string, variableProperties: VariableProperties): void {
-        this.property[name] = variableProperties;
-    }
     constructor(program: Program, offsetPatch?: { program: Program }) {
         super(program.property, offsetPatch);
         this.program = program;
@@ -62,7 +59,7 @@ class ProgramScope extends Scope {
      * @param name 
      */
     public registerClassForCapture(name: string) {
-        this.classMap[name] = new ClassScope(this.program.definedType[name].property, name, this);
+        this.classMap[name] = new ClassScope(this.program.definedType[name].property, name, this, { program: this.program });
     }
     public getClassScope(className: string): ClassScope {
         if (this.classMap[className] != undefined) {
@@ -97,7 +94,6 @@ class ClassScope extends Scope {
         return Object.keys(this.property);
     }
     public getProp(name: string): { prop: VariableProperties, scope: Scope } {
-        let scope: ClassScope | undefined = this;
         let prop: VariableProperties | undefined = this.property[name];
         if (prop != undefined) {
             return { prop: prop, scope: this };

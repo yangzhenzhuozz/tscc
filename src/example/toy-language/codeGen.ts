@@ -177,14 +177,19 @@ function functionGen(blockScope: BlockScope, fun: FunctionType) {
     }
     let wrapName = `@functionWrap_${functionIndex++}`;
     let property: VariableDescriptor = {};
-    if (blockScope.classScope != undefined) {
-        property['@this'] = {
-            variable: 'val',
-            type: {
-                PlainType: { name: blockScope.classScope.className }
-            }
-        };
-    }
+    //为函数对象创建两个基本值
+    property['@this'] = {
+        variable: 'val',
+        type: {
+            PlainType: { name: '@point' }
+        }
+    };
+    property['@exec'] = {
+        variable: 'val',
+        type: {
+            PlainType: { name: '@point' }
+        }
+    };
     for (let c in fun.capture) {
         property[c] = {
             variable: 'val',
@@ -210,7 +215,7 @@ function functionGen(blockScope: BlockScope, fun: FunctionType) {
     if (capturedNames.length > 0) {
         for (let capturedName of capturedNames) {
             new IR('dup', undefined, propSize(blockScope.getProp(capturedName).prop.type!));
-            aa//把待捕获的变量复制到函数容器中
+            //把待捕获的变量复制到函数容器中
         }
     }
     BlockScan(blockScope, [], argumentMap);
@@ -238,6 +243,14 @@ let symbolTable: { [key: string]: number } = {};//符号表
 export default function programScan(primitiveProgram: Program) {
     program = primitiveProgram;
     programScope = new ProgramScope(program, { program: program });
+    program.definedType['@point'] = {
+        modifier: 'valuetype',
+        property: {},
+        operatorOverload: {},
+        _constructor: {},
+        size:globalVariable.pointSize
+    };
+    programScope.registerClassForCapture('@point');//注册类型
     //扫描property
     for (let variableName in program.property) {
         var prop = program.property[variableName];
