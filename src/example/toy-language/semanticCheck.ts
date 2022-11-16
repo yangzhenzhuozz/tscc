@@ -36,14 +36,14 @@ function OperatorOverLoad(scope: Scope, leftObj: ASTNode, rightObj: ASTNode | un
     }
 }
 /**
- * 类型检查并合并,如果要求a、b类型必须相同，any可以匹配任意类型
+ * 类型检查,a、b类型必须相同，exception可以匹配任意类型
  * @param a 
  * @param b 
  */
 function typeCheck(a: TypeUsed, b: TypeUsed, msg: string): void {
     let ta = TypeUsedSign(a);
     let tb = TypeUsedSign(b);
-    if (ta == 'any' || tb == 'any') {//遇到any不作判断，因为throw语句可以结束代码块
+    if (ta == 'exception' || tb == 'exception') {//遇到exception不作判断，因为throw语句可以结束代码块
         return;
     }
     if (ta != tb) {
@@ -349,7 +349,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
     else if (node["throwStmt"] != undefined) {
         nodeRecursion(scope, node["throwStmt"], label, declareRetType);
         //throw不像ret那样修改retType，所以对于后续的分析无影响
-        result = { hasRet: true, type: { PlainType: { name: 'void' } }, retType: { PlainType: { name: 'any' } } };//throw可以作为任意类型的返回值
+        result = { hasRet: true, type: { PlainType: { name: 'void' } }, retType: { PlainType: { name: 'exception' } } };//throw可以作为任意类型的返回值
     }
     else if (node["ret"] != undefined) {
         let type: TypeUsed;
@@ -674,7 +674,7 @@ function functionScan(blockScope: BlockScope, fun: FunctionType): TypeUsed {
          *      else
          *          return 0;
          *  };
-         * 这种类型推导需要向后看，所以直接放弃推导
+         * 这种类型推导需要向后看，直接放弃推导
          */
         if (fun.retType == undefined) {
             throw `无法推导函数返回值类型`;
@@ -697,10 +697,10 @@ function functionScan(blockScope: BlockScope, fun: FunctionType): TypeUsed {
         argIndex++;
     }
     let blockRet = BlockScan(blockScope, [], fun);
-    if (!blockRet.hasRet) {
-        blockRet.retType = { PlainType: { name: 'void' } };//block没有返回语句，则说明返回void
+    if (fun.retType?.PlainType?.name == 'void' && blockRet.retType == undefined) {//函数声明返回void，block没有返回语句，则设置block返回值为void
+        blockRet.retType = { PlainType: { name: 'void' } };
     }
-    if (fun.retType == undefined && (blockRet.retType == undefined || blockRet.retType?.PlainType?.name == 'any')) {
+    if (fun.retType == undefined && (blockRet.retType == undefined || blockRet.retType?.PlainType?.name == 'exception')) {
         throw `无法推导返回值`;
     } else {
         if (fun.retType != undefined) {
@@ -747,6 +747,7 @@ function ClassScan(classScope: ClassScope) {
     //扫描构造函数
     for (let constructorName in program.definedType[classScope.className]._constructor) {
         let _constructor = program.definedType[classScope.className]._constructor[constructorName];
+        _constructor.retType = { PlainType: { name: 'void' } };//所有构造函数不允许有返回值
         let blockScope = new BlockScope(classScope, _constructor, _constructor.body!);
         functionScan(blockScope, _constructor);
     }

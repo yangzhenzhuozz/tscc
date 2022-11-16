@@ -31,6 +31,7 @@ function main() {
         console.timeEnd(`阶段二耗时`);
         fs.writeFileSync(`./src/example/toy-language/output/stage-2.json`, JSON.stringify(program, null, 4));
         codeGen(program);
+        fs.writeFileSync(`./src/example/toy-language/output/stage-3.json`, JSON.stringify(program.definedType, null, 4));
     } catch (e: unknown) {
         if (e instanceof Error) {
             console.error(e.stack);

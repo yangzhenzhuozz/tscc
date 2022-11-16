@@ -1,3 +1,5 @@
+import { globalVariable } from "./constant";
+
 type opcode =
     'new' |
     'p_load' |//将program指针压入表达式栈
@@ -7,6 +9,7 @@ type opcode =
     'v_load' |
     'v_store' |
     'const_i32_load' |
+    'const_i64_load' |
     'const_i8_load' |
     'i32_add' |
     'i32_cmp' |
@@ -19,12 +22,10 @@ type opcode =
     'if_eq' |
     'if_ne' |
     'jmp' |
-    'dup'|//栈复制
+    'dup' |//栈复制
     'ret';
-let irIndex = 0;
-export const codes: IR[] = [];
 export class IR {
-    public index: number = irIndex++;
+    public index: number = globalVariable.irContainer.index++;
     public opCode: opcode;
     public operand?: number | 'true' | 'false';
     public opSize?: number;
@@ -32,7 +33,7 @@ export class IR {
         this.opCode = opCode;
         this.operand = operand;
         this.opSize = opSize;
-        codes.push(this);
+        globalVariable.irContainer.codes.push(this);
     }
     public toString(): string {
         return `${this.index}\t${this.opCode}\t${this.operand}\t${this.opSize}`;

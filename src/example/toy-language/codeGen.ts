@@ -1,6 +1,6 @@
 import { globalVariable } from './constant.js';
 import { Scope, BlockScope, ClassScope, ProgramScope } from './scope.js';
-import { IR, codes } from './ir.js'
+import { IR } from './ir.js'
 let program: Program;
 let programScope: ProgramScope;
 function backPatch(list: IR[], target: IR) {
@@ -123,9 +123,14 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], inFunction:
         let ir = new IR('v_load', desc.offset, desc.size);
         return { startIR: ir, endIR: ir, truelist: [], falselist: [] };
     }
+    else if (node['_new'] != undefined) {
+        let ir = new IR('new');
+        console.error('还未实现');
+        return { startIR: ir, endIR: ir, truelist: [], falselist: [] };
+    }
     else { throw `还没支持的AST类型` };
 }
-function fieldAssign(type: TypeUsed, offset: number, falselist: IR[]): { lastIndex: number } {
+function fieldAssign(type: TypeUsed, offset: number, falselist: IR[]): { lastIR: IR } {
     if (falselist.length > 0) {
         new IR('const_i8_load', 1);
         new IR('jmp', 2);
@@ -134,26 +139,34 @@ function fieldAssign(type: TypeUsed, offset: number, falselist: IR[]): { lastInd
     }
     if (type.PlainType && program.definedType[type.PlainType.name].modifier == 'valuetype') {
         let ir = new IR('putfield', offset, program.definedType[type.PlainType.name].size);
-        return { lastIndex: ir.index };
+        return { lastIR: ir };
     } else {
         let ir = new IR('putfield', offset, globalVariable.pointSize);
-        return { lastIndex: ir.index };
+        return { lastIR: ir };
     }
 }
 function defalutValue(type: TypeUsed): { startIR: IR, endIR: IR, truelist: IR[], falselist: IR[] } {
     // throw `unimplemented`
     return {} as any;
 }
-function BlockScan(blockScope: BlockScope, label: string[], argumentMap: { offset: number, size: number }[]) {
+function BlockScan(blockScope: BlockScope, label: string[], argumentMap: { offset: number, size: number }[]): { jmp_rets: IR[] } {
+    let ret: { jmp_rets: IR[] } = { jmp_rets: [] };//所有返回指令
     for (let i = 0; i < blockScope.block!.body.length; i++) {
         let nodeOrBlock = blockScope.block!.body[i];
         if (nodeOrBlock.desc == 'ASTNode') {
-            nodeRecursion(blockScope, nodeOrBlock as ASTNode, label, true, argumentMap);
+            let ir = nodeRecursion(blockScope, nodeOrBlock as ASTNode, label, true, argumentMap).endIR;
+            if ((nodeOrBlock as ASTNode).ret != undefined) {
+                ret.jmp_rets.push(ir);
+            }
         } else {
             let block = nodeOrBlock as Block;
-            BlockScan(new BlockScope(blockScope, undefined, block, { program }), label, argumentMap);
+            let jmp_rets = BlockScan(new BlockScope(blockScope, undefined, block, { program }), label, argumentMap).jmp_rets;
+            for (let ir of jmp_rets) {
+                ret.jmp_rets.push(ir);
+            }
         }
     }
+    return ret;
 }
 function propSize(type: TypeUsed): number {
     if (type.PlainType != undefined) {
@@ -167,6 +180,7 @@ function propSize(type: TypeUsed): number {
     }
 }
 let functionIndex = 0;
+let relocationTable: { [key: string]: IR }[] = [];//重定位表
 function functionGen(blockScope: BlockScope, fun: FunctionType) {
     let argumentMap: { offset: number, size: number }[] = [];
     let argOffset = 0;
@@ -175,7 +189,8 @@ function functionGen(blockScope: BlockScope, fun: FunctionType) {
         argOffset += size;
         argumentMap.push({ offset: argOffset, size: size });
     }
-    let wrapName = `@functionWrap_${functionIndex++}`;
+    let findx = functionIndex++;
+    let wrapName = `@functionWrap_${findx++}`;
     let property: VariableDescriptor = {};
     //为函数对象创建两个基本值
     property['@this'] = {
@@ -208,19 +223,36 @@ function functionGen(blockScope: BlockScope, fun: FunctionType) {
     programScope.registerClassForCapture(wrapName);//注册类型
     let start = new IR('new', typeIndex);
     let end: IR;
-    new IR('dup', undefined, globalVariable.pointSize);
-    let _thisDesc = programScope.getClassScope(wrapName).getPropOffset('@this');
-    end = new IR('putfield', _thisDesc.offset, propSize(programScope.getClassScope(wrapName).getProp('@this').prop.type!));
+    let wrapClassScope = programScope.getClassScope(wrapName);
+    if (blockScope.classScope != undefined) {
+        end = new IR('dup', undefined, globalVariable.pointSize);//复制new出来的function对象
+        new IR('v_load', 0, globalVariable.pointSize);
+        end = new IR('putfield', wrapClassScope.getPropOffset('@this').offset, propSize(wrapClassScope.getProp('@this').prop.type!));//复制this
+    }
+    new IR('dup', undefined, globalVariable.pointSize);//复制new出来的function对象
+    let functionAdd = new IR('const_i64_load');
+    end = functionAdd;
+    let patchItem: { [key: string]: IR } = {};
+    patchItem[`@function_${findx}`] = end;
+    relocationTable.push(patchItem);//等待编译完成后重定向
     let capturedNames = Object.keys(fun.capture);
     if (capturedNames.length > 0) {
         for (let capturedName of capturedNames) {
-            new IR('dup', undefined, propSize(blockScope.getProp(capturedName).prop.type!));
-            //把待捕获的变量复制到函数容器中
+            new IR('dup', undefined, propSize(blockScope.getProp(capturedName).prop.type!));//复制new出来的function对象
+            let desc = blockScope.getPropOffset(capturedName);
+            new IR('v_load', desc.offset, desc.size);
+            end = new IR('putfield', wrapClassScope.getPropOffset(capturedName).offset, propSize(wrapClassScope.getProp(capturedName).prop.type!));//复制this
         }
     }
-    BlockScan(blockScope, [], argumentMap);
+    symbolTable[`@function_${findx}`] = end.index;
+    let jmp_rets = BlockScan(blockScope, [], argumentMap).jmp_rets;
+    let retIR = new IR('ret');
+    for (let ir of jmp_rets) {
+        ir.operand = retIR.index - ir.index;//处理所有ret jmp
+    }
 }
-function classScan(classScope: ClassScope) {
+function classScan(classScope: ClassScope, start: number):IR[] {
+    let ret: { lastIndex: number } = { lastIndex: start };
     //扫描property
     for (let propName of classScope.getPropNames()) {
         let prop = classScope.getProp(propName).prop;
@@ -228,7 +260,8 @@ function classScan(classScope: ClassScope) {
             new IR('v_load', 0);
             let nr = nodeRecursion(classScope, prop.initAST, [], false, []);
             let description = classScope.getPropOffset(propName);
-            fieldAssign(prop.type!, description.offset, nr.falselist);
+            let lastIR = fieldAssign(prop.type!, description.offset, nr.falselist).lastIR;
+            ret = { lastIndex: lastIR.index };
         } else if (prop.type?.FunctionType) {
             let blockScope = new BlockScope(classScope, prop.type?.FunctionType, prop.type?.FunctionType.body!, { program });
             functionGen(blockScope, prop.type?.FunctionType);
@@ -238,9 +271,12 @@ function classScan(classScope: ClassScope) {
             defalutValue(prop.type!);
         }
     }
+    symbolTable[`${classScope.className}_init`] = start;//program初始化程序在位置0
+    return ret;
 }
 let symbolTable: { [key: string]: number } = {};//符号表
 export default function programScan(primitiveProgram: Program) {
+    let start = 0;
     program = primitiveProgram;
     programScope = new ProgramScope(program, { program: program });
     program.definedType['@point'] = {
@@ -248,7 +284,7 @@ export default function programScan(primitiveProgram: Program) {
         property: {},
         operatorOverload: {},
         _constructor: {},
-        size:globalVariable.pointSize
+        size: globalVariable.pointSize
     };
     programScope.registerClassForCapture('@point');//注册类型
     //扫描property
@@ -267,11 +303,13 @@ export default function programScan(primitiveProgram: Program) {
             defalutValue(program.property[variableName].type!);
         }
     }
-    new IR('ret');
-    symbolTable['program_init'] = 0;//program初始化程序在位置0
+    let end = new IR('ret');
+    symbolTable['program_init'] = start;//program初始化程序在位置0
     //扫描definedType
     for (let typeName in program.definedType) {
-        classScan(programScope.getClassScope(typeName));
+        classScan(programScope.getClassScope(typeName), end.index);
     }
     console.table(codes);
+    console.table(relocationTable);
+    console.table(symbolTable);
 }
