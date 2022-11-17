@@ -58,7 +58,6 @@ let grammar: Grammar = {
         { "template_definition:< template_definition_list >": {} },//模板定义由一对尖括号<>和内部的template_definition_list组成
         { "template_definition_list:id": {} },//template_definition_list可以是一个id
         { "template_definition_list:template_definition_list , id": {} },//template_definition_list可以是一个template_definition_list后面接上 , id
-        { "type:( type )": {} },//type可以用圆括号包裹
         /**
          * type后面的'['会导致如下二义性:
          * 所有type都有这种情况，用int作为一个type举例
@@ -80,11 +79,15 @@ let grammar: Grammar = {
          * new int[][][][],并且把(int[][][][])规约成type,则这个串会被规约成new type，然而new type的时候是必须调用构造函数的,所以输入new int[][][][]也是非法的
          * 合法的输入应该是new int[][][][](),当然这只是符合文法而已,在语义检查的时候我们会进行错误处理,有的type是不允许被new的(说的就是array_type)
          */
-        { "type:basic_type": { priority: "low_priority_for_[" } },//type可以是一个base_type
-        { "type:basic_type templateSpecialization": { priority: "low_priority_for_[" } },//type可以是一个base_type templateSpecialization
-        { "type:template_definition ( parameter_declare ) => type": { priority: "low_priority_for_[" } },//泛型函数类型
-        { "type:( parameter_declare ) => type": { priority: "low_priority_for_[" } },//函数类型
-        { "type:type array_type_list": { priority: "low_priority_for_[" } },//数组类型
+        { "type:( type )": {} },//type可以用圆括号包裹
+        { "type:plainType": {} },//简单类型
+        { "type:functionType": {} },//函数类型
+        { "type:arrayType": {} },//数组类型
+        { "plainType:basic_type": { priority: "low_priority_for_[" } },//type可以是一个base_type
+        { "plainType:basic_type templateSpecialization": { priority: "low_priority_for_[" } },//type可以是一个base_type templateSpecialization
+        { "functionType:template_definition ( parameter_declare ) => type": { priority: "low_priority_for_[" } },//泛型函数类型
+        { "functionType:( parameter_declare ) => type": { priority: "low_priority_for_[" } },//函数类型
+        { "arrayType:type array_type_list": { priority: "low_priority_for_[" } },//数组类型
         { "array_type_list:[ ]": {} },//array_type_list可以是一对方括号
         { "array_type_list:array_type_list [ ]": {} },//array_type_list可以是array_type_list后面再接一对方括号
         { "parameter_declare:parameter_list": {} },//parameter_declare可以由parameter_list组成
@@ -295,7 +298,7 @@ let grammar: Grammar = {
          * 为其指定优先级为cast_priority
          */
         { "object:( type ) object": { priority: "cast_priority" } },//强制转型
-        { "_new:new type  ( arguments )": {} },//创建对象
+        { "_new:new plainType  ( arguments )": {} },//创建对象
         /**
          * 假设只针对产生式array_init_list:array_inits array_placeholder 会出现如下二义性
          * new int [10][3]可以有如下两种解释:(把array_placeholder规约成ε)

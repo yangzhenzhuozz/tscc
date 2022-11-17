@@ -597,7 +597,7 @@ function BlockScan(blockScope: BlockScope, label: string[], declareRetType: { re
             let variable = blockScope.defNodes[k].defNode!.def![k].variable;
             let initAST = blockScope.defNodes[k].defNode!.def![k].initAST;
             let wrapClassName = `@captureWrapClass_${captureWrapIndex++}`;
-            let wrapTypeUsed: TypeUsed = { PlainType: { name: wrapClassName } };
+            let wrapTypeUsed: { PlainType: PlainType; } = { PlainType: { name: wrapClassName } };
             let wrapTypeDef: TypeDef = {
                 _constructor: {},
                 operatorOverload: {},

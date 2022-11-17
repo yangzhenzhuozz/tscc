@@ -314,13 +314,6 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
                 }
             }
         },//template_definition_list可以是一个template_definition_list后面接上 , id
-        {
-            "type:( type )": {
-                action: function ($, s): TypeUsed {
-                    return $[1] as TypeUsed;
-                }
-            }
-        },//type可以用圆括号包裹
         /**
          * type后面的'['会导致如下二义性:
          * 所有type都有这种情况，用int作为一个type举例
@@ -343,17 +336,45 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
          * 合法的输入应该是new int[][][][](),当然这只是符合文法而已,在语义检查的时候我们会进行错误处理,有的type是不允许被new的(说的就是array_type)
          */
         {
-            "type:basic_type": {
-                priority: "low_priority_for_[",
+            "type:( type )": {
                 action: function ($, s): TypeUsed {
-                    return $[0] as TypeUsed;
+                    return $[1] as TypeUsed;
+                }
+            }
+        },//type可以用圆括号包裹
+        {
+            "type:plainType": {
+                action: function ($, s): TypeUsed {
+                    return $[1] as TypeUsed;
+                }
+            }
+        },//简单类型
+        {
+            "type:functionType": {
+                action: function ($, s): TypeUsed {
+                    return $[1] as TypeUsed;
+                }
+            }
+        },//函数类型
+        {
+            "type:arrayType": {
+                action: function ($, s): TypeUsed {
+                    return $[1] as TypeUsed;
+                }
+            }
+        },//数组类型
+        {
+            "plainType:basic_type": {
+                priority: "low_priority_for_[",
+                action: function ($, s): {PlainType: PlainType;} {
+                    return $[0] as {PlainType: PlainType;};
                 }
             }
         },//type可以是一个base_type
         {
-            "type:basic_type templateSpecialization": {
+            "plainType:basic_type templateSpecialization": {
                 priority: "low_priority_for_[",
-                action: function ($, s): TypeUsed {
+                action: function ($, s): {PlainType: PlainType;} {
                     let basic_type = $[0] as TypeUsed;
                     let templateSpecialization = $[1] as TypeUsed[];
                     return { PlainType: { name: basic_type.PlainType!.name, templateSpecialization: templateSpecialization } };
@@ -361,7 +382,7 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
             }
         },//type可以是一个base_type templateSpecialization
         {
-            "type:template_definition ( parameter_declare ) => type": {
+            "functionType:template_definition ( parameter_declare ) => type": {
                 priority: "low_priority_for_[",
                 action: function ($, s): TypeUsed {
                     let template_definition = $[0] as string[];
@@ -375,7 +396,7 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
             }
         },//泛型函数类型
         {
-            "type:( parameter_declare ) => type": {
+            "functionType:( parameter_declare ) => type": {
                 priority: "low_priority_for_[",
                 action: function ($, s): TypeUsed {
                     let parameter_declare = $[1] as VariableDescriptor;
@@ -385,7 +406,7 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
             }
         },//函数类型
         {
-            "type:type array_type_list": {
+            "arrayType:type array_type_list": {
                 priority: "low_priority_for_[",
                 action: function ($, s): TypeUsed {
                     let type = $[0] as TypeUsed;
@@ -1810,9 +1831,9 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
             }
         },//强制转型
         {
-            "_new:new type  ( arguments )": {
+            "_new:new plainType  ( arguments )": {
                 action: function ($, s): ASTNode {
-                    return { desc: "ASTNode", _new: { type: $[1] as TypeUsed, _arguments: $[3] as ASTNode[] } };
+                    return { desc: "ASTNode", _new: { type: $[1] as {PlainType: PlainType;}, _arguments: $[3] as ASTNode[] } };
                 }
             }
         },//创建对象

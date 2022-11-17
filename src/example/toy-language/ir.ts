@@ -1,4 +1,4 @@
-import { globalVariable } from "./constant";
+import { globalVariable } from "./constant.js";
 
 type opcode =
     'new' |

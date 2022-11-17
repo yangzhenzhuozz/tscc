@@ -179,9 +179,15 @@ function propSize(type: TypeUsed): number {
         return globalVariable.pointSize;
     }
 }
-let functionIndex = 0;
+let globalGunctionIndex = 0;
 let relocationTable: { [key: string]: IR }[] = [];//重定位表
-function functionGen(blockScope: BlockScope, fun: FunctionType) {
+function functionGen(blockScope: BlockScope, fun: FunctionType):string {
+    let lastContinaer = globalVariable.irContainer;//类似回溯，保留现场
+    let codeContainer: {
+        index: number;
+        codes: IR[];
+    } = { codes: [], index: 0 };
+    globalVariable.irContainer = codeContainer;
     let argumentMap: { offset: number, size: number }[] = [];
     let argOffset = 0;
     for (let argumentName in fun._arguments) {
@@ -189,8 +195,8 @@ function functionGen(blockScope: BlockScope, fun: FunctionType) {
         argOffset += size;
         argumentMap.push({ offset: argOffset, size: size });
     }
-    let findx = functionIndex++;
-    let wrapName = `@functionWrap_${findx++}`;
+    let functionIndex = globalGunctionIndex++;
+    let wrapName = `@functionWrap_${functionIndex}`;
     let property: VariableDescriptor = {};
     //为函数对象创建两个基本值
     property['@this'] = {
@@ -221,19 +227,17 @@ function functionGen(blockScope: BlockScope, fun: FunctionType) {
         typeIndex: typeIndex
     };
     programScope.registerClassForCapture(wrapName);//注册类型
-    let start = new IR('new', typeIndex);
-    let end: IR;
+    new IR('new', typeIndex);
     let wrapClassScope = programScope.getClassScope(wrapName);
     if (blockScope.classScope != undefined) {
-        end = new IR('dup', undefined, globalVariable.pointSize);//复制new出来的function对象
+        new IR('dup', undefined, globalVariable.pointSize);//复制new出来的function对象
         new IR('v_load', 0, globalVariable.pointSize);
-        end = new IR('putfield', wrapClassScope.getPropOffset('@this').offset, propSize(wrapClassScope.getProp('@this').prop.type!));//复制this
+        new IR('putfield', wrapClassScope.getPropOffset('@this').offset, propSize(wrapClassScope.getProp('@this').prop.type!));//复制this
     }
     new IR('dup', undefined, globalVariable.pointSize);//复制new出来的function对象
     let functionAdd = new IR('const_i64_load');
-    end = functionAdd;
     let patchItem: { [key: string]: IR } = {};
-    patchItem[`@function_${findx}`] = end;
+    patchItem[`@function_${functionIndex}`] = functionAdd;
     relocationTable.push(patchItem);//等待编译完成后重定向
     let capturedNames = Object.keys(fun.capture);
     if (capturedNames.length > 0) {
@@ -241,18 +245,36 @@ function functionGen(blockScope: BlockScope, fun: FunctionType) {
             new IR('dup', undefined, propSize(blockScope.getProp(capturedName).prop.type!));//复制new出来的function对象
             let desc = blockScope.getPropOffset(capturedName);
             new IR('v_load', desc.offset, desc.size);
-            end = new IR('putfield', wrapClassScope.getPropOffset(capturedName).offset, propSize(wrapClassScope.getProp(capturedName).prop.type!));//复制this
+            new IR('putfield', wrapClassScope.getPropOffset(capturedName).offset, propSize(wrapClassScope.getProp(capturedName).prop.type!));//复制this
         }
     }
-    symbolTable[`@function_${findx}`] = end.index;
+    let bodyCodeContainer: {
+        index: number;
+        codes: IR[];
+    } = { codes: [], index: 0 };
+    globalVariable.irContainer = bodyCodeContainer;//给函数体创建容器
     let jmp_rets = BlockScan(blockScope, [], argumentMap).jmp_rets;
+    symbolTable[`@function_${functionIndex}`] = bodyCodeContainer.codes;
+    console.log(`@function_${functionIndex}`);
+    console.table(bodyCodeContainer.codes)
+    globalVariable.irContainer = codeContainer;//回退
     let retIR = new IR('ret');
     for (let ir of jmp_rets) {
         ir.operand = retIR.index - ir.index;//处理所有ret jmp
     }
+    symbolTable[`${wrapName}_init`] = codeContainer.codes;
+    globalVariable.irContainer = lastContinaer;//回退
+    console.log(`${wrapName}_init`);
+    console.table(codeContainer.codes)
+    return wrapName;
 }
-function classScan(classScope: ClassScope, start: number):IR[] {
-    let ret: { lastIndex: number } = { lastIndex: start };
+function classScan(classScope: ClassScope): IR[] {
+    let lastContinaer = globalVariable.irContainer;//类似回溯，保留现场
+    let codeContainer: {
+        index: number;
+        codes: IR[];
+    } = { codes: [], index: 0 };
+    globalVariable.irContainer = codeContainer;
     //扫描property
     for (let propName of classScope.getPropNames()) {
         let prop = classScope.getProp(propName).prop;
@@ -260,8 +282,7 @@ function classScan(classScope: ClassScope, start: number):IR[] {
             new IR('v_load', 0);
             let nr = nodeRecursion(classScope, prop.initAST, [], false, []);
             let description = classScope.getPropOffset(propName);
-            let lastIR = fieldAssign(prop.type!, description.offset, nr.falselist).lastIR;
-            ret = { lastIndex: lastIR.index };
+            fieldAssign(prop.type!, description.offset, nr.falselist).lastIR;
         } else if (prop.type?.FunctionType) {
             let blockScope = new BlockScope(classScope, prop.type?.FunctionType, prop.type?.FunctionType.body!, { program });
             functionGen(blockScope, prop.type?.FunctionType);
@@ -271,10 +292,14 @@ function classScan(classScope: ClassScope, start: number):IR[] {
             defalutValue(prop.type!);
         }
     }
-    symbolTable[`${classScope.className}_init`] = start;//program初始化程序在位置0
-    return ret;
+    new IR('ret');
+    symbolTable[`${classScope.className}_init`] = codeContainer.codes;
+    globalVariable.irContainer = lastContinaer;//回退
+    console.log(`${classScope.className}_init`);
+    console.table(codeContainer.codes)
+    return codeContainer.codes;
 }
-let symbolTable: { [key: string]: number } = {};//符号表
+let symbolTable: { [key: string]: IR[] } = {};//符号表
 export default function programScan(primitiveProgram: Program) {
     let start = 0;
     program = primitiveProgram;
@@ -286,7 +311,12 @@ export default function programScan(primitiveProgram: Program) {
         _constructor: {},
         size: globalVariable.pointSize
     };
-    programScope.registerClassForCapture('@point');//注册类型
+    programScope.registerClassForCapture('@point');//注册point类型
+    let codeContainer: {
+        index: number;
+        codes: IR[];
+    } = { codes: [], index: 0 };
+    globalVariable.irContainer = codeContainer;
     //扫描property
     for (let variableName in program.property) {
         var prop = program.property[variableName];
@@ -303,13 +333,12 @@ export default function programScan(primitiveProgram: Program) {
             defalutValue(program.property[variableName].type!);
         }
     }
-    let end = new IR('ret');
-    symbolTable['program_init'] = start;//program初始化程序在位置0
+    new IR('ret');
+    symbolTable['program_init'] = codeContainer.codes;//program初始化程序在位置0
     //扫描definedType
     for (let typeName in program.definedType) {
-        classScan(programScope.getClassScope(typeName), end.index);
+        classScan(programScope.getClassScope(typeName));
     }
-    console.table(codes);
-    console.table(relocationTable);
-    console.table(symbolTable);
+    console.log(`program_init_init`);
+    console.table(codeContainer.codes)
 }

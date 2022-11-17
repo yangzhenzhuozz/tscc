@@ -112,7 +112,7 @@ interface ASTNode {
     cast?: { obj: ASTNode, type: TypeUsed };
     box?: { obj: ASTNode, type: TypeUsed };//装箱
     unbox?: { obj: ASTNode, type: TypeUsed };//拆箱
-    _new?: { type: TypeUsed, _arguments: ASTNode[] };
+    _new?: { type: {PlainType: PlainType;}, _arguments: ASTNode[] };
     _newArray?: { type: TypeUsed, initList: ASTNode[], placeholder: number };
     '[]'?: { rightChild: ASTNode, leftChild: ASTNode };
     "="?: { rightChild: ASTNode; leftChild: ASTNode; };//赋值操作的左节点必须是load节点或者accessField节点
