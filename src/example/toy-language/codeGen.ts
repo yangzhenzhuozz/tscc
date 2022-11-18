@@ -3,6 +3,8 @@ import { Scope, BlockScope, ClassScope, ProgramScope } from './scope.js';
 import { IR } from './ir.js'
 let program: Program;
 let programScope: ProgramScope;
+let relocationTable: { sym: string, ir: IR }[] = [];//重定位表
+let globalGunctionIndex = 0;
 function backPatch(list: IR[], target: IR) {
     for (let ir of list) {
         ir.operand = target.index - ir.index;
@@ -126,7 +128,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], inFunction:
     else if (node['_new'] != undefined) {
         let ir = new IR('new', program.definedType[node['_new'].type.PlainType.name].typeIndex);
         let call = new IR('call');
-        relocationTable.push([`${node['_new'].type.PlainType.name}_init`,call]);
+        relocationTable.push({ sym: `${node['_new'].type.PlainType.name}_init`, ir: call });
         console.error('还需要压入参数、调用对应的构造函数、设置endIR');
         return { startIR: ir, endIR: call, truelist: [], falselist: [] };
     }
@@ -181,8 +183,6 @@ function propSize(type: TypeUsed): number {
         return globalVariable.pointSize;
     }
 }
-let globalGunctionIndex = 0;
-let relocationTable: [string,IR][] = [];//重定位表
 function functionGen(blockScope: BlockScope, fun: FunctionType): string {
     let lastContinaer = globalVariable.irContainer;//类似回溯，保留现场
     let codeContainer: {
@@ -238,7 +238,7 @@ function functionGen(blockScope: BlockScope, fun: FunctionType): string {
     }
     new IR('dup', undefined, globalVariable.pointSize);//复制new出来的function对象
     let functionAdd = new IR('const_i64_load');
-    relocationTable.push([`@function_${functionIndex}`,functionAdd]);//等待编译完成后重定向
+    relocationTable.push({ sym: `@function_${functionIndex}`, ir: functionAdd });//等待编译完成后重定向
     let capturedNames = Object.keys(fun.capture);
     if (capturedNames.length > 0) {
         for (let capturedName of capturedNames) {
