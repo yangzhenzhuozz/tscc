@@ -523,7 +523,12 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
         for (let n of node["_newArray"].initList) {
             nodeRecursion(scope, n, label, declareRetType);
         }
-        result = { type: { ArrayType: { innerType: node["_newArray"].type } }, hasRet: false };
+        let baseType = node["_newArray"].type;
+        let type: TypeUsed = baseType;
+        for (let i = 0; i < node["_newArray"].initList.length + node["_newArray"].placeholder; i++) {
+            type = { ArrayType: { innerType: type } };
+        }
+        result = { type: type, hasRet: false };
     }
     else if (node["_switch"] != undefined) {
         let allCaseHasRet = true;
@@ -664,6 +669,12 @@ function BlockScan(blockScope: BlockScope, label: string[], declareRetType: { re
     return ret;
 }
 function functionScan(blockScope: BlockScope, fun: FunctionType): TypeUsed {
+    if (fun.templates) {
+        if (blockScope.classScope) {
+            throw `class内部的function不能是模板函数`;
+        }
+        console.log(fun.templates);
+    }
     if ((fun).hasFunctionScan) {//避免已经处理过的函数被重复处理
         /**
          *  var g:bool;

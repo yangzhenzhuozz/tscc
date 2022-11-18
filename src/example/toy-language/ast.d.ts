@@ -113,7 +113,7 @@ interface ASTNode {
     box?: { obj: ASTNode, type: TypeUsed };//装箱
     unbox?: { obj: ASTNode, type: TypeUsed };//拆箱
     _new?: { type: {PlainType: PlainType;}, _arguments: ASTNode[] };
-    _newArray?: { type: TypeUsed, initList: ASTNode[], placeholder: number };
+    _newArray?: { type: {PlainType?: PlainType;FunctionType?: FunctionType;}, initList: ASTNode[], placeholder: number };
     '[]'?: { rightChild: ASTNode, leftChild: ASTNode };
     "="?: { rightChild: ASTNode; leftChild: ASTNode; };//赋值操作的左节点必须是load节点或者accessField节点
     "+"?: { rightChild: ASTNode; leftChild: ASTNode; };

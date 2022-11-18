@@ -124,9 +124,11 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], inFunction:
         return { startIR: ir, endIR: ir, truelist: [], falselist: [] };
     }
     else if (node['_new'] != undefined) {
-        let ir = new IR('new');
-        console.error('还未实现');
-        return { startIR: ir, endIR: ir, truelist: [], falselist: [] };
+        let ir = new IR('new', program.definedType[node['_new'].type.PlainType.name].typeIndex);
+        let call = new IR('call');
+        relocationTable.push([`${node['_new'].type.PlainType.name}_init`,call]);
+        console.error('还需要压入参数、调用对应的构造函数、设置endIR');
+        return { startIR: ir, endIR: call, truelist: [], falselist: [] };
     }
     else { throw `还没支持的AST类型` };
 }
@@ -180,8 +182,8 @@ function propSize(type: TypeUsed): number {
     }
 }
 let globalGunctionIndex = 0;
-let relocationTable: { [key: string]: IR }[] = [];//重定位表
-function functionGen(blockScope: BlockScope, fun: FunctionType):string {
+let relocationTable: [string,IR][] = [];//重定位表
+function functionGen(blockScope: BlockScope, fun: FunctionType): string {
     let lastContinaer = globalVariable.irContainer;//类似回溯，保留现场
     let codeContainer: {
         index: number;
@@ -236,9 +238,7 @@ function functionGen(blockScope: BlockScope, fun: FunctionType):string {
     }
     new IR('dup', undefined, globalVariable.pointSize);//复制new出来的function对象
     let functionAdd = new IR('const_i64_load');
-    let patchItem: { [key: string]: IR } = {};
-    patchItem[`@function_${functionIndex}`] = functionAdd;
-    relocationTable.push(patchItem);//等待编译完成后重定向
+    relocationTable.push([`@function_${functionIndex}`,functionAdd]);//等待编译完成后重定向
     let capturedNames = Object.keys(fun.capture);
     if (capturedNames.length > 0) {
         for (let capturedName of capturedNames) {
@@ -251,7 +251,8 @@ function functionGen(blockScope: BlockScope, fun: FunctionType):string {
     let bodyCodeContainer: {
         index: number;
         codes: IR[];
-    } = { codes: [], index: 0 };
+        debug: true;
+    } = { codes: [], index: 0, debug: true };
     globalVariable.irContainer = bodyCodeContainer;//给函数体创建容器
     let jmp_rets = BlockScan(blockScope, [], argumentMap).jmp_rets;
     symbolTable[`@function_${functionIndex}`] = bodyCodeContainer.codes;

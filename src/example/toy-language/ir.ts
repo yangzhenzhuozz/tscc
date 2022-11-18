@@ -23,6 +23,7 @@ type opcode =
     'if_ne' |
     'jmp' |
     'dup' |//栈复制
+    'call' |
     'ret';
 export class IR {
     public index: number = globalVariable.irContainer.index++;
@@ -34,6 +35,9 @@ export class IR {
         this.operand = operand;
         this.opSize = opSize;
         globalVariable.irContainer.codes.push(this);
+        if (globalVariable.irContainer.debug) {
+            console.log(`${this}`);
+        }
     }
     public toString(): string {
         return `${this.index}\t${this.opCode}\t${this.operand}\t${this.opSize}`;

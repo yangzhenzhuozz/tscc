@@ -345,36 +345,36 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
         {
             "type:plainType": {
                 action: function ($, s): TypeUsed {
-                    return $[1] as TypeUsed;
+                    return $[0] as TypeUsed;
                 }
             }
         },//简单类型
         {
             "type:functionType": {
                 action: function ($, s): TypeUsed {
-                    return $[1] as TypeUsed;
+                    return $[0] as TypeUsed;
                 }
             }
         },//函数类型
         {
             "type:arrayType": {
                 action: function ($, s): TypeUsed {
-                    return $[1] as TypeUsed;
+                    return $[0] as TypeUsed;
                 }
             }
         },//数组类型
         {
             "plainType:basic_type": {
                 priority: "low_priority_for_[",
-                action: function ($, s): {PlainType: PlainType;} {
-                    return $[0] as {PlainType: PlainType;};
+                action: function ($, s): { PlainType: PlainType; } {
+                    return $[0] as { PlainType: PlainType; };
                 }
             }
         },//type可以是一个base_type
         {
             "plainType:basic_type templateSpecialization": {
                 priority: "low_priority_for_[",
-                action: function ($, s): {PlainType: PlainType;} {
+                action: function ($, s): { PlainType: PlainType; } {
                     let basic_type = $[0] as TypeUsed;
                     let templateSpecialization = $[1] as TypeUsed[];
                     return { PlainType: { name: basic_type.PlainType!.name, templateSpecialization: templateSpecialization } };
@@ -1833,12 +1833,12 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
         {
             "_new:new plainType  ( arguments )": {
                 action: function ($, s): ASTNode {
-                    return { desc: "ASTNode", _new: { type: $[1] as {PlainType: PlainType;}, _arguments: $[3] as ASTNode[] } };
+                    return { desc: "ASTNode", _new: { type: $[1] as { PlainType: PlainType; }, _arguments: $[3] as ASTNode[] } };
                 }
             }
         },//创建对象
         /**
-         * 假设只针对产生式array_init_list:array_inits array_placeholder 会出现如下二义性
+         * 针对产生式array_init_list:array_inits array_placeholder 会出现如下二义性
          * new int [10][3]可以有如下两种解释:(把array_placeholder规约成ε)
          * 1. (new int[10])[3],先new 一个一维数组,然后取下标为3的元素
          * 2. (new int[10][3]),new 一个二维数组
@@ -1846,13 +1846,21 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
          * 设置array_placeholder作为产生式头的两个产生式优先级低于'['
          */
         {
-            "_new:new type array_init_list": {
+            "_new:new plainType array_init_list": {
                 action: function ($, s): ASTNode {
                     let init_list = $[2] as { initList: ASTNode[], placeholder: number };
-                    return { desc: "ASTNode", _newArray: { type: $[1] as TypeUsed, initList: init_list.initList, placeholder: init_list.placeholder } };
+                    return { desc: "ASTNode", _newArray: { type: $[1] as { PlainType: PlainType; }, initList: init_list.initList, placeholder: init_list.placeholder } };
                 }
             }
-        },//创建数组
+        },//创建对象数组
+        {
+            "_new:new functionType array_init_list": {
+                action: function ($, s): ASTNode {
+                    let init_list = $[2] as { initList: ASTNode[], placeholder: number };
+                    return { desc: "ASTNode", _newArray: { type: $[1] as { FunctionType: FunctionType; }, initList: init_list.initList, placeholder: init_list.placeholder } };
+                }
+            }
+        },//创建函数数组
         {
             "array_init_list:array_inits array_placeholder": {
                 action: function ($, s): { initList: ASTNode[], placeholder: number } {

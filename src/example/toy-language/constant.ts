@@ -7,6 +7,7 @@ export const globalVariable: {
     irContainer: {
         index: number;
         codes: IR[];
+        debug?:boolean;
     };
 } = {
     pointSize: 8,
