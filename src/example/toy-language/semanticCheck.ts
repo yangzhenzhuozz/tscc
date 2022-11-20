@@ -251,6 +251,17 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
                 capture: node["immediate"].functionValue!.capture,
                 templates: node["immediate"].functionValue!.templates,
             };
+            /**
+             * 这里返回一个函数类型，不带body，因为只用于类型声明
+             * 因为下面这中代码:
+             * var a=(){body};
+             * a.type就不用带body了，如果是
+             * function a(){body}
+             * 这种代码，a.type中带有body
+             * 在代码生成阶段注意判断是类型声明还是函数定义
+             * var a=()=>{body}  -- a只是一个类型
+             * function a(){body} -- a是一个函数定义
+             */
             result = { type: { FunctionType: functionType }, hasRet: false };
         }
     }
@@ -370,7 +381,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
         typeCheck(conditionType, { PlainType: { name: 'bool' } }, `if条件只能是bool值`);
         let blockScope = new BlockScope(scope, undefined, node["ifStmt"].stmt);//ifStmt语句只能出现在block内部
         let blockRet = BlockScan(blockScope, label, declareRetType);
-        result = { hasRet: false, retType: blockRet.retType, type: { PlainType: { name: 'void' } } };
+        result = { hasRet: false, retType: undefined, type: { PlainType: { name: 'void' } } };
     }
     else if (node["ifElseStmt"] != undefined) {
         let type = nodeRecursion(scope, node["ifElseStmt"].condition, label, declareRetType).type;
@@ -379,7 +390,8 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
         let if_stmt_ret = BlockScan(blockScope_1, label, declareRetType);
         let blockScope_2 = new BlockScope(scope, undefined, node["ifElseStmt"].stmt2);//ifElseStmt语句只能出现在block内部
         let else_stmt_ret = BlockScan(blockScope_2, label, declareRetType ?? if_stmt_ret.retType);
-        result = { hasRet: if_stmt_ret.hasRet && else_stmt_ret.hasRet, retType: if_stmt_ret.retType, type: { PlainType: { name: 'void' } } };
+        let hasRet = if_stmt_ret.hasRet && else_stmt_ret.hasRet;
+        result = { hasRet: hasRet, retType: hasRet ? if_stmt_ret.retType : undefined, type: { PlainType: { name: 'void' } } };
     }
     else if (node["do_while"] != undefined) {
         if (node["do_while"].label != undefined) {
@@ -390,7 +402,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
         let blockScope = new BlockScope(scope, undefined, node["do_while"].stmt);//do_while语句只能出现在block内部
         let blockRet = BlockScan(blockScope, label, declareRetType);
         label.pop();
-        result = { hasRet: false, retType: blockRet.retType, type: { PlainType: { name: 'void' } } };
+        result = { hasRet: false, retType: undefined, type: { PlainType: { name: 'void' } } };
     }
     else if (node["_while"] != undefined) {
         if (node["_while"].label != undefined) {
@@ -401,7 +413,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
         let blockScope = new BlockScope(scope, undefined, node["_while"].stmt);//while语句只能出现在block内部
         let blockRet = BlockScan(blockScope, label, declareRetType);
         label.pop();
-        result = { hasRet: false, retType: blockRet.retType, type: { PlainType: { name: 'void' } } };
+        result = { hasRet: false, retType: undefined, type: { PlainType: { name: 'void' } } };
     }
     else if (node["_for"] != undefined) {
         if (node["_for"].label != undefined) {
@@ -638,11 +650,13 @@ function BlockScan(blockScope: BlockScope, label: string[], declareRetType: { re
                             '=': {
                                 leftChild: {
                                     desc: 'ASTNode',
-                                    load: 'value'
+                                    load: 'value',
+                                    type: sourceType
                                 },
                                 rightChild: {
                                     desc: 'ASTNode',
-                                    load: 'initVal'
+                                    load: 'initVal',
+                                    type: sourceType
                                 }
                             }
                         }]
@@ -655,7 +669,8 @@ function BlockScan(blockScope: BlockScope, label: string[], declareRetType: { re
                 loadNode['accessField'] = {
                     obj: {
                         desc: 'ASTNode',
-                        load: k
+                        load: k,
+                        type: wrapTypeUsed
                     },
                     field: "value"
                 };
@@ -708,7 +723,7 @@ function functionScan(blockScope: BlockScope, fun: FunctionType): TypeUsed {
         argIndex++;
     }
     let blockRet = BlockScan(blockScope, [], fun);
-    if (fun.retType?.PlainType?.name == 'void' && blockRet.retType == undefined) {//函数声明返回void，block没有返回语句，则设置block返回值为void
+    if (blockRet.retType == undefined) {//函数声明返回void，block没有返回语句，则设置block返回值为void
         blockRet.retType = { PlainType: { name: 'void' } };
     }
     if (fun.retType == undefined && (blockRet.retType == undefined || blockRet.retType?.PlainType?.name == 'exception')) {

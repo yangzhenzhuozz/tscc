@@ -1,22 +1,12 @@
-valuetype class myClass{
-    myClass(){
-        
-    }
-    var a:int=1;
-    var b:int=a;
-    var con:bool;
-    var c=con?a:b;
-    function f1(h:int):void{
-        var d=a<b?a<b?a:h:b;
-        var z1:bool;
-        function f2(h:int):void{
-            var m=z1?h:d;
-        };
-    };
-}
+function f1(a:int){
+    return  0;
+};
 valuetype class int{
     operator +(b:int):int{native};
     operator <(b:int):bool{native};
+    operator >(b:int):bool{native};
 }
 valuetype class bool{
+    operator ||(b:bool):bool{native};
+    operator &&(b:bool):bool{native};
 }

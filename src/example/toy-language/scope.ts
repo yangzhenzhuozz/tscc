@@ -3,7 +3,7 @@ import { globalVariable } from './constant.js'
 let debugID = 0;
 abstract class Scope {
     public ID;//用于调试的ID
-    protected property: VariableDescriptor;
+    public property: VariableDescriptor;
     protected fieldOffsetMap?: { [key: string]: { size: number, offset: number } };//在代码生成阶段使用
     /**
      * 
@@ -28,7 +28,7 @@ abstract class Scope {
                     let size = program.definedType[typeName].size!;
                     this.fieldOffsetMap[k] = { size: size, offset: offset };
                     offset += size;
-                } else {//否则按照指针处理
+                } else {//否则按照指针处理(包括function)
                     this.fieldOffsetMap[k] = { size: globalVariable.pointSize, offset: offset };
                     offset += globalVariable.pointSize;
                 }

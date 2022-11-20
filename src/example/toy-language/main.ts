@@ -30,7 +30,9 @@ function main() {
         program = semanticCheck(program);
         console.timeEnd(`阶段二耗时`);
         fs.writeFileSync(`./src/example/toy-language/output/stage-2.json`, JSON.stringify(program, null, 4));
+        console.time(`阶段三耗时`);
         codeGen(program);
+        console.timeEnd(`阶段三耗时`);
         fs.writeFileSync(`./src/example/toy-language/output/stage-3.json`, JSON.stringify(program.definedType, null, 4));
     } catch (e: unknown) {
         if (e instanceof Error) {
