@@ -264,6 +264,29 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], inFunction:
             jmpToFunctionEnd.push(startIR);
         }
         return { startIR: startIR, endIR: jmpToFunctionEnd[0], truelist: [], falselist: [], jmpToFunctionEnd: jmpToFunctionEnd };
+    } else if (node['call'] != undefined) {
+        let startIR: IR | undefined = undefined;
+        //参数逆序压栈
+        for (let i = node['call']._arguments.length - 1; i >= 0; i--) {
+            let nodeRet = nodeRecursion(scope, node['call']._arguments[i], label, inFunction, argumentMap, frameLevel, boolNot);
+            if (startIR == undefined) {
+                startIR = nodeRet.startIR;
+            }
+        }
+        //获取函数对象
+        let nodeRet = nodeRecursion(scope, node['call'].functionObj, label, inFunction, argumentMap, frameLevel, boolNot);
+        if (startIR == undefined) {
+            startIR = nodeRet.startIR;
+        }
+        new IR('getfield', globalVariable.pointSize * (0 + 1), globalVariable.pointSize);
+        let call = new IR('call');
+        return { startIR: startIR, endIR: call, truelist: [], falselist: [], jmpToFunctionEnd: [] };
+    }
+    else if (node['_newArray'] != undefined) {
+        console.log('here');
+        //创建数组之后，对每个元素调用default
+        //如果initList大于1，如var arr=new int[2][3];
+        //则arr的每个元素都设置为 int[3](defalut_int)
     }
     else { throw `还没支持的AST类型` };
 }

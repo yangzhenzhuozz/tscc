@@ -13,7 +13,8 @@ function basic_typeScan(source: string) {
     }
 }
 function main() {
-    userTypeDictionary.add('int');//注册系统类型
+    //注册系统类型
+    userTypeDictionary.add('int');
     userTypeDictionary.add('double');
     userTypeDictionary.add('bool');
     userTypeDictionary.add('void');

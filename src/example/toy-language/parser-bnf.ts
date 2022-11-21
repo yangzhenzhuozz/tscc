@@ -411,11 +411,11 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
                 action: function ($, s): TypeUsed {
                     let type = $[0] as TypeUsed;
                     let array_type_list = $[1] as number;
-                    let ret: ArrayType = { innerType: type };
+                    let ret: TypeUsed = type;
                     for (let i = 0; i < array_type_list; i++) {
-                        ret = { innerType: { ArrayType: ret } };
+                        ret = { ArrayType: { innerType: ret } };
                     }
-                    return { ArrayType: ret };
+                    return ret;
                 }
             }
         },//数组类型
@@ -430,7 +430,7 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
             "array_type_list:array_type_list [ ]": {
                 action: function ($, s): number {
                     let array_type_list = $[0] as number;
-                    return array_type_list++;
+                    return array_type_list + 1;
                 }
             }
         },//array_type_list可以是array_type_list后面再接一对方括号
