@@ -53,11 +53,13 @@ export class IR {
     public operand?: number;
     public opSize?: number;
     public tag?: string;
-    constructor(opCode: opcode, operand?: number, opSize?: number, tag?: string) {
+    public tag2?: string;
+    constructor(opCode: opcode, operand?: number, opSize?: number, tag?: string,tag2?:string) {
         this.opCode = opCode;
         this.operand = operand;
         this.opSize = opSize;
         this.tag = tag;
+        this.tag2=tag2;
         symbol.irs.push(this);
         if (symbol.debug) {
             console.log(`${this}`);
