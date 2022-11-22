@@ -864,7 +864,6 @@ export default function semanticCheck(primitiveProgram: Program) {
 
     for (let typeName in program.definedType) {//计算每个类型的size和索引
         program.definedType[typeName].size = sizeof(typeName);
-        program.definedType[typeName].typeIndex = globalVariable.typeIndex++;
     }
     let programSize = 0;
     //计算program的size

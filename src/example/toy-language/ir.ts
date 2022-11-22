@@ -1,7 +1,9 @@
-import { globalVariable } from "./constant.js";
+import { symbols } from "./constant.js";
 
 type opcode =
-    'new' |
+    'new' |//创建一个普通对象
+    'newFunc' |//创建一个函数对象
+    'newArray' |//操作数是基本类型，长度和是否仍然是一个数组从栈中取
     'p_load' |//将program指针压入表达式栈
     'push_stack_map' |//压入栈帧布局
     'pop_stack_map' |//弹出栈帧布局
@@ -25,15 +27,10 @@ type opcode =
     'dup' |//栈复制
     'call' |//以栈顶为目标，进行调用
     'abs_call' |//call一个绝对地址
-    'nop'|
+    'nop' |
     'ret';
-export let symbols: Symbol[] = [];//符号表
-export let addRelocationTable: { sym: string, ir: IR }[] = [];//重定位表
-export let typeRelocationTable: { sym: string, ir: IR }[] = [];//type重定向表
-export let stackFrameRelocationTable: { sym: string, ir: IR }[] = [];//stackFrame重定向表
-export let stackFrameMap: { [key: string]: { baseOffset: number, frame: { name: string, type: TypeUsed }[] } } = {};//栈布局记录
-let symbol: Symbol;
-export class Symbol {
+let symbol: _Symbol;
+export class _Symbol {
     public index = 0;
     public irs: IR[] = [];
     public name: string;
@@ -43,7 +40,7 @@ export class Symbol {
         this.debug = debug;
         symbols.push(this);
     }
-    public static setSymbol(container: Symbol) {
+    public static setSymbol(container: _Symbol) {
         symbol = container;
     }
     public static getSymbol() {

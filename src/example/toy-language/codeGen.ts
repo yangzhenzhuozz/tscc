@@ -1,7 +1,7 @@
-import { globalVariable } from './constant.js';
+import { addRelocationTable, globalVariable, registerType, stackFrameMap, stackFrameRelocationTable, symbols, typeRelocationTable } from './constant.js';
 import { Scope, BlockScope, ClassScope, ProgramScope } from './scope.js';
-import { IR, Symbol, symbols, addRelocationTable, typeRelocationTable, stackFrameMap, stackFrameRelocationTable } from './ir.js'
-import { FunctionSignWithArgumentAndRetType } from './lib.js';
+import { IR, _Symbol } from './ir.js'
+import { FunctionSign, FunctionSignWithArgumentAndRetType } from './lib.js';
 let program: Program;
 let programScope: ProgramScope;
 let globalFunctionIndex = 0;
@@ -126,7 +126,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], inFunction:
             let functionWrapScpoe = programScope.getClassScope(functionWrapName);
             let this_type = functionWrapScpoe.getProp(`@this`).prop.type!;
             let this_desc = functionWrapScpoe.getPropOffset(`@this`);
-            let startIR = new IR('new', undefined, undefined, functionWrapName);
+            let startIR = new IR('newFunc', undefined, undefined, functionWrapName);
             typeRelocationTable.push({ sym: functionWrapName, ir: startIR });
             new IR('dup', globalVariable.pointSize);//复制一份，用来给init使用
             let call = new IR('abs_call', undefined, undefined, `${functionWrapName}_init`);//执行调用
@@ -283,10 +283,41 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], inFunction:
         return { startIR: startIR, endIR: call, truelist: [], falselist: [], jmpToFunctionEnd: [] };
     }
     else if (node['_newArray'] != undefined) {
-        console.log('here');
         //创建数组之后，对每个元素调用default
         //如果initList大于1，如var arr=new int[2][3];
         //则arr的每个元素都设置为 int[3](defalut_int)
+        //只是简单的测试，更复杂的明天再试
+        // let startIR: IR;
+        // if (node['_newArray'].initList.length == 1) {
+        //     if (node['_newArray'].placeholder == 0) {
+        //         if (node['_newArray'].type.PlainType) {
+        //             let typeName = node['_newArray'].type.PlainType.name;
+        //             startIR = nodeRecursion(scope, node['_newArray'].initList[0], label, inFunction, argumentMap, frameLevel, boolNot).startIR;//读取
+        //             new IR('const_i32_load',0);//不再是一个数组
+        //             new IR('newArray', program.definedType[typeName].typeIndex);
+        //         } else {
+        //             let functionSign = FunctionSign(node['_newArray'].type.FunctionType!);//注册函数类型，用于做数组转型
+        //             if (program.definedType[functionSign] == undefined) {
+        //                 let typeIndex = globalVariable.typeIndex++;
+        //                 program.definedType[functionSign] = {
+        //                     operatorOverload: {},
+        //                     _constructor: {},
+        //                     property: {},
+        //                     size: globalVariable.pointSize,
+        //                     typeIndex: typeIndex
+        //                 };
+        //                 programScope.registerClassForCapture(functionSign);//注册类型
+        //             }
+        //             startIR = new IR('newArray', program.definedType[functionSign].typeIndex,);
+        //         }
+        //     } else {
+        //         //还是一个数组
+        //     }
+        // }
+        // else {
+        //     throw `暂时还未支持多维数组`;
+        // }
+        throw `暂时还未支持数组`;
     }
     else { throw `还没支持的AST类型` };
 }
@@ -313,7 +344,6 @@ function defalutValue(type: TypeUsed): { startIR: IR, endIR: IR, truelist: IR[],
 function BlockScan(blockScope: BlockScope, label: string[], argumentMap: { offset: number, size: number }[], frameLevel: number): { startIR: IR, jmpToFunctionEnd: IR[] } {
     let stackFrameMapIndex = globalVariable.stackFrameMapIndex++;
     let push_stack_map = new IR('push_stack_map', undefined, undefined, `@StackFrame_${stackFrameMapIndex}`);
-    console.error('函数return的时候需要弹出正确的frame数量');
     stackFrameRelocationTable.push({ sym: `@StackFrame_${stackFrameMapIndex}`, ir: push_stack_map });
     let ret: { startIR: IR, jmpToFunctionEnd: IR[] } = { startIR: push_stack_map, jmpToFunctionEnd: [] };//所有返回指令
     for (let i = 0; i < blockScope.block!.body.length; i++) {
@@ -359,7 +389,7 @@ function propSize(type: TypeUsed): number {
     }
 }
 function functionGen(blockScope: BlockScope, fun: FunctionType): string {
-    let lastSymbol = Symbol.getSymbol();//类似回溯，保留现场
+    let lastSymbol = _Symbol.getSymbol();//类似回溯，保留现场
     let argumentMap: { offset: number, size: number }[] = [];
     let argOffset = 0;
     for (let argumentName in fun._arguments) {
@@ -369,9 +399,10 @@ function functionGen(blockScope: BlockScope, fun: FunctionType): string {
     }
     let functionIndex = globalFunctionIndex++;
     let functionWrapName = `@functionWrap_${functionIndex}`;
-    let wrapInitSymbol = new Symbol(`${`${functionWrapName}_init`}`);
-    Symbol.setSymbol(wrapInitSymbol);
+    let wrapInitSymbol = new _Symbol(`${`${functionWrapName}_init`}`);
+    _Symbol.setSymbol(wrapInitSymbol);
     let property: VariableDescriptor = {};
+    let functionTypeIndex = registerType({ FunctionType: fun });//在类型表中注册函数类型
     //为函数对象创建两个基本值
     property['@this'] = {
         variable: 'val',
@@ -385,6 +416,18 @@ function functionGen(blockScope: BlockScope, fun: FunctionType): string {
             PlainType: { name: '@point' }
         }
     };
+    property['@funType'] = {
+        variable: 'val',
+        type: {
+            PlainType: { name: 'int' }
+        },
+        initAST: {
+            desc: 'ASTNode',
+            immediate: {
+                primiviteValue: functionTypeIndex
+            }
+        }
+    };
     for (let c in fun.capture) {
         property[c] = {
             variable: 'val',
@@ -392,15 +435,14 @@ function functionGen(blockScope: BlockScope, fun: FunctionType): string {
         };
     }
     //注册函数容器
-    let typeIndex = globalVariable.typeIndex++;
     program.definedType[functionWrapName] = {
         operatorOverload: {},
         _constructor: {},
         property: property,
-        size: globalVariable.pointSize + Object.keys(fun.capture).length * globalVariable.pointSize,
-        typeIndex: typeIndex
+        size: globalVariable.pointSize + Object.keys(fun.capture).length * globalVariable.pointSize
     };
     programScope.registerClassForCapture(functionWrapName);//注册类型
+    registerType({ PlainType: { name: functionWrapName } });//在类型表中注册函数包裹类的类型
     new IR('dup', undefined, globalVariable.pointSize);//复制new出来的function对象
     let functionAdd = new IR('const_i64_load', undefined, undefined, `@function_${functionIndex}`);
     addRelocationTable.push({ sym: `@function_${functionIndex}`, ir: functionAdd });//等待编译完成后重定向
@@ -410,20 +452,20 @@ function functionGen(blockScope: BlockScope, fun: FunctionType): string {
     putfield(exec_type, exec_desc.offset, [], []);//设置exec
     new IR('ret', globalVariable.pointSize);//classInit返回
     //函数对象init只初始化@exec字段，其他地方由创建者完成(program、class、block)
-    let functionSymbol = new Symbol(`@function_${functionIndex}`);
-    Symbol.setSymbol(functionSymbol);
+    let functionSymbol = new _Symbol(`@function_${functionIndex}`);
+    _Symbol.setSymbol(functionSymbol);
     let jmpToFunctionEnd = BlockScan(blockScope, [], argumentMap, 1).jmpToFunctionEnd;
     let retIR = new IR('ret', argOffset);
     for (let ir of jmpToFunctionEnd) {
         ir.operand = retIR.index - ir.index;//处理所有ret jmp
     }
-    Symbol.setSymbol(lastSymbol);//回退
+    _Symbol.setSymbol(lastSymbol);//回退
     return functionWrapName;
 }
 function classScan(classScope: ClassScope) {
-    let lastSymbol = Symbol.getSymbol();//类似回溯，保留现场
-    let symbol = new Symbol(`${classScope.className}_init`);
-    Symbol.setSymbol(symbol);
+    let lastSymbol = _Symbol.getSymbol();//类似回溯，保留现场
+    let symbol = new _Symbol(`${classScope.className}_init`);
+    _Symbol.setSymbol(symbol);
     //扫描property
     for (let propName of classScope.getPropNames()) {
         let prop = classScope.getProp(propName).prop;
@@ -439,7 +481,7 @@ function classScan(classScope: ClassScope) {
             let this_type = functionWrapScpoe.getProp(`@this`).prop.type!;
             let this_desc = functionWrapScpoe.getPropOffset(`@this`);
             new IR('v_load', 0, globalVariable.pointSize);
-            let newIR = new IR('new', undefined, undefined, functionWrapName);
+            let newIR = new IR('newFunc', undefined, undefined, functionWrapName);
             typeRelocationTable.push({ sym: functionWrapName, ir: newIR });
             new IR('dup', globalVariable.pointSize);//复制一份，用来给init使用
             let call = new IR('abs_call', undefined, undefined, `${functionWrapName}_init`);//执行调用
@@ -454,7 +496,7 @@ function classScan(classScope: ClassScope) {
         }
     }
     new IR('ret', globalVariable.pointSize);//classInit返回
-    Symbol.setSymbol(lastSymbol);//回退
+    _Symbol.setSymbol(lastSymbol);//回退
 }
 export default function programScan(primitiveProgram: Program) {
     program = primitiveProgram;
@@ -467,10 +509,12 @@ export default function programScan(primitiveProgram: Program) {
         size: globalVariable.pointSize
     };
     programScope.registerClassForCapture('@point');//注册point类型
+    for (let typeName in program.definedType) {
+        registerType({ PlainType: { name: typeName } });//在类型表中注册类型
+    }
 
-
-    let symbol = new Symbol('program_init');
-    Symbol.setSymbol(symbol);
+    let symbol = new _Symbol('program_init');
+    _Symbol.setSymbol(symbol);
 
     //扫描property
     for (let variableName in program.property) {
@@ -484,7 +528,7 @@ export default function programScan(primitiveProgram: Program) {
             let blockScope = new BlockScope(programScope, prop.type?.FunctionType, prop.type?.FunctionType.body!, { program });
             let functionWrapName = functionGen(blockScope, prop.type?.FunctionType);
             new IR('p_load');
-            let newIR = new IR('new', undefined, undefined, functionWrapName);//创建函数包裹类
+            let newIR = new IR('newFunc', undefined, undefined, functionWrapName);//创建函数包裹类
             typeRelocationTable.push({ sym: functionWrapName, ir: newIR });
             new IR('dup', globalVariable.pointSize);//复制一份，用来给init使用
             let call = new IR('abs_call', undefined, undefined, `${functionWrapName}_init`);//执行调用
