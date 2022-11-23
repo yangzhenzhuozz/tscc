@@ -5,7 +5,6 @@ import { Scope, BlockScope, ClassScope, ProgramScope } from './scope.js';
 import { globalVariable } from './constant.js'
 let program: Program;
 let programScope: ProgramScope;
-let wrapIndex = 0;
 function OperatorOverLoad(scope: Scope, leftObj: ASTNode, rightObj: ASTNode | undefined, originNode: ASTNode, op: opType | opType2): { type: TypeUsed, location?: 'prop' | 'field' | 'stack' | 'array_element' } {
     let leftType = nodeRecursion(scope, leftObj, [], {}).type;
     //双目运算符
@@ -540,7 +539,8 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
     }
     else if (node["_newArray"] != undefined) {
         for (let n of node["_newArray"].initList) {
-            nodeRecursion(scope, n, label, declareRetType);
+            let astRet = nodeRecursion(scope, n, label, declareRetType);
+            typeCheck(astRet.type, { PlainType: { name: 'int' } },'数组创建参数只能是int');
         }
         let baseType = node["_newArray"].type;
         let type: TypeUsed = baseType;

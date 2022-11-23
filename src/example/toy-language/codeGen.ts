@@ -1,7 +1,7 @@
 import { addRelocationTable, globalVariable, registerType, stackFrameMap, stackFrameRelocationTable, symbols, typeRelocationTable } from './constant.js';
 import { Scope, BlockScope, ClassScope, ProgramScope } from './scope.js';
 import { IR, _Symbol } from './ir.js'
-import { FunctionSign, FunctionSignWithArgumentAndRetType } from './lib.js';
+import { FunctionSign, FunctionSignWithArgumentAndRetType, TypeUsedSign } from './lib.js';
 let program: Program;
 let programScope: ProgramScope;
 let globalFunctionIndex = 0;
@@ -149,7 +149,6 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], inFunction:
                 endIR = putfield(captureType, targetDesc.offset, [], []);
             }
             return { startIR: startIR, endIR: endIR, truelist: [], falselist: [] };
-
         } else {
             //如果没有init命令则使用defalut
             return defalutValue(node['def'][name].type!);
@@ -283,41 +282,25 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], inFunction:
         return { startIR: startIR, endIR: call, truelist: [], falselist: [], jmpToFunctionEnd: [] };
     }
     else if (node['_newArray'] != undefined) {
-        //创建数组之后，对每个元素调用default
-        //如果initList大于1，如var arr=new int[2][3];
-        //则arr的每个元素都设置为 int[3](defalut_int)
-        //只是简单的测试，更复杂的明天再试
-        // let startIR: IR;
-        // if (node['_newArray'].initList.length == 1) {
-        //     if (node['_newArray'].placeholder == 0) {
-        //         if (node['_newArray'].type.PlainType) {
-        //             let typeName = node['_newArray'].type.PlainType.name;
-        //             startIR = nodeRecursion(scope, node['_newArray'].initList[0], label, inFunction, argumentMap, frameLevel, boolNot).startIR;//读取
-        //             new IR('const_i32_load',0);//不再是一个数组
-        //             new IR('newArray', program.definedType[typeName].typeIndex);
-        //         } else {
-        //             let functionSign = FunctionSign(node['_newArray'].type.FunctionType!);//注册函数类型，用于做数组转型
-        //             if (program.definedType[functionSign] == undefined) {
-        //                 let typeIndex = globalVariable.typeIndex++;
-        //                 program.definedType[functionSign] = {
-        //                     operatorOverload: {},
-        //                     _constructor: {},
-        //                     property: {},
-        //                     size: globalVariable.pointSize,
-        //                     typeIndex: typeIndex
-        //                 };
-        //                 programScope.registerClassForCapture(functionSign);//注册类型
-        //             }
-        //             startIR = new IR('newArray', program.definedType[functionSign].typeIndex,);
-        //         }
-        //     } else {
-        //         //还是一个数组
-        //     }
-        // }
-        // else {
-        //     throw `暂时还未支持多维数组`;
-        // }
-        throw `暂时还未支持数组`;
+        let startIR: IR | undefined = undefined;
+        let initList = node['_newArray'].initList;
+        let placeholder = node['_newArray'].placeholder;
+        let realType: TypeUsed = node['_newArray'].type;
+        registerType(realType);//如果是plainType，肯定已经注册过了，如果是functionType，可能没有注册，这时候注册一下
+        for (let i = 0; i < initList.length + placeholder; i++) {
+            realType = { ArrayType: { innerType: realType } };
+            registerType(realType);//如果是第一次创建，需要注册，registerType会自己检查之前有没有注册过
+        }
+        for (let ast of initList) {
+            let astRet = nodeRecursion(scope, ast, label, inFunction, argumentMap, frameLevel, boolNot);
+            if (startIR == undefined) {
+                startIR = astRet.startIR;
+            }
+        }
+        let typeName = TypeUsedSign(realType);
+        let newArray = new IR('newArray', initList.length + placeholder, undefined, typeName);
+        typeRelocationTable.push({ sym: typeName, ir: newArray });
+        return { startIR: startIR!, endIR: newArray, truelist: [], falselist: [], jmpToFunctionEnd: [] };
     }
     else { throw `还没支持的AST类型` };
 }
@@ -339,6 +322,7 @@ function putfield(type: TypeUsed, offset: number, truelist: IR[], falselist: IR[
 }
 function defalutValue(type: TypeUsed): { startIR: IR, endIR: IR, truelist: IR[], falselist: IR[] } {
     // throw `unimplemented`
+    //要注意valueType的嵌套
     return {} as any;
 }
 function BlockScan(blockScope: BlockScope, label: string[], argumentMap: { offset: number, size: number }[], frameLevel: number): { startIR: IR, jmpToFunctionEnd: IR[] } {
@@ -469,7 +453,7 @@ function classScan(classScope: ClassScope) {
             let this_type = functionWrapScpoe.getProp(`@this`).prop.type!;
             let this_desc = functionWrapScpoe.getPropOffset(`@this`);
             new IR('v_load', 0, globalVariable.pointSize);
-            let newIR = new IR('newFunc', undefined, undefined, fun.wrapName,fun.realTypeName);
+            let newIR = new IR('newFunc', undefined, undefined, fun.wrapName, fun.realTypeName);
             typeRelocationTable.push({ sym: fun.wrapName, sym2: fun.realTypeName, ir: newIR });
             new IR('dup', globalVariable.pointSize);//复制一份，用来给init使用
             let call = new IR('abs_call', undefined, undefined, `${fun.wrapName}_init`);//执行调用
@@ -516,7 +500,7 @@ export default function programScan(primitiveProgram: Program) {
             let blockScope = new BlockScope(programScope, prop.type?.FunctionType, prop.type?.FunctionType.body!, { program });
             let fun = functionGen(blockScope, prop.type?.FunctionType);
             new IR('p_load');
-            let newIR = new IR('newFunc', undefined, undefined, fun.wrapName,fun.realTypeName);//创建函数包裹类
+            let newIR = new IR('newFunc', undefined, undefined, fun.wrapName, fun.realTypeName);//创建函数包裹类
             typeRelocationTable.push({ sym: fun.wrapName, sym2: fun.realTypeName, ir: newIR });
             new IR('dup', globalVariable.pointSize);//复制一份，用来给init使用
             let call = new IR('abs_call', undefined, undefined, `${fun.wrapName}_init`);//执行调用

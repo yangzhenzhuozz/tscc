@@ -14,6 +14,8 @@ type opcode =
     'const_i32_load' |
     'const_i64_load' |
     'const_i8_load' |
+    'i32_inc' |
+    'i32_dec' |
     'i32_add' |
     'i32_cmp' |
     'i_if_gt' |
@@ -54,12 +56,12 @@ export class IR {
     public opSize?: number;
     public tag?: string;
     public tag2?: string;
-    constructor(opCode: opcode, operand?: number, opSize?: number, tag?: string,tag2?:string) {
+    constructor(opCode: opcode, operand?: number, opSize?: number, tag?: string, tag2?: string) {
         this.opCode = opCode;
         this.operand = operand;
         this.opSize = opSize;
         this.tag = tag;
-        this.tag2=tag2;
+        this.tag2 = tag2;
         symbol.irs.push(this);
         if (symbol.debug) {
             console.log(`${this}`);
