@@ -282,7 +282,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], inFunction:
         let initList = node['_newArray'].initList;
         let placeholder = node['_newArray'].placeholder;
         let realType: TypeUsed = node['_newArray'].type;
-        registerType(realType);//如果是plainType，肯定已经注册过了，如果是functionType，可能没有注册，这时候注册一下
+        registerType(realType);//如果是plainType，肯定已经注册过了，如果是functionType，可能没有注册(没有生成过这个类型的函数)，这时候注册一下
         for (let i = 0; i < initList.length + placeholder; i++) {
             realType = { ArrayType: { innerType: realType } };
             registerType(realType);//如果是第一次创建，需要注册，registerType会自己检查之前有没有注册过
