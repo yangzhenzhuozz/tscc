@@ -31,8 +31,8 @@ type opcode =
     'abs_call' |//call一个绝对地址
     'nop' |
     'ret';
-let symbol: _Symbol;
-export class _Symbol {
+let symbol: IRContainer;
+export class IRContainer {
     public index = 0;
     public irs: IR[] = [];
     public name: string;
@@ -42,7 +42,7 @@ export class _Symbol {
         this.debug = debug;
         symbols.push(this);
     }
-    public static setSymbol(container: _Symbol) {
+    public static setSymbol(container: IRContainer) {
         symbol = container;
     }
     public static getSymbol() {
@@ -52,22 +52,23 @@ export class _Symbol {
 export class IR {
     public index: number = symbol.index++;
     public opCode: opcode;
-    public operand?: number;
-    public opSize?: number;
-    public tag?: string;
+    public operand1?: number;
+    public operand2?: number;
+    public operand3?: number;
+    public tag1?: string;
     public tag2?: string;
-    constructor(opCode: opcode, operand?: number, opSize?: number, tag?: string, tag2?: string) {
+    public tag3?: string;
+    constructor(opCode: opcode, operand1?: number, operand2?: number, operand3?: number, tag1?: string, tag2?: string, tag3?: string) {
         this.opCode = opCode;
-        this.operand = operand;
-        this.opSize = opSize;
-        this.tag = tag;
+        this.operand1 = operand1;
+        this.operand2 = operand2;
+        this.operand3 = operand3;
+        this.tag1 = tag1;
         this.tag2 = tag2;
+        this.tag3 = tag3;
         symbol.irs.push(this);
         if (symbol.debug) {
             console.log(`${this}`);
         }
-    }
-    public toString(): string {
-        return `${this.index}\t${this.opCode}\t${this.operand}\t${this.opSize}`;
     }
 }
