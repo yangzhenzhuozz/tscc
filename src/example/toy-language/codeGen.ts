@@ -281,11 +281,9 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], inFunction:
         let startIR: IR | undefined = undefined;
         let initList = node['_newArray'].initList;
         let placeholder = node['_newArray'].placeholder;
-        let realType: TypeUsed = node['_newArray'].type;
-        registerType(realType);//如果是plainType，肯定已经注册过了，如果是functionType，可能没有注册(没有生成过这个类型的函数)，这时候注册一下
+        let type: TypeUsed = node['_newArray'].type;
         for (let i = 0; i < initList.length + placeholder; i++) {
-            realType = { ArrayType: { innerType: realType } };
-            registerType(realType);//如果是第一次创建，需要注册，registerType会自己检查之前有没有注册过
+            type = { ArrayType: { innerType: type } };
         }
         for (let ast of initList) {
             let astRet = nodeRecursion(scope, ast, label, inFunction, argumentMap, frameLevel, boolNot);
@@ -293,7 +291,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], inFunction:
                 startIR = astRet.startIR;
             }
         }
-        let typeName = TypeUsedSign(realType);
+        let typeName = TypeUsedSign(type);
         let newArray = new IR('newArray', initList.length + placeholder, undefined, undefined, typeName);
         typeRelocationTable.push({ sym: typeName, ir: newArray });
         return { startIR: startIR!, endIR: newArray, truelist: [], falselist: [], jmpToFunctionEnd: [] };
@@ -383,7 +381,6 @@ function functionGen(blockScope: BlockScope, fun: FunctionType): { wrapClassName
     IRContainer.setSymbol(wrapInitSymbol);
     new IR('ret', globalVariable.pointSize);//functionWrapInit返回
     let property: VariableDescriptor = {};
-    registerType({ FunctionType: fun });//在类型表中注册函数类型
     //为函数对象创建两个基本值
     property['@this'] = {
         variable: 'val',
@@ -452,17 +449,6 @@ function classScan(classScope: ClassScope) {
 export default function programScan(primitiveProgram: Program) {
     program = primitiveProgram;
     programScope = new ProgramScope(program, { program: program });
-    program.definedType['@point'] = {
-        modifier: 'valuetype',
-        property: {},
-        operatorOverload: {},
-        _constructor: {},
-        size: globalVariable.pointSize
-    };
-    programScope.registerClassForCapture('@point');//注册point类型
-    for (let typeName in program.definedType) {
-        registerType({ PlainType: { name: typeName } });//在类型表中注册类型
-    }
 
     let symbol = new IRContainer('program_init');
     IRContainer.setSymbol(symbol);

@@ -1,15 +1,16 @@
 //预处理AST
-import fs from 'fs'
 import { FunctionSign, FunctionSignWithArgumentAndRetType, TypeUsedSign, FunctionSignWithArgument } from './lib.js';
 import { Scope, BlockScope, ClassScope, ProgramScope } from './scope.js';
-import { globalVariable } from './constant.js'
+import { globalVariable, registerType } from './constant.js'
 let program: Program;
 let programScope: ProgramScope;
 function OperatorOverLoad(scope: Scope, leftObj: ASTNode, rightObj: ASTNode | undefined, originNode: ASTNode, op: opType | opType2): { type: TypeUsed, location?: 'prop' | 'field' | 'stack' | 'array_element' } {
     let leftType = nodeRecursion(scope, leftObj, [], {}).type;
+    registerType(leftType);
     //双目运算符
     if (rightObj != undefined) {
         let rightType = nodeRecursion(scope, rightObj, [], {}).type;
+        registerType(rightType);
         //如果是数组的[]运算
         if (op == '[]' && leftType.ArrayType != undefined) {
             typeCheck(rightType, { PlainType: { name: 'int' } }, `数组索引必须是int`);
@@ -95,7 +96,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
                 functionScan(new BlockScope(scope, node['def'][name].type!.FunctionType!, node['def'][name].type!.FunctionType!.body!), node['def'][name].type!.FunctionType!);//如果是定义了函数，则扫描一下
             }
         }
-        result = { type: { PlainType: { name: 'void' } }, hasRet: false };
+        result = { type: prop.type!, hasRet: false };//经过推导，类型已经确定
     }
     else if (node["load"] != undefined) {
         let name = node["load"];
@@ -188,7 +189,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
                     } else {
                         //改成set调用
                         functionScan(new BlockScope(classScope, prop.setter, prop.setter.body!), prop.setter);
-                        type = { PlainType: { name: 'void' } };//set没有返回值
+                        type = prop.setter._arguments[0].type!;//argument已经定义了类型
                         node.call = { functionObj: { desc: 'ASTNode', accessField: { obj: node["accessField"].obj, field: `@set_${node["accessField"].field}` } }, _arguments: [assignmentObj] };
                     }
                 } else {
@@ -461,6 +462,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
         result = { hasRet: false, type: { PlainType: { name: 'void' } } };
     }
     else if (node["_instanceof"] != undefined) {
+        registerType(node["_instanceof"].type);//这里需要额外注册一下，这个类型不会被nodeRecursion推导，如:obj instanceof ()=>int; obj会被nodeRecursion注册，但是()=>int就不会被注册
         let objType = nodeRecursion(scope, node["_instanceof"].obj, label, declareRetType).type;
         if (objType.PlainType?.name != 'object') {
             throw `只有object类型才可以instanceof`;
@@ -540,12 +542,12 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
     else if (node["_newArray"] != undefined) {
         for (let n of node["_newArray"].initList) {
             let astRet = nodeRecursion(scope, n, label, declareRetType);
-            typeCheck(astRet.type, { PlainType: { name: 'int' } },'数组创建参数只能是int');
+            typeCheck(astRet.type, { PlainType: { name: 'int' } }, '数组创建参数只能是int');
         }
-        let baseType = node["_newArray"].type;
-        let type: TypeUsed = baseType;
+        let type: TypeUsed = node["_newArray"].type;
         for (let i = 0; i < node["_newArray"].initList.length + node["_newArray"].placeholder; i++) {
             type = { ArrayType: { innerType: type } };
+            registerType(type);//这里需要额外注册一下，这个类型不会被nodeRecursion推导，如:var arr:int[][][]; int[][][]会被注册，但是内部的int[]和int[][]就不会被注册
         }
         result = { type: type, hasRet: false };
     }
@@ -587,6 +589,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
         throw new Error(`未知节点`);
     }
     node.type = result.type;
+    registerType(result.type);//注册类型，除了instanceof之外的类型都会在这里注册
     return result;
 }
 let captureWrapIndex = 0;
@@ -769,6 +772,7 @@ function ClassScan(classScope: ClassScope) {
                 functionScan(blockScope, prop.setter);
             }
         }
+        registerType(prop.type!);//经过推导，类型已经确定了
     }
     let operatorOverloads = program.definedType[classScope.className].operatorOverload;
     for (let op in operatorOverloads) {//扫描重载操作符
@@ -849,11 +853,22 @@ export default function semanticCheck(primitiveProgram: Program) {
             let blockScope = new BlockScope(programScope, prop.type?.FunctionType, prop.type?.FunctionType.body!);
             functionScan(blockScope, prop.type?.FunctionType);
         }
+        registerType(prop.type!);//经过推导，类型已经确定了
     }
+    program.definedType['@point'] = {
+        modifier: 'valuetype',
+        property: {},
+        operatorOverload: {},
+        _constructor: {},
+        size: globalVariable.pointSize
+    };
+    programScope.registerClassForCapture('@point');//注册point类型
+    registerType({ PlainType: { name: '@point' } });//在类型表中注册类型
     //扫描因为闭包捕获而新增的类型
     for (let typeName of wrapClassNames) {
         programScope.registerClassForCapture(typeName);//因为包裹类不会用到其他未注册的类型，所以可以边注册边使用
         ClassScan(programScope.getClassScope(typeName));
+        registerType({ PlainType: { name: typeName } });
     }
     //检查值类型是否递归包含
     for (let typeName in program.definedType) {
