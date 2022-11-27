@@ -48,6 +48,17 @@ export class IRContainer {
     public static getSymbol() {
         return symbol;
     }
+    public toBinary(): BigUint64Array {
+        let bin = new BigUint64Array(4 * this.irs.length);//每条指令32字节(是不是太浪费了，单字节指令也用这么多内存，太奢侈了)
+        for (let i = 0; i < this.irs.length; i++) {
+            let ir = this.irs[i];
+            bin[i * 4 + 0] = BigInt(OPCODE[ir.opCode]);
+            bin[i * 4 + 1] = ir.operand1 != undefined ? BigInt(ir.operand1) : BigInt(0);
+            bin[i * 4 + 2] = ir.operand2 != undefined ? BigInt(ir.operand2) : BigInt(0);
+            bin[i * 4 + 3] = ir.operand3 != undefined ? BigInt(ir.operand3) : BigInt(0);
+        }
+        return bin;
+    }
 }
 export class IR {
     public index: number = symbol.index++;
@@ -72,8 +83,5 @@ export class IR {
         if (symbol.debug) {
             console.log(`${this}`);
         }
-    }
-    public toBinaty():Uint8Array {
-       return new Uint8Array(32);//每条指令32字节(是不是太占地方了)
     }
 }

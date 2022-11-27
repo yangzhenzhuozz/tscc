@@ -1,3 +1,4 @@
+import fs from 'fs';
 import { addRelocationTable, globalVariable, registerType, stackFrameTable, stackFrameRelocationTable, symbols, typeRelocationTable } from './constant.js';
 import { Scope, BlockScope, ClassScope, ProgramScope } from './scope.js';
 import { IR, IRContainer } from './ir.js'
@@ -491,6 +492,7 @@ export default function programScan(primitiveProgram: Program) {
     for (let symbol of symbols) {
         console.log(symbol.name);
         console.table(symbol.irs);
+        fs.writeFileSync(`./src/example/toy-language/output/` + symbol.name + '.bin', Buffer.from(symbol.toBinary()));
     }
     console.log(`addRelocationTable`);
     console.table(addRelocationTable);
