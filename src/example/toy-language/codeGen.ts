@@ -4,9 +4,15 @@ import { IR, IRContainer } from './ir.js'
 import { FunctionSign, FunctionSignWithArgumentAndRetType, TypeUsedSign } from './lib.js';
 let program: Program;
 let programScope: ProgramScope;
-function backPatch(list: IR[], target: IR) {
+/**
+ * 
+ * @param list 
+ * @param target 
+ * @param offset 补偿，默认为0
+ */
+function backPatch(list: IR[], target: IR, offset = 0) {
     for (let ir of list) {
-        ir.operand1 = target.index - ir.index;
+        ir.operand1 = target.index - ir.index + offset;
     }
 }
 function merge(a: IR[], b: IR[]) {
@@ -19,7 +25,7 @@ function merge(a: IR[], b: IR[]) {
  * @param label 
  * @param inFunction 是否在函数中，这个参数决定了this的取值方式
  * @param argumentMap 函数参数的补偿和size，只用于loadArgument节点
- * @param boolNot 布尔运算的时候是否要取反向生成操作符，因为'||'和'&&'的left运算不同，默认取反可以节约指令
+ * @param boolNot 布尔运算的时候是否要取反向生成操作符，'||'和'&&'对leftObj采取的比较跳转指令不同，默认取反可以节约指令
  * @returns 
  */
 function nodeRecursion(scope: Scope, node: ASTNode, label: string[], inFunction: boolean, argumentMap: { offset: number, size: number }[], frameLevel: number, boolNot: boolean = true): { startIR: IR, endIR: IR, truelist: IR[], falselist: IR[], jmpToFunctionEnd?: IR[] } {
@@ -90,7 +96,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], inFunction:
         let b = nodeRecursion(scope, node['ternary']!.obj1, label, inFunction, argumentMap, frameLevel, boolNot);
         let ir = new IR('jmp');
         let c = nodeRecursion(scope, node['ternary']!.obj2, label, inFunction, argumentMap, frameLevel, boolNot);
-        ir.operand1 = c.endIR.index - ir.index + 1;
+        ir.operand1 = c.endIR.index - ir.index + c.endIR.length;
         backPatch(a.truelist, b.startIR);//回填trueList
         backPatch(a.falselist, c.startIR);//回填falseList
         return { startIR: a.startIR, endIR: c.endIR, truelist: [], falselist: [] };
@@ -112,8 +118,9 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], inFunction:
             let nr = nodeRecursion(blockScope, node['def'][name].initAST!, label, inFunction, argumentMap, frameLevel, boolNot);
             if (nr.truelist.length > 0 || nr.falselist.length > 0) {
                 let trueIR = new IR('const_i8_load', 1);
-                new IR('jmp', 2);
+                let jmp = new IR('jmp');
                 let falseIR = new IR('const_i8_load', 0);
+                jmp.operand1 = falseIR.index - jmp.index + falseIR.length
                 backPatch(nr.truelist, trueIR);//回填true
                 backPatch(nr.falselist, falseIR);//回填false
             }
@@ -219,11 +226,10 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], inFunction:
         let block1Ret = BlockScan(new BlockScope(scope, undefined, node['ifElseStmt'].stmt1, { program }), label, argumentMap, frameLevel + 1);
         let jmp = new IR('jmp');
         let block2Ret = BlockScan(new BlockScope(scope, undefined, node['ifElseStmt'].stmt2, { program }), label, argumentMap, frameLevel + 1);
-        let nop = new IR('nop');
-        jmp.operand1 = nop.index - jmp.index;
+        jmp.operand1 = block2Ret.endIR.index - jmp.index + block2Ret.endIR.length;
         backPatch(condition.truelist, block1Ret.startIR);
         backPatch(condition.falselist, block2Ret.startIR);
-        return { startIR: condition.startIR, endIR: nop, truelist: [], falselist: [], jmpToFunctionEnd: block1Ret.jmpToFunctionEnd.concat(block2Ret.jmpToFunctionEnd) };
+        return { startIR: condition.startIR, endIR: block2Ret.endIR, truelist: [], falselist: [], jmpToFunctionEnd: block1Ret.jmpToFunctionEnd.concat(block2Ret.jmpToFunctionEnd) };
     }
     else if (node['ifStmt'] != undefined) {
         let condition = nodeRecursion(scope, node['ifStmt'].condition, label, inFunction, argumentMap, frameLevel, boolNot);
@@ -232,10 +238,9 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], inFunction:
             condition.falselist.push(ir);
         }
         let blockRet = BlockScan(new BlockScope(scope, undefined, node['ifStmt'].stmt, { program }), label, argumentMap, frameLevel + 1);
-        let nop = new IR('nop');
         backPatch(condition.truelist, blockRet.startIR);
-        backPatch(condition.falselist, nop);
-        return { startIR: condition.startIR, endIR: nop, truelist: [], falselist: [], jmpToFunctionEnd: blockRet.jmpToFunctionEnd };
+        backPatch(condition.falselist, blockRet.endIR, 1);
+        return { startIR: condition.startIR, endIR: blockRet.endIR, truelist: [], falselist: [], jmpToFunctionEnd: blockRet.jmpToFunctionEnd };
     }
     else if (node['ret'] != undefined) {
         let startIR: IR;
@@ -245,8 +250,9 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], inFunction:
             startIR = ret.startIR;
             if (ret.truelist.length > 0 || ret.falselist.length > 0) {//如果需要回填，则说明是一个bool表达式
                 let trueIR = new IR('const_i8_load', 1);
-                new IR('jmp', 2);
+                let jmp = new IR('jmp');
                 let falseIR = new IR('const_i8_load', 0);
+                jmp.operand1 = falseIR.index - jmp.index + falseIR.length;
                 backPatch(ret.truelist, trueIR);//回填true
                 backPatch(ret.falselist, falseIR);//回填false
             }
@@ -301,8 +307,9 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], inFunction:
 function putfield(type: TypeUsed, offset: number, truelist: IR[], falselist: IR[]): IR {
     if (truelist.length > 0 || falselist.length > 0) {
         let trueIR = new IR('const_i8_load', 1);
-        new IR('jmp', 2);
+        let jmp = new IR('jmp');
         let falseIR = new IR('const_i8_load', 0);
+        jmp.operand1 = falseIR.index - jmp.index + falseIR.length;
         backPatch(truelist, trueIR);//回填true
         backPatch(falselist, falseIR);//回填false
     }
@@ -319,23 +326,26 @@ function defalutValue(type: TypeUsed): { startIR: IR, endIR: IR, truelist: IR[],
     //要注意valueType的嵌套
     return {} as any;
 }
-function BlockScan(blockScope: BlockScope, label: string[], argumentMap: { offset: number, size: number }[], frameLevel: number): { startIR: IR, jmpToFunctionEnd: IR[] } {
+function BlockScan(blockScope: BlockScope, label: string[], argumentMap: { offset: number, size: number }[], frameLevel: number): { startIR: IR, endIR: IR, jmpToFunctionEnd: IR[] } {
     let stackFrameMapIndex = globalVariable.stackFrameMapIndex++;
-    let push_stack_map = new IR('push_stack_map', undefined, undefined, undefined, `@StackFrame_${stackFrameMapIndex}`);
-    stackFrameRelocationTable.push({ sym: `@StackFrame_${stackFrameMapIndex}`, ir: push_stack_map });
-    let ret: { startIR: IR, jmpToFunctionEnd: IR[] } = { startIR: push_stack_map, jmpToFunctionEnd: [] };//所有返回指令
+    let startIR = new IR('push_stack_map', undefined, undefined, undefined, `@StackFrame_${stackFrameMapIndex}`);
+    let endIR: IR;
+    stackFrameRelocationTable.push({ sym: `@StackFrame_${stackFrameMapIndex}`, ir: startIR });
+    let jmpToFunctionEnd: IR[] = [];//记录所有返回指令;
     for (let i = 0; i < blockScope.block!.body.length; i++) {
         let nodeOrBlock = blockScope.block!.body[i];
         if (nodeOrBlock.desc == 'ASTNode') {
             let nodeRet = nodeRecursion(blockScope, nodeOrBlock as ASTNode, label, true, argumentMap, frameLevel);
+            endIR = nodeRet.endIR;
             if (nodeRet.jmpToFunctionEnd) {
-                ret.jmpToFunctionEnd = ret.jmpToFunctionEnd.concat(nodeRet.jmpToFunctionEnd);
+                jmpToFunctionEnd = jmpToFunctionEnd.concat(nodeRet.jmpToFunctionEnd);
             }
         } else {
             let block = nodeOrBlock as Block;
-            let jmpToFunctionEnd = BlockScan(new BlockScope(blockScope, undefined, block, { program }), label, argumentMap, frameLevel + 1).jmpToFunctionEnd;
-            for (let ir of jmpToFunctionEnd) {
-                ret.jmpToFunctionEnd.push(ir);
+            let blockRet = BlockScan(new BlockScope(blockScope, undefined, block, { program }), label, argumentMap, frameLevel + 1);
+            endIR = blockRet.endIR;
+            for (let ir of blockRet.jmpToFunctionEnd) {
+                jmpToFunctionEnd.push(ir);
             }
         }
     }
@@ -353,7 +363,7 @@ function BlockScan(blockScope: BlockScope, label: string[], argumentMap: { offse
         stackFrame.push({ name: k, type: blockScope.getProp(k).prop.type! });
     }
     stackFrameTable[`@StackFrame_${stackFrameMapIndex}`] = { baseOffset: blockScope.baseOffset, frame: stackFrame };
-    return ret;
+    return { startIR: startIR, endIR: endIR!, jmpToFunctionEnd: jmpToFunctionEnd };
 }
 function propSize(type: TypeUsed): number {
     if (type.PlainType != undefined) {

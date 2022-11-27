@@ -29,7 +29,6 @@ type opcode =
     'dup' |//栈复制
     'call' |//以栈顶为目标，进行调用
     'abs_call' |//call一个绝对地址
-    'nop' |
     'ret';
 let symbol: IRContainer;
 export class IRContainer {
@@ -58,6 +57,7 @@ export class IR {
     public tag1?: string;
     public tag2?: string;
     public tag3?: string;
+    public length:number;
     constructor(opCode: opcode, operand1?: number, operand2?: number, operand3?: number, tag1?: string, tag2?: string, tag3?: string) {
         this.opCode = opCode;
         this.operand1 = operand1;
@@ -66,6 +66,7 @@ export class IR {
         this.tag1 = tag1;
         this.tag2 = tag2;
         this.tag3 = tag3;
+        this.length=1;
         symbol.irs.push(this);
         if (symbol.debug) {
             console.log(`${this}`);
