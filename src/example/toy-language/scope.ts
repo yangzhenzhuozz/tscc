@@ -1,4 +1,4 @@
-import { globalVariable } from './constant.js'
+import { globalVariable } from './ir.js'
 
 let debugID = 0;
 abstract class Scope {

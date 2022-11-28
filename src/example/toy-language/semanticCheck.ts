@@ -1,7 +1,7 @@
 //预处理AST
 import { FunctionSign, FunctionSignWithArgumentAndRetType, TypeUsedSign, FunctionSignWithArgument } from './lib.js';
 import { Scope, BlockScope, ClassScope, ProgramScope } from './scope.js';
-import { globalVariable, registerType } from './constant.js'
+import { globalVariable, registerType } from './ir.js'
 let program: Program;
 let programScope: ProgramScope;
 function OperatorOverLoad(scope: Scope, leftObj: ASTNode, rightObj: ASTNode | undefined, originNode: ASTNode, op: opType | opType2): { type: TypeUsed, location?: 'prop' | 'field' | 'stack' | 'array_element' } {

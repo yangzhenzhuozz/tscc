@@ -1,5 +1,5 @@
 import fs from 'fs';
-import { addRelocationTable, globalVariable, registerType, stackFrameTable, stackFrameRelocationTable, symbols, typeRelocationTable } from './constant.js';
+import { addRelocationTable, globalVariable, registerType, stackFrameTable, stackFrameRelocationTable, symbols, typeRelocationTable, typeTableToBin } from './ir.js';
 import { Scope, BlockScope, ClassScope, ProgramScope } from './scope.js';
 import { IR, IRContainer } from './ir.js'
 import { FunctionSign, FunctionSignWithArgumentAndRetType, TypeUsedSign } from './lib.js';
@@ -133,7 +133,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], inFunction:
             let functionWrapScpoe = programScope.getClassScope(fun.wrapClassName);
             let this_type = functionWrapScpoe.getProp(`@this`).prop.type!;
             let this_desc = functionWrapScpoe.getPropOffset(`@this`);
-            let startIR = new IR('newFunc', undefined, undefined, undefined, fun.wrapClassName, fun.realTypeName, fun.text);
+            let startIR = new IR('newFunc', undefined, undefined, undefined, fun.realTypeName, fun.text, fun.wrapClassName);
             typeRelocationTable.push({ sym: fun.wrapClassName, sym2: fun.realTypeName, ir: startIR });
             if (blockScope.classScope != undefined) {
                 //如果是在class中定义的函数，设置this
@@ -443,7 +443,7 @@ function classScan(classScope: ClassScope) {
             let this_type = functionWrapScpoe.getProp(`@this`).prop.type!;
             let this_desc = functionWrapScpoe.getPropOffset(`@this`);
             new IR('v_load', 0, globalVariable.pointSize);
-            let newIR = new IR('newFunc', undefined, undefined, undefined, fun.wrapClassName, fun.realTypeName, fun.text);
+            let newIR = new IR('newFunc', undefined, undefined, undefined, fun.realTypeName, fun.text, fun.wrapClassName);
             typeRelocationTable.push({ sym: fun.wrapClassName, sym2: fun.realTypeName, ir: newIR });
             new IR('dup', globalVariable.pointSize);//复制一份functionWrap，用来设置this
             new IR('v_load', 0, globalVariable.pointSize);//读取this
@@ -476,7 +476,7 @@ export default function programScan(primitiveProgram: Program) {
             let blockScope = new BlockScope(programScope, prop.type?.FunctionType, prop.type?.FunctionType.body!, { program });
             let fun = functionGen(blockScope, prop.type?.FunctionType);
             new IR('p_load');
-            let newIR = new IR('newFunc', undefined, undefined, undefined, fun.wrapClassName, fun.realTypeName, fun.text);
+            let newIR = new IR('newFunc', undefined, undefined, undefined, fun.realTypeName, fun.text, fun.wrapClassName);
             typeRelocationTable.push({ sym: fun.wrapClassName, sym2: fun.realTypeName, ir: newIR });
             putfield(prop.type, description.offset, [], []);
         } else {
@@ -485,6 +485,8 @@ export default function programScan(primitiveProgram: Program) {
         }
     }
     new IR('ret', globalVariable.pointSize);//programInit返回
+
+    fs.writeFileSync(`./src/example/toy-language/output/typeTable.bin`, Buffer.from(typeTableToBin()));
     //扫描definedType
     for (let typeName in program.definedType) {
         classScan(programScope.getClassScope(typeName));
@@ -492,7 +494,7 @@ export default function programScan(primitiveProgram: Program) {
     for (let symbol of symbols) {
         console.log(symbol.name);
         console.table(symbol.irs);
-        fs.writeFileSync(`./src/example/toy-language/output/` + symbol.name + '.bin', Buffer.from(symbol.toBinary()));
+        // fs.writeFileSync(`./src/example/toy-language/output/` + symbol.name + '.bin', Buffer.from(symbol.toBinary()));
     }
     console.log(`addRelocationTable`);
     console.table(addRelocationTable);
