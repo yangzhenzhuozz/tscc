@@ -3,6 +3,9 @@ import { addRelocationTable, globalVariable, registerType, stackFrameTable, stac
 import { Scope, BlockScope, ClassScope, ProgramScope } from './scope.js';
 import { IR, IRContainer } from './ir.js'
 import { FunctionSign, FunctionSignWithArgumentAndRetType, TypeUsedSign } from './lib.js';
+/**
+ * 经过几轮扫描，有一些步骤是重复的，为了能清晰掌握每个步骤的顺序(其实就是在设计前一步的时候不知道后面应该怎么做，要做什么，想起来已经晚了)，先将就用着吧
+ */
 let program: Program;
 let programScope: ProgramScope;
 /**
@@ -456,6 +459,13 @@ function classScan(classScope: ClassScope) {
     }
     new IR('ret', globalVariable.pointSize);//classInit返回
     IRContainer.setSymbol(lastSymbol);//回退
+}
+/**
+ * 创建propertyDescriptor，program和每个class都创建一个，成员的tpye引用typeTable的序号
+ * @param property 
+ */
+function propertyDescriptorGen(property: VariableDescriptor) {
+
 }
 export default function programScan(primitiveProgram: Program) {
     program = primitiveProgram;
