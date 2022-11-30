@@ -1,8 +1,9 @@
 import fs from 'fs';
-import { addRelocationTable, globalVariable, registerType, stackFrameTable, stackFrameRelocationTable, symbols, typeRelocationTable, typeTableToBin } from './ir.js';
+import { addRelocationTable, globalVariable, registerType, stackFrameTable, stackFrameRelocationTable, symbols, typeRelocationTable, typeTableToBin, typeTable } from './ir.js';
 import { Scope, BlockScope, ClassScope, ProgramScope } from './scope.js';
 import { IR, IRContainer } from './ir.js'
 import { FunctionSign, FunctionSignWithArgumentAndRetType, TypeUsedSign } from './lib.js';
+import { stringPool } from './binaryTools.js'
 /**
  * 经过几轮扫描，有一些步骤是重复的，为了能清晰掌握每个步骤的顺序(其实就是在设计前一步的时候不知道后面应该怎么做，要做什么，想起来已经晚了)，先将就用着吧
  */
@@ -465,7 +466,9 @@ function classScan(classScope: ClassScope) {
  * @param property 
  */
 function propertyDescriptorGen(property: VariableDescriptor) {
-
+    stringPool.register('abc');
+    stringPool.register('def');
+    console.log(new Int8Array(stringPool.toBin()));
 }
 export default function programScan(primitiveProgram: Program) {
     program = primitiveProgram;
@@ -495,21 +498,29 @@ export default function programScan(primitiveProgram: Program) {
         }
     }
     new IR('ret', globalVariable.pointSize);//programInit返回
-
-    fs.writeFileSync(`./src/example/toy-language/output/typeTable.bin`, Buffer.from(typeTableToBin()));
-    //扫描definedType
     for (let typeName in program.definedType) {
         classScan(programScope.getClassScope(typeName));
     }
+    //-------------------------
+    for (let k in program.definedType) {
+        propertyDescriptorGen(program.property);
+    }
+
+
+
+
+    // console.table(typeTable);
+    // fs.writeFileSync(`./src/example/toy-language/output/typeTable.bin`, Buffer.from(typeTableToBin()));
+    //扫描definedType
     for (let symbol of symbols) {
-        console.log(symbol.name);
-        console.table(symbol.irs);
+        // console.log(symbol.name);
+        // console.table(symbol.irs);
         // fs.writeFileSync(`./src/example/toy-language/output/` + symbol.name + '.bin', Buffer.from(symbol.toBinary()));
     }
-    console.log(`addRelocationTable`);
-    console.table(addRelocationTable);
+    // console.log(`addRelocationTable`);
+    // console.table(addRelocationTable);
     for (let k in stackFrameTable) {
-        console.log(k);
-        console.table(stackFrameTable[k]);
+        // console.log(k);
+        // console.table(stackFrameTable[k]);
     }
 }

@@ -16,12 +16,17 @@ let typeIndex = 0;
 //注册类型
 export function registerType(type: TypeUsed): number {
     let sign = TypeUsedSign(type);
+    let ret: number;
     if (typeTable[sign] != undefined) {
-        return typeTable[sign].index;
+        ret = typeTable[sign].index;
     } else {
         typeTable[sign] = { index: typeIndex, type: type };
-        return typeIndex++;
+        ret = typeIndex++;
     }
+    if (type.ArrayType != undefined) {//如果是数组类型，注册内部类型
+        registerType(type.ArrayType.innerType);
+    }
+    return ret;
 }
 export function typeTableToBin(): ArrayBuffer {
     let length: BigUint64Array;
