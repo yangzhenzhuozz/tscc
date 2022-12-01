@@ -3,7 +3,7 @@ import { addRelocationTable, globalVariable, registerType, stackFrameTable, stac
 import { Scope, BlockScope, ClassScope, ProgramScope } from './scope.js';
 import { IR, IRContainer } from './ir.js'
 import { FunctionSign, FunctionSignWithArgumentAndRetType, TypeUsedSign } from './lib.js';
-import { stringPool } from './binaryTools.js'
+import { classTable, stringPool, typeItemDesc, typeTable as binTypeTable } from './binaryTools.js'
 /**
  * 经过几轮扫描，有一些步骤是重复的，为了能清晰掌握每个步骤的顺序(其实就是在设计前一步的时候不知道后面应该怎么做，要做什么，想起来已经晚了)，先将就用着吧
  */
@@ -465,10 +465,30 @@ function classScan(classScope: ClassScope) {
  * 创建propertyDescriptor，program和每个class都创建一个，成员的tpye引用typeTable的序号
  * @param property 
  */
-function propertyDescriptorGen(property: VariableDescriptor) {
-    stringPool.register('abc');
-    stringPool.register('def');
-    console.log(new Int8Array(stringPool.toBin()));
+function ClassTableItemGen(property: VariableDescriptor, className: string) {
+    let classNamePoint = stringPool.register(className);
+    let props: { name: number, type: number }[] = [];
+    for (let k in property) {
+        let name = stringPool.register(k);
+        let typeSign = TypeUsedSign(property[k].type!);
+        let type = typeTable[typeSign].index;
+        props.push({ name, type });
+    }
+    classTable.items.push({ name: classNamePoint, props: props });
+}
+function TypeTableGen() {
+    for (let name in typeTable) {
+        let namePoint = stringPool.register(name);
+        let typeDesc: number;
+        if (typeTable[name].type.ArrayType != undefined) {
+            typeDesc = typeItemDesc.Array;
+        } else if (typeTable[name].type.FunctionType != undefined) {
+            typeDesc = typeItemDesc.Function;
+        } else {
+            typeDesc = typeItemDesc.PlaintObj;
+        }
+        binTypeTable.items.push({ name: namePoint, desc: typeDesc, innerType: typeTable[name].index });
+    }
 }
 export default function programScan(primitiveProgram: Program) {
     program = primitiveProgram;
@@ -502,14 +522,17 @@ export default function programScan(primitiveProgram: Program) {
         classScan(programScope.getClassScope(typeName));
     }
     //-------------------------
+    ClassTableItemGen(program.property, '@program');
     for (let k in program.definedType) {
-        propertyDescriptorGen(program.property);
+        ClassTableItemGen(program.definedType[k].property, k);
     }
+    classTable.toBin();
+    TypeTableGen();
+    //两个关键数据结构typeTable和classTable已经创建完成
 
 
 
-
-    // console.table(typeTable);
+    console.table(typeTable);
     // fs.writeFileSync(`./src/example/toy-language/output/typeTable.bin`, Buffer.from(typeTableToBin()));
     //扫描definedType
     for (let symbol of symbols) {

@@ -82,4 +82,21 @@ class StringPool {
         return this.buffer.toBin();
     }
 }
+class ClassTable {
+    public items: { name: number, props: { name: number, type: number }[] }[] = [];
+    public toBin() {
+
+    }
+}
+export enum typeItemDesc {
+    PlaintObj,
+    Array,
+    Function
+};
+//和ir.ts中的typeTable不同
+class TypeTable {
+    public items: { name: number, desc: number, innerType: number }[] = [];
+}
+export const typeTable = new TypeTable();
+export const classTable = new ClassTable();
 export const stringPool = new StringPool();

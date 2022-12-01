@@ -877,8 +877,9 @@ export default function semanticCheck(primitiveProgram: Program) {
         }
     }
 
-    for (let typeName in program.definedType) {//计算每个类型的size和索引
+    for (let typeName in program.definedType) {//计算每个类型的size和索引，同时注册类型
         program.definedType[typeName].size = sizeof(typeName);
+        registerType({ PlainType: { name: typeName } });//在类型表中注册类型
     }
     let programSize = 0;
     //计算program的size
