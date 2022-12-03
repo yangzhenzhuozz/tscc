@@ -19,7 +19,7 @@ interface TypeDef {//定义的类型
     modifier?: 'valuetype' | 'sealed';
     size?: number;
     recursiveChecked?: boolean;//是否已经进行了值类型循环包含的检查
-    recursiveFlag?:boolean;//递归检查标记
+    recursiveFlag?: boolean;//递归检查标记
     templates?: string[];//模板列表
     extends?: TypeUsed;//基类
     operatorOverload: {//重载列表
@@ -111,8 +111,8 @@ interface ASTNode {
     cast?: { obj: ASTNode, type: TypeUsed };
     box?: { obj: ASTNode, type: TypeUsed };//装箱
     unbox?: { obj: ASTNode, type: TypeUsed };//拆箱
-    _new?: { type: {PlainType: PlainType;}, _arguments: ASTNode[] };
-    _newArray?: { type: {PlainType?: PlainType;FunctionType?: FunctionType;}, initList: ASTNode[], placeholder: number };
+    _new?: { type: { PlainType: PlainType; }, _arguments: ASTNode[] };
+    _newArray?: { type: { PlainType?: PlainType; FunctionType?: FunctionType; }, initList: ASTNode[], placeholder: number };
     '[]'?: { rightChild: ASTNode, leftChild: ASTNode };
     "="?: { rightChild: ASTNode; leftChild: ASTNode; };//赋值操作的左节点必须是load节点或者accessField节点
     "+"?: { rightChild: ASTNode; leftChild: ASTNode; };

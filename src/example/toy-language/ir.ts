@@ -6,10 +6,10 @@ export const globalVariable = {
     stackFrameMapIndex: 0,//栈帧序号
     functionIndex: 0
 }
-export let symbols: IRContainer[] = [];//符号表
-export let addRelocationTable: { sym: string, ir: IR }[] = [];//重定位表
-export let typeRelocationTable: { sym: string, sym2?: string, ir: IR }[] = [];//type重定向表
+export let symbolsRelocationTable: { t1: string, ir: IR }[] = [];//重定位表
+export let typeRelocationTable: { t1?: string, t2?: string, t3?: string, ir: IR }[] = [];//type重定向表
 export let stackFrameRelocationTable: { sym: string, ir: IR }[] = [];//stackFrame重定向表
+export let symbolsTable: IRContainer[] = [];//符号表
 export let stackFrameTable: { [key: string]: { baseOffset: number, frame: { name: string, type: TypeUsed }[] } } = {};//栈布局记录
 export let typeTable: { [key: string]: { index: number, type: TypeUsed } } = {};//类型表
 let typeIndex = 0;
@@ -62,7 +62,7 @@ export function typeTableToBin(): ArrayBuffer {
     }
     return ret.buffer;
 }
-enum OPCODE {
+export enum OPCODE {
     'new' = 0,//创建一个普通对象
     'newFunc',//创建一个函数对象
     'newArray',//操作数是基本类型，长度和是否仍然是一个数组从栈中取
@@ -98,11 +98,9 @@ export class IRContainer {
     public index = 0;
     public irs: IR[] = [];
     public name: string;
-    public debug: boolean;
-    constructor(name: string, debug = false) {
+    constructor(name: string) {
         this.name = name;
-        this.debug = debug;
-        symbols.push(this);
+        symbolsTable.push(this);
     }
     public static setSymbol(container: IRContainer) {
         symbol = container;
@@ -142,8 +140,5 @@ export class IR {
         this.tag3 = tag3;
         this.length = 1;
         symbol.irs.push(this);
-        if (symbol.debug) {
-            console.log(`${this}`);
-        }
     }
 }

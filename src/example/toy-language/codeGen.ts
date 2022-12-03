@@ -1,9 +1,9 @@
 import fs from 'fs';
-import { addRelocationTable, globalVariable, registerType, stackFrameTable, stackFrameRelocationTable, symbols, typeRelocationTable, typeTableToBin, typeTable } from './ir.js';
+import { symbolsRelocationTable, globalVariable, registerType, stackFrameTable, stackFrameRelocationTable, symbolsTable, typeRelocationTable, typeTableToBin, typeTable } from './ir.js';
 import { Scope, BlockScope, ClassScope, ProgramScope } from './scope.js';
 import { IR, IRContainer } from './ir.js'
 import { FunctionSign, FunctionSignWithArgumentAndRetType, TypeUsedSign } from './lib.js';
-import { classTable, stringPool, typeItemDesc, typeTable as binTypeTable } from './binaryTools.js'
+import { classTable, stringPool, typeItemDesc, typeTable as binTypeTable, stackFrameTable as binStackFrameTable, link } from './binaryTools.js'
 /**
  * 经过几轮扫描，有一些步骤是重复的，为了能清晰掌握每个步骤的顺序(其实就是在设计前一步的时候不知道后面应该怎么做，要做什么，想起来已经晚了)，先将就用着吧
  */
@@ -138,7 +138,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], inFunction:
             let this_type = functionWrapScpoe.getProp(`@this`).prop.type!;
             let this_desc = functionWrapScpoe.getPropOffset(`@this`);
             let startIR = new IR('newFunc', undefined, undefined, undefined, fun.realTypeName, fun.text, fun.wrapClassName);
-            typeRelocationTable.push({ sym: fun.wrapClassName, sym2: fun.realTypeName, ir: startIR });
+            typeRelocationTable.push({ t3: fun.wrapClassName, t1: fun.realTypeName, ir: startIR });
             if (blockScope.classScope != undefined) {
                 //如果是在class中定义的函数，设置this
                 new IR('dup', globalVariable.pointSize);//复制一份functionWrap，用来设置this
@@ -174,9 +174,9 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], inFunction:
     }
     else if (node['_new'] != undefined) {
         let ir = new IR('new', undefined, undefined, undefined, node['_new'].type.PlainType.name);
-        typeRelocationTable.push({ sym: node['_new'].type.PlainType.name, ir: ir });
+        typeRelocationTable.push({ t1: node['_new'].type.PlainType.name, ir: ir });
         let call = new IR('abs_call', undefined, undefined, undefined, `${node['_new'].type.PlainType.name}_init`);
-        addRelocationTable.push({ sym: `${node['_new'].type.PlainType.name}_init`, ir: call });
+        symbolsRelocationTable.push({ t1: `${node['_new'].type.PlainType.name}_init`, ir: call });
         let argTypes: TypeUsed[] = [];
         let args = node['_new']._arguments;
         for (let i = args.length - 1; i >= 0; i--) {
@@ -185,7 +185,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], inFunction:
         }
         let sign = `@constructor:${node['_new'].type.PlainType.name}  ${FunctionSignWithArgumentAndRetType(argTypes, { PlainType: { name: 'void' } })}`;//构造函数签名
         call = new IR('abs_call', undefined, undefined, undefined, sign);//执行调用
-        addRelocationTable.push({ sym: sign, ir: call });
+        symbolsRelocationTable.push({ t1: sign, ir: call });
         return { startIR: ir, endIR: call, truelist: [], falselist: [] };
     }
     else if (node['||'] != undefined) {
@@ -304,8 +304,16 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], inFunction:
         }
         let typeName = TypeUsedSign(type);
         let newArray = new IR('newArray', initList.length + placeholder, undefined, undefined, typeName);
-        typeRelocationTable.push({ sym: typeName, ir: newArray });
+        typeRelocationTable.push({ t1: typeName, ir: newArray });
         return { startIR: startIR!, endIR: newArray, truelist: [], falselist: [], jmpToFunctionEnd: [] };
+    }
+    else if (node['_break'] != undefined) {
+        //需要考虑StackFrame
+        throw `_break暂未实现`;
+    }
+    else if (node['_continue'] != undefined) {
+        //需要考虑StackFrame
+        throw `_continue暂未实现`;
     }
     else { throw `还没支持的AST类型` };
 }
@@ -356,10 +364,10 @@ function BlockScan(blockScope: BlockScope, label: string[], argumentMap: { offse
     }
     let lastNode = blockScope.block!.body[blockScope.block!.body.length - 1];
     /**
-     * 如果block的最后一个AST是ret,则pop_stack_map已经由这个AST生成了
+     * 如果block的最后一个AST是ret节点,则pop_stack_map已经由这个AST生成了
      * 否则弹出一个帧(因为每个block结束只需要弹出自己的帧,ret节点改变了处理流程，所以自己控制弹出帧的数量)
      */
-    if (lastNode.desc != 'ASTNode' && (lastNode as ASTNode).ret == undefined) {
+    if (lastNode?.desc == 'ASTNode' && (lastNode as ASTNode).ret == undefined) {
         new IR('pop_stack_map', 1);
     }
     //到这里scope的所有def已经解析完毕，可以保存了
@@ -448,7 +456,7 @@ function classScan(classScope: ClassScope) {
             let this_desc = functionWrapScpoe.getPropOffset(`@this`);
             new IR('v_load', 0, globalVariable.pointSize);
             let newIR = new IR('newFunc', undefined, undefined, undefined, fun.realTypeName, fun.text, fun.wrapClassName);
-            typeRelocationTable.push({ sym: fun.wrapClassName, sym2: fun.realTypeName, ir: newIR });
+            typeRelocationTable.push({ t3: fun.wrapClassName, t1: fun.realTypeName, ir: newIR });
             new IR('dup', globalVariable.pointSize);//复制一份functionWrap，用来设置this
             new IR('v_load', 0, globalVariable.pointSize);//读取this
             putfield(this_type, this_desc.offset, [], []);//设置this
@@ -465,7 +473,7 @@ function classScan(classScope: ClassScope) {
  * 创建propertyDescriptor，program和每个class都创建一个，成员的tpye引用typeTable的序号
  * @param property 
  */
-function ClassTableItemGen(property: VariableDescriptor, className: string) {
+function ClassTableItemGen(property: VariableDescriptor, size: number, className: string, isValueType: boolean) {
     let classNamePoint = stringPool.register(className);
     let props: { name: number, type: number }[] = [];
     for (let k in property) {
@@ -474,7 +482,7 @@ function ClassTableItemGen(property: VariableDescriptor, className: string) {
         let type = typeTable[typeSign].index;
         props.push({ name, type });
     }
-    classTable.items.push({ name: classNamePoint, props: props });
+    classTable.items.push({ name: classNamePoint, size: size, isValueType: isValueType, props: props });
 }
 function TypeTableGen() {
     for (let name in typeTable) {
@@ -489,6 +497,36 @@ function TypeTableGen() {
         }
         binTypeTable.items.push({ name: namePoint, desc: typeDesc, innerType: typeTable[name].index });
     }
+}
+function stackFrameTableGen() {
+    for (let itemKey in stackFrameTable) {
+        let frame: { baseOffset: number, props: { name: number, type: number }[] } = {
+            baseOffset: stackFrameTable[itemKey].baseOffset,
+            props: []
+        };
+        for (let variable of stackFrameTable[itemKey].frame) {
+            frame.props.push({
+                name: stringPool.register(variable.name),
+                type: typeTable[TypeUsedSign(variable.type)].index
+            });
+        }
+        binStackFrameTable.items.push(frame);
+    }
+}
+function binGen() {
+    ClassTableItemGen(program.property, program.size!, '@program', false);
+    for (let k in program.definedType) {
+        ClassTableItemGen(program.definedType[k].property, program.definedType[k].size!, k, program.definedType[k].modifier == 'valuetype');
+    }
+    fs.writeFileSync(`./src/example/toy-language/output/ClassTable.bin`, Buffer.from(classTable.toBinary()));
+    TypeTableGen();
+    fs.writeFileSync(`./src/example/toy-language/output/TypeTable.bin`, Buffer.from(binTypeTable.toBinary()));
+    stackFrameTableGen();
+    fs.writeFileSync(`./src/example/toy-language/output/StackFrameTable.bin`, Buffer.from(binStackFrameTable.toBinary()));
+    let linkRet = link();
+    fs.writeFileSync(`./src/example/toy-language/output/text.bin`, Buffer.from(linkRet.text));
+    fs.writeFileSync(`./src/example/toy-language/output/symbolTable.bin`, Buffer.from(linkRet.symbolTable));
+    fs.writeFileSync(`./src/example/toy-language/output/stringPool.bin`, Buffer.from(stringPool.toBinary()));//字符串池最后输出
 }
 export default function programScan(primitiveProgram: Program) {
     program = primitiveProgram;
@@ -510,7 +548,7 @@ export default function programScan(primitiveProgram: Program) {
             let fun = functionGen(blockScope, prop.type?.FunctionType);
             new IR('p_load');
             let newIR = new IR('newFunc', undefined, undefined, undefined, fun.realTypeName, fun.text, fun.wrapClassName);
-            typeRelocationTable.push({ sym: fun.wrapClassName, sym2: fun.realTypeName, ir: newIR });
+            typeRelocationTable.push({ t3: fun.wrapClassName, t1: fun.realTypeName, ir: newIR });
             putfield(prop.type, description.offset, [], []);
         } else {
             //使用default
@@ -521,29 +559,6 @@ export default function programScan(primitiveProgram: Program) {
     for (let typeName in program.definedType) {
         classScan(programScope.getClassScope(typeName));
     }
-    //-------------------------
-    ClassTableItemGen(program.property, '@program');
-    for (let k in program.definedType) {
-        ClassTableItemGen(program.definedType[k].property, k);
-    }
-    classTable.toBin();
-    TypeTableGen();
-    //两个关键数据结构typeTable和classTable已经创建完成
-
-
-
-    console.table(typeTable);
-    // fs.writeFileSync(`./src/example/toy-language/output/typeTable.bin`, Buffer.from(typeTableToBin()));
-    //扫描definedType
-    for (let symbol of symbols) {
-        // console.log(symbol.name);
-        // console.table(symbol.irs);
-        // fs.writeFileSync(`./src/example/toy-language/output/` + symbol.name + '.bin', Buffer.from(symbol.toBinary()));
-    }
-    // console.log(`addRelocationTable`);
-    // console.table(addRelocationTable);
-    for (let k in stackFrameTable) {
-        // console.log(k);
-        // console.table(stackFrameTable[k]);
-    }
+    
+    binGen();
 }

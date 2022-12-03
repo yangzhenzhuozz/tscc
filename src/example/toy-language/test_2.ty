@@ -1,4 +1,10 @@
 var a:int[][][][];
+function f(){
+    var a=0;
+};
 class myClass{
     
+}
+valuetype class int{
+
 }
