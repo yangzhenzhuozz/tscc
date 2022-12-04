@@ -1,10 +1,7 @@
-var a:int[][][][];
 function f(){
-    var a=0;
+    return 0;
 };
-class myClass{
-    
-}
+var a=f();
+var main=()=>{};
 valuetype class int{
-
 }

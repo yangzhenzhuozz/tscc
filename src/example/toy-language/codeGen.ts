@@ -54,11 +54,39 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], inFunction:
         return { startIR: irs.startIR, endIR: ir, truelist: [], falselist: [] };
     }
     else if (node['immediate'] != undefined) {
-        if (isNaN(Number(node["immediate"]!.primiviteValue))) {
-            throw `暂时不支持非数字的initAST`;
+        if (node["immediate"].functionValue) {
+            let blockScope = new BlockScope(scope, node["immediate"].functionValue, node["immediate"].functionValue.body!, { program });
+            let fun = functionGen(blockScope, node["immediate"].functionValue);
+            let functionWrapScpoe = programScope.getClassScope(fun.wrapClassName);
+            let this_type = functionWrapScpoe.getProp(`@this`).prop.type!;
+            let this_desc = functionWrapScpoe.getPropOffset(`@this`);
+            let startIR = new IR('newFunc', undefined, undefined, undefined, fun.realTypeName, fun.text, fun.wrapClassName);
+            typeRelocationTable.push({ t3: fun.wrapClassName, t1: fun.realTypeName, ir: startIR });
+            let endIR: IR | undefined;
+            if (blockScope.classScope != undefined) {
+                //如果是在class中定义的函数，设置this
+                new IR('dup', globalVariable.pointSize);//复制一份functionWrap，用来设置this
+                new IR('v_load', 0, globalVariable.pointSize);//读取this
+                endIR = putfield(this_type, this_desc.offset, [], []);//设置this
+            }
+            let capture = node["immediate"].functionValue.capture;
+            for (let capturedName in capture) {//设置捕获变量
+                let captureDesc = blockScope.getPropOffset(capturedName);//当前scope被捕获对象的描述符
+                let captureType = blockScope.getProp(capturedName).prop.type!;//被捕获对象的类型(已经是包裹类)
+                let targetDesc = functionWrapScpoe.getPropOffset(capturedName);//捕获对象在被包裹类中的描述符
+                new IR('dup', globalVariable.pointSize);//复制函数对象的指针
+                new IR('v_load', captureDesc.offset, captureDesc.size);//读取被捕获变量
+                // 有问题
+                endIR = putfield(captureType, targetDesc.offset, [], []);
+            }
+            return { startIR: startIR, endIR: endIR ?? startIR, truelist: [], falselist: [] };
         } else {
-            let ir = new IR('const_i32_load', Number(node["immediate"]!.primiviteValue));
-            return { startIR: ir, endIR: ir, truelist: [], falselist: [] };
+            if (isNaN(Number(node["immediate"]!.primiviteValue))) {
+                throw `暂时不支持非数字的initAST`;//就剩下字符串类型了
+            } else {
+                let ir = new IR('const_i32_load', Number(node["immediate"]!.primiviteValue));
+                return { startIR: ir, endIR: ir, truelist: [], falselist: [] };
+            }
         }
     }
     else if (node['+'] != undefined) {
@@ -153,7 +181,6 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], inFunction:
                 let targetDesc = functionWrapScpoe.getPropOffset(capturedName);//捕获对象在被包裹类中的描述符
                 new IR('v_load', description.offset, description.size);//读取函数对象的指针
                 new IR('v_load', captureDesc.offset, captureDesc.size);//读取被捕获变量
-                // 有问题
                 endIR = putfield(captureType, targetDesc.offset, [], []);
             }
             return { startIR: startIR, endIR: endIR, truelist: [], falselist: [] };
@@ -513,20 +540,33 @@ function stackFrameTableGen() {
         binStackFrameTable.items.push(frame);
     }
 }
-function binGen() {
+//输出所有需要的文件
+function finallyOutput() {
+    //注册@program
     ClassTableItemGen(program.property, program.size!, '@program', false);
+    registerType({ PlainType: { name: '@program' } });
     for (let k in program.definedType) {
         ClassTableItemGen(program.definedType[k].property, program.definedType[k].size!, k, program.definedType[k].modifier == 'valuetype');
     }
     fs.writeFileSync(`./src/example/toy-language/output/ClassTable.bin`, Buffer.from(classTable.toBinary()));
+    fs.writeFileSync(`./src/example/toy-language/output/ClassTable.json`, JSON.stringify(classTable.items, null, 4));
+
     TypeTableGen();
     fs.writeFileSync(`./src/example/toy-language/output/TypeTable.bin`, Buffer.from(binTypeTable.toBinary()));
+    fs.writeFileSync(`./src/example/toy-language/output/TypeTable.json`, JSON.stringify(binTypeTable.items, null, 4));
+
     stackFrameTableGen();
     fs.writeFileSync(`./src/example/toy-language/output/StackFrameTable.bin`, Buffer.from(binStackFrameTable.toBinary()));
-    let linkRet = link();
+    fs.writeFileSync(`./src/example/toy-language/output/StackFrameTable.json`, JSON.stringify(binStackFrameTable.items, null, 4));
+
+    let linkRet = link(programScope);
     fs.writeFileSync(`./src/example/toy-language/output/text.bin`, Buffer.from(linkRet.text));
+    fs.writeFileSync(`./src/example/toy-language/output/text.json`, JSON.stringify(linkRet.newIRS));
     fs.writeFileSync(`./src/example/toy-language/output/symbolTable.bin`, Buffer.from(linkRet.symbolTable));
+    fs.writeFileSync(`./src/example/toy-language/output/symbolTable.json`, JSON.stringify([...linkRet.newSymbolTable]));
+
     fs.writeFileSync(`./src/example/toy-language/output/stringPool.bin`, Buffer.from(stringPool.toBinary()));//字符串池最后输出
+    fs.writeFileSync(`./src/example/toy-language/output/stringPool.json`, JSON.stringify(stringPool.items, null, 4));
 }
 export default function programScan(primitiveProgram: Program) {
     program = primitiveProgram;
@@ -559,6 +599,6 @@ export default function programScan(primitiveProgram: Program) {
     for (let typeName in program.definedType) {
         classScan(programScope.getClassScope(typeName));
     }
-    
-    binGen();
+
+    finallyOutput();
 }

@@ -37,7 +37,10 @@ export function TypeUsedSign(type: TypeUsed): string {
         return type.PlainType.name;
     } else if (type.ArrayType != undefined) {
         return `Array<${TypeUsedSign(type.ArrayType.innerType)}>`;
-    } else {
+    } else if (type.ProgramType != undefined) {
+        return `@program`;
+    }
+    else {
         //函数类型
         return `${FunctionSign(type.FunctionType!)}`;
     }

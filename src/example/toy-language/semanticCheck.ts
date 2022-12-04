@@ -809,6 +809,7 @@ function valueTypeRecursiveCheck(typeName: string) {
 function sizeof(typeName: string): number {
     let ret = 0;
     switch (typeName) {
+        case 'void': throw `void无法计算大小,任何成员都不能是void类型`;
         case 'int': ret = 4; break;
         case 'double': ret = 8; break;
         case 'bool': ret = 1; break;
@@ -887,6 +888,9 @@ export default function semanticCheck(primitiveProgram: Program) {
         let field = program.property[fieldName];
         if (field.type!.PlainType != undefined) {
             let fieldTypeName = field.type!.PlainType.name;
+            if (fieldTypeName == 'void') {
+                throw `void无法计算大小,任何成员都不能是void类型`;
+            }
             if (program.definedType[fieldTypeName].modifier != 'valuetype') {
                 programSize += globalVariable.pointSize;//非值类型
             } else {

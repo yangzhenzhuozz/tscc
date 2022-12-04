@@ -91,7 +91,8 @@ export enum OPCODE {
     'dup',//栈复制
     'call',//以栈顶为目标，进行调用
     'abs_call',//call一个绝对地址
-    'ret'
+    'ret',
+    'exit'
 };
 let symbol: IRContainer;
 export class IRContainer {
