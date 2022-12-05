@@ -6,7 +6,7 @@ export const globalVariable = {
     stackFrameMapIndex: 0,//栈帧序号
     functionIndex: 0
 }
-export let symbolsRelocationTable: { t1: string, ir: IR }[] = [];//重定位表
+export let symbolsRelocationTable: IR[] = [];//重定位表
 export let typeRelocationTable: { t1?: string, t2?: string, t3?: string, ir: IR }[] = [];//type重定向表
 export let stackFrameRelocationTable: { sym: string, ir: IR }[] = [];//stackFrame重定向表
 export let symbolsTable: IRContainer[] = [];//符号表

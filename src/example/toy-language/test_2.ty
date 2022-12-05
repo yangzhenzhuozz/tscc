@@ -1,5 +1,6 @@
 function f(){
-    return 0;
+    var a=0;
+    return a;
 };
 var a=f();
 var main=()=>{};

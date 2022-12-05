@@ -203,7 +203,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], inFunction:
         let ir = new IR('new', undefined, undefined, undefined, node['_new'].type.PlainType.name);
         typeRelocationTable.push({ t1: node['_new'].type.PlainType.name, ir: ir });
         let call = new IR('abs_call', undefined, undefined, undefined, `${node['_new'].type.PlainType.name}_init`);
-        symbolsRelocationTable.push({ t1: `${node['_new'].type.PlainType.name}_init`, ir: call });
+        symbolsRelocationTable.push(call);
         let argTypes: TypeUsed[] = [];
         let args = node['_new']._arguments;
         for (let i = args.length - 1; i >= 0; i--) {
@@ -212,7 +212,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], inFunction:
         }
         let sign = `@constructor:${node['_new'].type.PlainType.name}  ${FunctionSignWithArgumentAndRetType(argTypes, { PlainType: { name: 'void' } })}`;//构造函数签名
         call = new IR('abs_call', undefined, undefined, undefined, sign);//执行调用
-        symbolsRelocationTable.push({ t1: sign, ir: call });
+        symbolsRelocationTable.push(call);
         return { startIR: ir, endIR: call, truelist: [], falselist: [] };
     }
     else if (node['||'] != undefined) {
@@ -572,7 +572,7 @@ export default function programScan(primitiveProgram: Program) {
     program = primitiveProgram;
     programScope = new ProgramScope(program, { program: program });
 
-    let symbol = new IRContainer('program_init');
+    let symbol = new IRContainer('@program_init');
     IRContainer.setSymbol(symbol);
 
     //扫描property

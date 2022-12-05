@@ -158,13 +158,16 @@ function assertion(obj: any, name: string) {
     }
 }
 export function link(programScope: ProgramScope) {
-    let link_start = new IRContainer('@start');//生成start部分代码
-    IRContainer.setSymbol(link_start);
-    new IR('p_load');
+
     let main = programScope.getProp('main').prop.type?.FunctionType;
     if (main == undefined || Object.keys(main._arguments).length != 0 || TypeUsedSign(main.retType!) != 'void') {
         throw `必须在program域定义一个函数main,类型为: ()=>void (无参,无返回值),后续再考虑有参数和返回值的情况`;
     }
+    let link_start = new IRContainer('@start');//生成start部分代码
+    IRContainer.setSymbol(link_start);
+    let call = new IR('abs_call', undefined, undefined, undefined, `@program_init`);//初始化@program
+    symbolsRelocationTable.push(call);
+    new IR('p_load');
     new IR('getfield', programScope.getPropOffset('main').offset, globalVariable.pointSize);
     new IR('call');
     new IR('exit');
@@ -180,8 +183,8 @@ export function link(programScope: ProgramScope) {
     }
     //修改需要重定位的指令
     for (let item of symbolsRelocationTable) {
-        item.ir.operand1 = newSymbolTable.get(item.t1);
-        assertion(item.ir.operand1, item.t1);
+        item.operand1 = newSymbolTable.get(item.tag1!);
+        assertion(item.tag1, item.tag1!);
     }
     //类型重定位
     for (let item of typeRelocationTable) {
