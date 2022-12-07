@@ -163,14 +163,15 @@ export function link(programScope: ProgramScope) {
     if (main == undefined || Object.keys(main._arguments).length != 0 || TypeUsedSign(main.retType!) != 'void') {
         throw `必须在program域定义一个函数main,类型为: ()=>void (无参,无返回值),后续再考虑有参数和返回值的情况`;
     }
-    let link_start = new IRContainer('@start');//生成start部分代码
-    IRContainer.setSymbol(link_start);
+    let start = new IRContainer('@start', false);//生成start部分代码
+    IRContainer.setSymbol(start);
     let call = new IR('abs_call', undefined, undefined, undefined, `@program_init`);//初始化@program
     symbolsRelocationTable.push(call);
     new IR('p_load');
     new IR('getfield', programScope.getPropOffset('main').offset, globalVariable.pointSize);
     new IR('call');
     new IR('exit');
+    symbolsTable.unshift(start);//把这段代码往最前面压
 
 
     let newSymbolTable: Map<string, number> = new Map();
@@ -178,7 +179,7 @@ export function link(programScope: ProgramScope) {
     let index = 0;
     //重新计算符号表
     for (let _symbol of symbolsTable) {
-        newSymbolTable.set(_symbol.name, index + 1);//这个1是留给第一条指令jmp到@start用的
+        newSymbolTable.set(_symbol.name, index);//这个1是留给第一条指令jmp到@start用的
         index += _symbol.irs.length;
     }
     //修改需要重定位的指令
@@ -203,11 +204,6 @@ export function link(programScope: ProgramScope) {
     }
     //将ir变成二进制
     let irBuffer = new Buffer();
-    irBuffer.writeInt64(BigInt(OPCODE['jmp']));
-    irBuffer.writeInt64(BigInt(newSymbolTable.get('@start')!));//@start是一定有的
-    irBuffer.writeInt64(BigInt(0));
-    irBuffer.writeInt64(BigInt(0));
-    newIRS.push({ opCode: 'jmp', operand1: newSymbolTable.get('@start'), length: 1, index: 0 });
     for (let _symbol of symbolsTable) {
         for (let ir of _symbol.irs) {
             newIRS.push(ir);

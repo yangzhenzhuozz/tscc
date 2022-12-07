@@ -99,9 +99,11 @@ export class IRContainer {
     public index = 0;
     public irs: IR[] = [];
     public name: string;
-    constructor(name: string) {
+    constructor(name: string, linkToEnd = true) {
         this.name = name;
-        symbolsTable.push(this);
+        if (linkToEnd) {
+            symbolsTable.push(this);
+        }
     }
     public static setSymbol(container: IRContainer) {
         symbol = container;
