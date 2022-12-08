@@ -163,7 +163,7 @@ export function link(programScope: ProgramScope) {
     if (main == undefined || Object.keys(main._arguments).length != 0 || TypeUsedSign(main.retType!) != 'void') {
         throw `必须在program域定义一个函数main,类型为: ()=>void (无参,无返回值),后续再考虑有参数和返回值的情况`;
     }
-    let start = new IRContainer('@start', false);//生成start部分代码
+    let start = new IRContainer('@start', 'begin');//在代码的最前面生成@start
     IRContainer.setSymbol(start);
     let call = new IR('abs_call', undefined, undefined, undefined, `@program_init`);//初始化@program
     symbolsRelocationTable.push(call);
@@ -171,7 +171,6 @@ export function link(programScope: ProgramScope) {
     new IR('getfield', programScope.getPropOffset('main').offset, globalVariable.pointSize);
     new IR('call');
     new IR('exit');
-    symbolsTable.unshift(start);//把这段代码往最前面压
 
 
     let newSymbolTable: Map<string, number> = new Map();

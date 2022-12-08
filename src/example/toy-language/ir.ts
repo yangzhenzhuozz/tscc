@@ -99,9 +99,11 @@ export class IRContainer {
     public index = 0;
     public irs: IR[] = [];
     public name: string;
-    constructor(name: string, linkToEnd = true) {
+    constructor(name: string, push_direct: 'begin' | 'end' = 'end') {
         this.name = name;
-        if (linkToEnd) {
+        if (push_direct == 'begin') {
+            symbolsTable.unshift(this);
+        } else {
             symbolsTable.push(this);
         }
     }
