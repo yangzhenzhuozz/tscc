@@ -1,4 +1,4 @@
-import { globalVariable, IR, IRContainer, OPCODE, symbolsRelocationTable, symbolsTable, typeRelocationTable, typeTable as irTypeTable } from "./ir.js";
+import { globalVariable, IR, IRContainer, OPCODE, stackFrameRelocationTable, irAbsoluteAddressRelocationTable, irContainerList, typeRelocationTable, typeTable as irTypeTable } from "./ir.js";
 import { TypeUsedSign } from "./lib.js";
 import { ProgramScope } from "./scope.js";
 
@@ -110,7 +110,15 @@ class ClassTable {
     }
 }
 class StackFrameTable {
-    public items: { baseOffset: number, props: { name: number, type: number }[] }[] = [];
+    private items: { baseOffset: number, props: { name: number, type: number }[] }[] = [];
+    public nameMap: Map<string, number> = new Map();
+    public push(item: { baseOffset: number, props: { name: number, type: number }[] }, name: string) {
+        this.nameMap.set(name, this.items.length);
+        this.items.push(item);
+    }
+    public getItems() {
+        return this.items;
+    }
     public toBinary() {
         let buffer = new Buffer();
         buffer.writeInt64(BigInt(this.items.length));//写length
@@ -158,33 +166,44 @@ function assertion(obj: any, name: string) {
     }
 }
 export function link(programScope: ProgramScope) {
-
     let main = programScope.getProp('main').prop.type?.FunctionType;
     if (main == undefined || Object.keys(main._arguments).length != 0 || TypeUsedSign(main.retType!) != 'void') {
         throw `必须在program域定义一个函数main,类型为: ()=>void (无参,无返回值),后续再考虑有参数和返回值的情况`;
     }
     let start = new IRContainer('@start', 'begin');//在代码的最前面生成@start
-    IRContainer.setSymbol(start);
-    let call = new IR('abs_call', undefined, undefined, undefined, `@program_init`);//初始化@program
-    symbolsRelocationTable.push(call);
+    IRContainer.setContainer(start);
+    let new_p = new IR('_new', undefined, undefined, undefined);
+    typeRelocationTable.push({ t1: '@program', ir: new_p });
+    new IR('dup', globalVariable.pointSize);
+    new IR('p_store');
+    let call = new IR('abs_call', undefined, undefined, undefined);//初始化@program
+    irAbsoluteAddressRelocationTable.push({ sym: '@program_init', ir: call });
     new IR('p_load');
     new IR('getfield', programScope.getPropOffset('main').offset, globalVariable.pointSize);
     new IR('call');
     new IR('__exit');
 
 
-    let newSymbolTable: Map<string, number> = new Map();
-    let newIRS: IR[] = [];//用于是输出调试代码
-    let index = 0;
+    let irTable: Map<string, number> = new Map();//用于调试的符号表
+    let debugIRS: IR[] = [];//用于调试的ir列条
+    let irIndex = 0;
     //重新计算符号表
-    for (let _symbol of symbolsTable) {
-        newSymbolTable.set(_symbol.name, index);//这个1是留给第一条指令jmp到@start用的
-        index += _symbol.irs.length;
+    for (let ircontainer of irContainerList) {
+        if (irTable.has(ircontainer.name)) {
+            throw `符号:${ircontainer.name}重复`;
+        }
+        irTable.set(ircontainer.name, irIndex);
+        irIndex += ircontainer.irs.length;
+    }
+    //push_stack_map重定位
+    for (let item of stackFrameRelocationTable) {
+        item.ir.operand1 = stackFrameTable.nameMap.get(item.sym);
+        assertion(item.ir.operand1, item.sym);
     }
     //修改需要重定位的指令
-    for (let item of symbolsRelocationTable) {
-        item.operand1 = newSymbolTable.get(item.tag1!);
-        assertion(item.tag1, item.tag1!);
+    for (let item of irAbsoluteAddressRelocationTable) {
+        item.ir.operand1 = irTable.get(item.sym);
+        assertion(item.ir.operand1, item.sym);
     }
     //类型重定位
     for (let item of typeRelocationTable) {
@@ -197,28 +216,28 @@ export function link(programScope: ProgramScope) {
             assertion(item.ir.operand2, item.t2);
         }
         if (item.t3) {
-            item.ir.operand2 = irTypeTable[item.t3].index;
-            assertion(item.ir.operand2, item.t3);
+            item.ir.operand3 = irTypeTable[item.t3].index;
+            assertion(item.ir.operand3, item.t3);
         }
     }
     //将ir变成二进制
     let irBuffer = new Buffer();
-    for (let _symbol of symbolsTable) {
-        for (let ir of _symbol.irs) {
-            newIRS.push(ir);
+    for (let ircontainer of irContainerList) {
+        for (let ir of ircontainer.irs) {
+            debugIRS.push(ir);
             irBuffer.writeInt64(BigInt(OPCODE[ir.opCode]));
             irBuffer.writeInt64(BigInt(ir.operand1 ?? 0));
             irBuffer.writeInt64(BigInt(ir.operand2 ?? 0));
             irBuffer.writeInt64(BigInt(ir.operand3 ?? 0));
         }
     }
-    //输出符号表
-    let symbolTableBuffer = new Buffer();
-    for (let item of newSymbolTable) {
-        symbolTableBuffer.writeInt64(BigInt(stringPool.register(item[0])));
-        symbolTableBuffer.writeInt64(BigInt(item[1]));
+    //指令参照表
+    let irTableBuffer = new Buffer();
+    for (let item of irTable) {
+        irTableBuffer.writeInt64(BigInt(stringPool.register(item[0])));
+        irTableBuffer.writeInt64(BigInt(item[1]));
     }
-    return { text: irBuffer.toBinary(), symbolTable: symbolTableBuffer.toBinary(), newSymbolTable, newIRS };
+    return { text: irBuffer.toBinary(), irTableBuffer: irTableBuffer.toBinary(), irTable, debugIRS };
 }
 export enum typeItemDesc {
     PlaintObj,

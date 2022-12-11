@@ -6,10 +6,10 @@ export const globalVariable = {
     stackFrameMapIndex: 0,//栈帧序号
     functionIndex: 0
 }
-export let symbolsRelocationTable: IR[] = [];//重定位表
+export let irAbsoluteAddressRelocationTable: { sym: string, ir: IR }[] = [];//指令地址重定位表
 export let typeRelocationTable: { t1?: string, t2?: string, t3?: string, ir: IR }[] = [];//type重定向表
 export let stackFrameRelocationTable: { sym: string, ir: IR }[] = [];//stackFrame重定向表
-export let symbolsTable: IRContainer[] = [];//符号表
+export let irContainerList: IRContainer[] = [];//符号表
 export let stackFrameTable: { [key: string]: { baseOffset: number, frame: { name: string, type: TypeUsed }[] } } = {};//栈布局记录
 export let typeTable: { [key: string]: { index: number, type: TypeUsed } } = {};//类型表
 let typeIndex = 0;
@@ -63,10 +63,11 @@ export function typeTableToBin(): ArrayBuffer {
     return ret.buffer;
 }
 export enum OPCODE {
-    'new' = 0,//创建一个普通对象
+    '_new' = 0,//创建一个普通对象
     'newFunc',//创建一个函数对象
     'newArray',//操作数是基本类型，长度和是否仍然是一个数组从栈中取
     'p_load',//将program指针压入表达式栈
+    'p_store',//将program从栈存入program指针
     'push_stack_map',//压入栈帧布局
     'pop_stack_map',//弹出栈帧布局
     'getfield',
@@ -96,21 +97,20 @@ export enum OPCODE {
 };
 let symbol: IRContainer;
 export class IRContainer {
-    public index = 0;
     public irs: IR[] = [];
     public name: string;
     constructor(name: string, push_direct: 'begin' | 'end' = 'end') {
         this.name = name;
         if (push_direct == 'begin') {
-            symbolsTable.unshift(this);
+            irContainerList.unshift(this);
         } else {
-            symbolsTable.push(this);
+            irContainerList.push(this);
         }
     }
-    public static setSymbol(container: IRContainer) {
+    public static setContainer(container: IRContainer) {
         symbol = container;
     }
-    public static getSymbol() {
+    public static getContainer() {
         return symbol;
     }
     public toBinary(): ArrayBuffer {
@@ -126,23 +126,23 @@ export class IRContainer {
     }
 }
 export class IR {
-    public index: number = symbol.index++;
+    public index: number = symbol.irs.length;
     public opCode: keyof typeof OPCODE;
     public operand1?: number;
     public operand2?: number;
     public operand3?: number;
-    public tag1?: string;
-    public tag2?: string;
-    public tag3?: string;
+    // public tag1?: string;
+    // public tag2?: string;
+    // public tag3?: string;
     public length: number;
-    constructor(opCode: keyof typeof OPCODE, operand1?: number, operand2?: number, operand3?: number, tag1?: string, tag2?: string, tag3?: string) {
+    constructor(opCode: keyof typeof OPCODE, operand1?: number, operand2?: number, operand3?: number/*, tag1?: string, tag2?: string, tag3?: string*/) {
         this.opCode = opCode;
         this.operand1 = operand1;
         this.operand2 = operand2;
         this.operand3 = operand3;
-        this.tag1 = tag1;
-        this.tag2 = tag2;
-        this.tag3 = tag3;
+        // this.tag1 = tag1;
+        // this.tag2 = tag2;
+        // this.tag3 = tag3;
         this.length = 1;
         symbol.irs.push(this);
     }
