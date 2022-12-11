@@ -170,7 +170,7 @@ export function link(programScope: ProgramScope) {
     new IR('p_load');
     new IR('getfield', programScope.getPropOffset('main').offset, globalVariable.pointSize);
     new IR('call');
-    new IR('exit');
+    new IR('__exit');
 
 
     let newSymbolTable: Map<string, number> = new Map();

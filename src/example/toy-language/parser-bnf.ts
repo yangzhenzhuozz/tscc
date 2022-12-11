@@ -1435,6 +1435,20 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
             }
         },//赋值可以作为一个语句
         {
+            "statement:increment ;": {
+                action: function ($, s): ASTNode {
+                    return $[0] as ASTNode;
+                }
+            }
+        },//赋值可以作为一个语句
+        {
+            "statement:decrement ;": {
+                action: function ($, s): ASTNode {
+                    return $[0] as ASTNode;
+                }
+            }
+        },//赋值可以作为一个语句
+        {
             "statement:_new ;": {
                 action: function ($, s): ASTNode {
                     return $[0] as ASTNode;
@@ -1545,13 +1559,6 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
             }
         },//函数调用
         {
-            "object:assignment": {
-                action: function ($, s): ASTNode {
-                    return $[0] as ASTNode;
-                }
-            }
-        },//赋值
-        {
             "object:_new": {
                 action: function ($, s): ASTNode {
                     return $[0] as ASTNode;
@@ -1615,7 +1622,21 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
                     return { desc: "ASTNode", "=": { leftChild: $[0] as ASTNode, rightChild: $[2] as ASTNode } };
                 }
             }
-        },
+        },//赋值运算
+        {
+            "increment:object ++": {
+                action: function ($, s): ASTNode {
+                    return { desc: "ASTNode", '++': $[0] as ASTNode };
+                }
+            }
+        },//单目运算符++
+        {
+            "decrement:object --": {
+                action: function ($, s): ASTNode {
+                    return { desc: "ASTNode", '--': $[0] as ASTNode };
+                }
+            }
+        },//单目运算符--
         {
             "object:object + object": {
                 action: function ($, s): ASTNode {
@@ -1719,20 +1740,6 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
                 }
             }
         },//单目运算符-非
-        {
-            "object:object ++": {
-                action: function ($, s): ASTNode {
-                    return { desc: "ASTNode", '++': $[0] as ASTNode };
-                }
-            }
-        },//单目运算符++
-        {
-            "object:object --": {
-                action: function ($, s): ASTNode {
-                    return { desc: "ASTNode", '--': $[0] as ASTNode };
-                }
-            }
-        },//单目运算符--
         /**单目运算符结束 */
         {
             "object:object [ object ]": {

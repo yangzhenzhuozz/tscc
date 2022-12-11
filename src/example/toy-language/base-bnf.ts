@@ -190,6 +190,8 @@ let grammar: Grammar = {
         { "statement:switch ( object ) { switch_bodys }": {} },//switch语句,因为switch在C/C++等语言中可以用跳转表处理,gcc在处理switch语句时,如果各个case的值连续,也会生成一个jum_table,这里我就稍微扩展一下switch的用法
         { "statement:call ;": {} },//函数调用可以作为一个语句
         { "statement:assignment ;": {} },//赋值可以作为一个语句
+        { "statement:increment ;": {} },//赋值可以作为一个语句
+        { "statement:decrement ;": {} },//赋值可以作为一个语句
         { "statement:_new ;": {} },//new可以作为一个语句
         { "label_def:": {} },//label_def可以为空
         { "label_def:id :": {} },//label_def为 id : 组成
@@ -208,7 +210,6 @@ let grammar: Grammar = {
         { "switch_body:case object : statement": {} },//case 语句
         { "switch_body:default : statement": {} },//default语句
         { "object:call": {} },//函数调用
-        { "object:assignment": {} },//赋值
         { "object:_new": {} },//new对象或者数组
         { "object:( object )": {} },//括号括住的object还是一个object
         { "object:object . id": {} },//取成员
@@ -232,7 +233,9 @@ let grammar: Grammar = {
          * 2. a+(b*c)
          * 已经把各个操作符的优先级和结合性定义的和C/C++一致，见association中定义的各个符号优先级和结合性,双目运算符都是左结合,且+ - 优先级低于 * /
          */
-        { "assignment:object = object": {} },
+        { "assignment:object = object": {} },//赋值运算
+        { "increment:object ++": {} },//单目运算符++
+        { "decrement:object --": {} },//单目运算符--
         { "object:object + object": {} },
         { "object:object - object": {} },
         { "object:object * object": {} },
@@ -258,8 +261,6 @@ let grammar: Grammar = {
         /**双目运算符结束 */
         /**单目运算符 */
         { "object:! object": {} },//单目运算符-非
-        { "object:object ++": {} },//单目运算符++
-        { "object:object --": {} },//单目运算符--
         /**单目运算符结束 */
         { "object:object [ object ]": {} },//[]运算符
         /**

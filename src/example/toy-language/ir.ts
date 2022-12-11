@@ -92,7 +92,7 @@ export enum OPCODE {
     'call',//以栈顶为目标，进行调用
     'abs_call',//call一个绝对地址
     'ret',
-    'exit'
+    '__exit'
 };
 let symbol: IRContainer;
 export class IRContainer {
