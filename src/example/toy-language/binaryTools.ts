@@ -174,12 +174,12 @@ export function link(programScope: ProgramScope) {
     IRContainer.setContainer(start);
     let new_p = new IR('_new', undefined, undefined, undefined);
     typeRelocationTable.push({ t1: '@program', ir: new_p });
-    new IR('dup', globalVariable.pointSize);
+    new IR('p_dup');
     new IR('p_store');
     let call = new IR('abs_call', undefined, undefined, undefined);//初始化@program
     irAbsoluteAddressRelocationTable.push({ sym: '@program_init', ir: call });
     new IR('p_load');
-    new IR('getfield', programScope.getPropOffset('main').offset, globalVariable.pointSize);
+    new IR('p_getfield', programScope.getPropOffset('main'));
     new IR('call');
     new IR('__exit');
 
