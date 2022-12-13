@@ -82,7 +82,7 @@ interface ASTNode {
     desc: 'ASTNode';
     loadOperatorOverload?: [string, string];//读取重载操作符函数
     loadException?: TypeUsed;//读取异常
-    loadArgument?: { index: number, type: TypeUsed },//读取参数
+    loadArgument?: { index: number, type: TypeUsed },//从栈中读取参数
     type?: TypeUsed;//表达式的类型
     def?: VariableDescriptor;
     accessField?: { obj: ASTNode, field: string };

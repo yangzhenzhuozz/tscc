@@ -725,8 +725,9 @@ function functionScan(blockScope: BlockScope, fun: FunctionType): TypeUsed {
         }
         return fun.retType;
     }
+    //为所有参数创建一个def节点，并且通过unshift移入的数据是参数的逆序
     let argIndex = 0;
-    for (let argumentName in fun._arguments) {//注册参数
+    for (let argumentName in fun._arguments) {
         let defNode: ASTNode = { desc: 'ASTNode', def: {} };
         defNode.def![argumentName] = { variable: 'var', initAST: { desc: 'ASTNode', loadArgument: { index: argIndex, type: fun._arguments[argumentName].type! } } };
         fun.body!.body.unshift(defNode);//插入args的def指令

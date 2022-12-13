@@ -1,5 +1,5 @@
 import fs from 'fs';
-import { irAbsoluteAddressRelocationTable, globalVariable, registerType, stackFrameTable, stackFrameRelocationTable, typeRelocationTable, typeTableToBin, typeTable } from './ir.js';
+import { irAbsoluteAddressRelocationTable, globalVariable, registerType, stackFrameTable, stackFrameRelocationTable, typeRelocationTable, typeTableToBin, typeTable, nowIRContainer } from './ir.js';
 import { Scope, BlockScope, ClassScope, ProgramScope } from './scope.js';
 import { IR, IRContainer } from './ir.js'
 import { FunctionSign, FunctionSignWithArgumentAndRetType, TypeUsedSign } from './lib.js';
@@ -49,7 +49,7 @@ function isPointType(type: TypeUsed): boolean {
  * @param boolNot 布尔运算的时候是否要取反向生成操作符，'||'和'&&'对leftObj采取的比较跳转指令不同，默认取反可以节约指令
  * @returns 
  */
-function nodeRecursion(scope: Scope, node: ASTNode, label: string[], inFunction: boolean, argumentMap: { offset: number, type: TypeUsed }[], frameLevel: number, boolNot: boolean = true): { startIR: IR, endIR: IR, truelist: IR[], falselist: IR[], jmpToFunctionEnd?: IR[] } {
+function nodeRecursion(scope: Scope, node: ASTNode, label: string[], inFunction: boolean, argumentMap: { type: TypeUsed }[], frameLevel: number, boolNot: boolean = true): { startIR: IR, endIR: IR, truelist: IR[], falselist: IR[], jmpToFunctionEnd?: IR[] } {
     if (node['_program'] != undefined) {
         let ir = new IR('program_load');
         return { startIR: ir, endIR: ir, truelist: [], falselist: [] };
@@ -231,20 +231,6 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], inFunction:
             return defalutValue(node['def'][name].type!);
         }
     }
-    else if (node['loadArgument'] != undefined) {
-        let argDesc = argumentMap![node['loadArgument'].index];
-        let ir: IR;
-        if (isPointType(argDesc.type)) {
-            ir = new IR('p_load', -argDesc.offset);
-        } else {
-            if (argDesc.type!.PlainType?.name == 'int') {
-                ir = new IR('i32_load', -argDesc.offset);
-            } else {
-                throw `暂时不支持类型:${argDesc.type!.PlainType?.name}的store`;
-            }
-        }
-        return { startIR: ir, endIR: ir, truelist: [], falselist: [] };
-    }
     else if (node['load'] != undefined) {
         let type = (scope as BlockScope).getProp(node['load']).prop.type!;
         let offset = (scope as BlockScope).getPropOffset(node['load']);
@@ -375,6 +361,22 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], inFunction:
         let call = new IR('call');
         return { startIR: startIR, endIR: call, truelist: [], falselist: [], jmpToFunctionEnd: [] };
     }
+    /**
+     * 这里什么指令都不需要生成 
+     * 假如执行一个函数调用  f1(1,2,3);
+     * 此时栈中是这样的布局
+     *        ┌─────────┐
+     *        │    3    │
+     *        ├─────────┤
+     *        │    2    │
+     *        ├─────────┤
+     *   sp-> │    1    │
+     *        └─────────┘
+     * 其他要使用参数的代码(有且仅有这些参数的def节点)依次从栈顶消费即可
+     */
+    else if (node['loadArgument'] != undefined) {
+        return { startIR: nowIRContainer.irs[nowIRContainer.irs.length - 1], endIR: nowIRContainer.irs[nowIRContainer.irs.length - 1], truelist: [], falselist: [], jmpToFunctionEnd: [] };
+    }
     else if (node['_newArray'] != undefined) {
         let startIR: IR | undefined = undefined;
         let initList = node['_newArray'].initList;
@@ -430,7 +432,7 @@ function defalutValue(type: TypeUsed): { startIR: IR, endIR: IR, truelist: IR[],
     //要注意valueType的嵌套
     return {} as any;
 }
-function BlockScan(blockScope: BlockScope, label: string[], argumentMap: { offset: number, type: TypeUsed }[], frameLevel: number): { startIR: IR, endIR: IR, jmpToFunctionEnd: IR[] } {
+function BlockScan(blockScope: BlockScope, label: string[], argumentMap: { type: TypeUsed }[], frameLevel: number): { startIR: IR, endIR: IR, jmpToFunctionEnd: IR[] } {
     let stackFrameMapIndex = globalVariable.stackFrameMapIndex++;
     let startIR = new IR('push_stack_map', undefined, undefined, undefined);
     let endIR: IR;
@@ -524,7 +526,7 @@ function functionGen(blockScope: BlockScope, fun: FunctionType): { wrapClassName
     let functionSymbol = new IRContainer(`@function_${functionIndex}`);
     IRContainer.setContainer(functionSymbol);
     let jmpToFunctionEnd = BlockScan(blockScope, [], argumentMap, 1).jmpToFunctionEnd;
-    let retIR = new IR('ret', argOffset);
+    let retIR = new IR('ret');
     for (let ir of jmpToFunctionEnd) {
         ir.operand1 = retIR.index - ir.index;//处理所有ret jmp
     }

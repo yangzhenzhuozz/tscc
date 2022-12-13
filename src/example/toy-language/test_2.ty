@@ -1,8 +1,12 @@
-function f(){
-    var a=0;
-    return a;
+function f(a:int,b:int){
+    var c=a;
+    var d=b;
+    function inner(){
+        var e=a;
+        return e+b;
+    };
+    return d;
 };
-var a=f();
-var main=()=>{};
 valuetype class int{
+    operator + ( v : int ) : int { native } ;
 }

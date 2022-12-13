@@ -99,7 +99,7 @@ export enum OPCODE {
     'ret',
     '__exit'
 };
-let symbol: IRContainer;
+export let nowIRContainer: IRContainer;
 export class IRContainer {
     public irs: IR[] = [];
     public name: string;
@@ -112,10 +112,10 @@ export class IRContainer {
         }
     }
     public static setContainer(container: IRContainer) {
-        symbol = container;
+        nowIRContainer = container;
     }
     public static getContainer() {
-        return symbol;
+        return nowIRContainer;
     }
     public toBinary(): ArrayBuffer {
         let bin = new BigUint64Array(4 * this.irs.length);//每条指令32字节(是不是太浪费了，单字节指令也用这么多内存，太奢侈了)
@@ -130,7 +130,7 @@ export class IRContainer {
     }
 }
 export class IR {
-    public index: number = symbol.irs.length;
+    public index: number = nowIRContainer.irs.length;
     public opCode: keyof typeof OPCODE;
     public operand1?: number;
     public operand2?: number;
@@ -148,6 +148,6 @@ export class IR {
         // this.tag2 = tag2;
         // this.tag3 = tag3;
         this.length = 1;
-        symbol.irs.push(this);
+        nowIRContainer.irs.push(this);
     }
 }
