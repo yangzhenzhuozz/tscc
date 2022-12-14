@@ -1,24 +1,16 @@
-class MyClass{
-    var c:int;
-    function a(){
-
+function f(a:int,b:int){
+    var c=a;
+    var d=b;
+    function inner(){
+        var e=a;
+        return e+b;
     };
-    var f1=(a:int)=>{
-        var b:int=0;
-        function f2(){
-            a+b+c;
-            {
-                a+b;
-                a+b;
-                a+b;
-                a+b;
-            }
-        };
-        var f3=(a:int)=>{
-            a+b+c;
-        };
-    };
-}
-function f5<T>(){
-
+    return inner;
 };
+function main(){
+    var t=f(1,2);
+    t();
+};
+valuetype class int{
+    operator + ( v : int ) : int { native } ;
+}

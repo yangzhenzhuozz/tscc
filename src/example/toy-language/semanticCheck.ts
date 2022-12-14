@@ -134,10 +134,10 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
         if (keyOfDeclare.length != node["call"]._arguments.length) {
             throw `函数需要${keyOfDeclare.length}个参数，实际传递了${node["call"]._arguments.length}个参数`;
         } else {
-            for (let i = 0; node["call"]._arguments.length; i++) {
+            for (let i = 0; i < node["call"]._arguments.length; i++) {
                 let argNode = node["call"]._arguments[i];
                 let arg_type = nodeRecursion(scope, argNode, label, declareRetType).type;
-                typeCheck(arg_type, funType._arguments, `函数调用的参数类型不匹配`);//参数类型检查
+                typeCheck(arg_type, funType._arguments[keyOfDeclare[i]].type!, `函数调用的参数类型不匹配`);//参数类型检查
             }
         }
         result = { type: funType.retType!, hasRet: false };
@@ -525,17 +525,9 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
         for (let n of node["_new"]._arguments) {
             ts.push(nodeRecursion(scope, n, label, declareRetType).type);
         }
-        let callsign: string = FunctionSignWithArgument(ts);//根据调用参数生成一个签名,构造函数没有返回值
-        if (scope instanceof ProgramScope) {
-            if (scope.program.definedType[node["_new"].type.PlainType!.name]._constructor[callsign] == undefined) {
-                throw '无法找到合适的构造函数'
-            }
-        } else if (scope instanceof BlockScope || scope instanceof ClassScope) {
-            if (scope.programScope.program.definedType[node["_new"].type.PlainType!.name]._constructor[callsign] == undefined) {
-                throw '无法找到合适的构造函数'
-            }
-        } else {
-            throw `未知类型的Scope`;
+        let callsign: string = FunctionSignWithArgumentAndRetType(ts, { PlainType: { name: 'void' } });//根据调用参数生成一个签名,构造函数没有返回值
+        if (program.definedType[node["_new"].type.PlainType!.name]._constructor[callsign] == undefined) {
+            throw '无法找到合适的构造函数'
         }
         result = { type: node["_new"].type, hasRet: false };
     }

@@ -1,11 +1,14 @@
-function f(a:int,b:int){
-    var c=a;
-    var d=b;
-    function inner(){
-        var e=a;
-        return e+b;
-    };
-    return d;
+class MyClass{
+    MyClass(){
+
+    }
+    MyClass(a:int){
+        
+    }
+}
+function main(){
+    new MyClass();
+    new MyClass(1);
 };
 valuetype class int{
     operator + ( v : int ) : int { native } ;

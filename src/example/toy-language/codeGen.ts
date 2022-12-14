@@ -249,18 +249,18 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], inFunction:
     else if (node['_new'] != undefined) {
         let ir = new IR('_new', undefined, undefined, undefined);
         typeRelocationTable.push({ t1: node['_new'].type.PlainType.name, ir: ir });
-        let call = new IR('abs_call', undefined, undefined, undefined);
-        irAbsoluteAddressRelocationTable.push({ sym: `${node['_new'].type.PlainType.name}_init`, ir: call });
+        let initCall = new IR('abs_call', undefined, undefined, undefined);
+        irAbsoluteAddressRelocationTable.push({ sym: `${node['_new'].type.PlainType.name}_init`, ir: initCall });
         let argTypes: TypeUsed[] = [];
         let args = node['_new']._arguments;
         for (let i = args.length - 1; i >= 0; i--) {
             argTypes.push(args[args.length - 1 - i].type!);//顺序获取type
             nodeRecursion(scope, args[i], label, inFunction, argumentMap, frameLevel, boolNot);//逆序压参
         }
-        let sign = `@constructor:${node['_new'].type.PlainType.name}  ${FunctionSignWithArgumentAndRetType(argTypes, { PlainType: { name: 'void' } })}`;//构造函数签名
-        call = new IR('abs_call', undefined, undefined, undefined);//执行调用
-        irAbsoluteAddressRelocationTable.push({ sym: sign, ir: call });
-        return { startIR: ir, endIR: call, truelist: [], falselist: [] };
+        let sign = `@constructor:${node['_new'].type.PlainType.name}  ${FunctionSignWithArgumentAndRetType(argTypes, { PlainType: { name: 'void' } })}`;//构造函数的签名
+        let constructorCall = new IR('abs_call', undefined, undefined, undefined);//执行调用
+        irAbsoluteAddressRelocationTable.push({ sym: sign, ir: constructorCall });
+        return { startIR: ir, endIR: constructorCall, truelist: [], falselist: [] };
     }
     else if (node['||'] != undefined) {
         let left = nodeRecursion(scope, node['||'].leftChild, label, inFunction, argumentMap, frameLevel, false);
@@ -486,9 +486,10 @@ function propSize(type: TypeUsed): number {
  * 
  * @param blockScope 
  * @param fun 
+ * @param functionSymbolName 为函数符号指定的名字，如果没有指定，则用默认规则生成
  * @returns wrapClassName:函数包裹类型名、realTypeName:函数真实类型名、text:函数代码的符号名
  */
-function functionGen(blockScope: BlockScope, fun: FunctionType): { wrapClassName: string, realTypeName: string, text: string } {
+function functionGen(blockScope: BlockScope, fun: FunctionType, functionSymbolName?: string): { wrapClassName: string, realTypeName: string, text: string, irContainer: IRContainer } {
     let lastSymbol = IRContainer.getContainer();//类似回溯，保留现场
     let argumentMap: { offset: number, type: TypeUsed }[] = [];
     let argOffset = 0;
@@ -523,15 +524,15 @@ function functionGen(blockScope: BlockScope, fun: FunctionType): { wrapClassName
     };
     programScope.registerClassForCapture(functionWrapName);//注册类型
     registerType({ PlainType: { name: functionWrapName } });//在类型表中注册函数包裹类的类型
-    let functionSymbol = new IRContainer(`@function_${functionIndex}`);
-    IRContainer.setContainer(functionSymbol);
+    let functionIRContainer = new IRContainer(functionSymbolName ?? `@function_${functionIndex}`);
+    IRContainer.setContainer(functionIRContainer);
     let jmpToFunctionEnd = BlockScan(blockScope, [], argumentMap, 1).jmpToFunctionEnd;
     let retIR = new IR('ret');
     for (let ir of jmpToFunctionEnd) {
         ir.operand1 = retIR.index - ir.index;//处理所有ret jmp
     }
     IRContainer.setContainer(lastSymbol);//回退
-    return { wrapClassName: functionWrapName, realTypeName: FunctionSign(fun), text: functionSymbol.name };
+    return { wrapClassName: functionWrapName, realTypeName: FunctionSign(fun), text: functionIRContainer.name, irContainer: functionIRContainer };
 }
 function classScan(classScope: ClassScope) {
     let lastSymbol = IRContainer.getContainer();//类似回溯，保留现场
@@ -562,6 +563,15 @@ function classScan(classScope: ClassScope) {
             //使用default
             defalutValue(prop.type!);
         }
+    }
+    //扫描构造函数
+    //扫描构造函数
+    for (let constructorName in program.definedType[classScope.className]._constructor) {
+        let _constructor = program.definedType[classScope.className]._constructor[constructorName];
+        _constructor.retType = { PlainType: { name: 'void' } };//所有构造函数不允许有返回值
+        let blockScope = new BlockScope(classScope, _constructor, _constructor.body!, { program });
+        let sign = `@constructor:${classScope.className}  ${constructorName}`;//构造函数的签名
+        functionGen(blockScope, _constructor, sign);
     }
     new IR('ret', globalVariable.pointSize);//classInit返回
     IRContainer.setContainer(lastSymbol);//回退
