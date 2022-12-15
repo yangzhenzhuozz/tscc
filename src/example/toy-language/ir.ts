@@ -135,18 +135,12 @@ export class IR {
     public operand1?: number;
     public operand2?: number;
     public operand3?: number;
-    // public tag1?: string;
-    // public tag2?: string;
-    // public tag3?: string;
     public length: number;
     constructor(opCode: keyof typeof OPCODE, operand1?: number, operand2?: number, operand3?: number/*, tag1?: string, tag2?: string, tag3?: string*/) {
         this.opCode = opCode;
         this.operand1 = operand1;
         this.operand2 = operand2;
         this.operand3 = operand3;
-        // this.tag1 = tag1;
-        // this.tag2 = tag2;
-        // this.tag3 = tag3;
         this.length = 1;
         nowIRContainer.irs.push(this);
     }
