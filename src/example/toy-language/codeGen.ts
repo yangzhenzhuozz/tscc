@@ -450,13 +450,12 @@ function BlockScan(blockScope: BlockScope, label: string[], argumentMap: { type:
 
             let stmtType = (nodeOrBlock as ASTNode).type!;
             /*
-            下面这几种stmt需要清理栈
+            下面这三种stmt需要清理栈
             a++;
             a--;
-            f();
             new obj();
             */
-            if ((nodeOrBlock as ASTNode)['++'] != undefined || (nodeOrBlock as ASTNode)['--'] != undefined || (nodeOrBlock as ASTNode)['call'] != undefined || (nodeOrBlock as ASTNode)['_new'] != undefined) {
+            if ((nodeOrBlock as ASTNode)['++'] != undefined || (nodeOrBlock as ASTNode)['--'] != undefined || (nodeOrBlock as ASTNode)['_new'] != undefined) {
                 if (stmtType.PlainType && program.definedType[stmtType.PlainType.name].modifier == 'valuetype') {
                     if (stmtType.PlainType.name == 'int') {
                         new IR('i32_pop');
