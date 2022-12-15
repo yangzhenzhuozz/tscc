@@ -1440,14 +1440,14 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
                     return $[0] as ASTNode;
                 }
             }
-        },//赋值可以作为一个语句
+        },//自增可以作为一个语句
         {
             "statement:decrement ;": {
                 action: function ($, s): ASTNode {
                     return $[0] as ASTNode;
                 }
             }
-        },//赋值可以作为一个语句
+        },//自减可以作为一个语句
         {
             "statement:_new ;": {
                 action: function ($, s): ASTNode {

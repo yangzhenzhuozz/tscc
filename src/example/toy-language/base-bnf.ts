@@ -190,8 +190,8 @@ let grammar: Grammar = {
         { "statement:switch ( object ) { switch_bodys }": {} },//switch语句,因为switch在C/C++等语言中可以用跳转表处理,gcc在处理switch语句时,如果各个case的值连续,也会生成一个jum_table,这里我就稍微扩展一下switch的用法
         { "statement:call ;": {} },//函数调用可以作为一个语句
         { "statement:assignment ;": {} },//赋值可以作为一个语句
-        { "statement:increment ;": {} },//赋值可以作为一个语句
-        { "statement:decrement ;": {} },//赋值可以作为一个语句
+        { "statement:increment ;": {} },//自增可以作为一个语句
+        { "statement:decrement ;": {} },//自减作为一个语句
         { "statement:_new ;": {} },//new可以作为一个语句
         { "label_def:": {} },//label_def可以为空
         { "label_def:id :": {} },//label_def为 id : 组成

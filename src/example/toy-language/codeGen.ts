@@ -248,6 +248,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], inFunction:
     }
     else if (node['_new'] != undefined) {
         let ir = new IR('_new', undefined, undefined, undefined);
+        new IR('p_dup');//赋值一个指针用于调用构造函数
         typeRelocationTable.push({ t1: node['_new'].type.PlainType.name, ir: ir });
         let initCall = new IR('abs_call', undefined, undefined, undefined);
         irAbsoluteAddressRelocationTable.push({ sym: `${node['_new'].type.PlainType.name}_init`, ir: initCall });
@@ -445,6 +446,26 @@ function BlockScan(blockScope: BlockScope, label: string[], argumentMap: { type:
             endIR = nodeRet.endIR;
             if (nodeRet.jmpToFunctionEnd) {
                 jmpToFunctionEnd = jmpToFunctionEnd.concat(nodeRet.jmpToFunctionEnd);
+            }
+
+            let stmtType = (nodeOrBlock as ASTNode).type!;
+            /*
+            下面这几种stmt需要清理栈
+            a++;
+            a--;
+            f();
+            new obj();
+            */
+            if ((nodeOrBlock as ASTNode)['++'] != undefined || (nodeOrBlock as ASTNode)['--'] != undefined || (nodeOrBlock as ASTNode)['call'] != undefined || (nodeOrBlock as ASTNode)['_new'] != undefined) {
+                if (stmtType.PlainType && program.definedType[stmtType.PlainType.name].modifier == 'valuetype') {
+                    if (stmtType.PlainType.name == 'int') {
+                        new IR('i32_pop');
+                    } else {
+                        throw `暂时不支持类型:${stmtType!.PlainType?.name}的popup`;
+                    }
+                } else {//非值类型的copy统统按照指针处理
+                    endIR = new IR('p_pop');
+                }
             }
         } else {
             let block = nodeOrBlock as Block;
