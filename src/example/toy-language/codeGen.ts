@@ -658,6 +658,7 @@ function finallyOutput() {
     TypeTableGen();
     fs.writeFileSync(`./src/example/toy-language/output/typeTable.bin`, Buffer.from(binTypeTable.toBinary()));
     fs.writeFileSync(`./src/example/toy-language/output/typeTable.json`, JSON.stringify(binTypeTable.items, null, 4));
+    fs.writeFileSync(`./src/example/toy-language/output/typeTableForDebug.json`, JSON.stringify(typeTable, null, 4));
 
     stackFrameTableGen();
     fs.writeFileSync(`./src/example/toy-language/output/stackFrameTable.bin`, Buffer.from(binStackFrameTable.toBinary()));
