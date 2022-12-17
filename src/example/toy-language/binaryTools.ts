@@ -78,7 +78,18 @@ class StringPool {
     }
 }
 class ClassTable {
+    private classNameMap: Map<number, number> | undefined;
     public items: { size: number, name: number, isValueType: boolean, props: { name: number, type: number }[] }[] = [];
+    public getClassIndex(className: string): number {
+        if (!this.classNameMap) {
+            this.classNameMap = new Map();
+            for (let i = 0; i < this.items.length; i++) {
+                let item = this.items[i];
+                this.classNameMap!.set(item.name, i);
+            }
+        }
+        return this.classNameMap!.get(stringPool.register(className))!;
+    }
     public toBinary() {
         let buffer = new Buffer();
         buffer.writeInt64(BigInt(this.items.length));//写ClassTable.length
@@ -149,6 +160,9 @@ class StackFrameTable {
 }
 //和ir.ts中的typeTable不同
 class TypeTable {
+    /**
+     * innerType：对于array是数组元素类型，对于plainObj是classTable的类型，对于function无意义
+     */
     public items: { name: number, desc: number, innerType: number }[] = [];
     public toBinary() {
         let buffer = new Buffer();
