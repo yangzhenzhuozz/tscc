@@ -621,7 +621,7 @@ function TypeTableGen() {
             innerType = typeTable[TypeUsedSign(typeTable[name].type.ArrayType?.innerType!)].index
         } else if (typeTable[name].type.FunctionType != undefined) {
             typeDesc = typeItemDesc.Function;
-            innerType = -1;
+            innerType = typeTable[name].index;
         } else {
             typeDesc = typeItemDesc.PlaintObj;
             innerType = classTable.getClassIndex(typeTable[name].type.PlainType?.name!);

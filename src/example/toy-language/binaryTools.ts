@@ -161,7 +161,7 @@ class StackFrameTable {
 //和ir.ts中的typeTable不同
 class TypeTable {
     /**
-     * tag:对于array是数组元素类型，对于plainObj是classTable的类型，对于function无意义
+     * tag:对于array是数组元素类型，对于plainObj是classTable的类型，对于function则表示函数签名对应的类型(即在typeTable中的位置)
      */
     public items: { name: number, desc: number, innerType: number }[] = [];
     public toBinary() {
