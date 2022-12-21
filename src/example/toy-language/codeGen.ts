@@ -612,21 +612,21 @@ function ClassTableItemGen(property: VariableDescriptor, size: number, className
     classTable.items.push({ name: classNamePoint, size: size, isValueType: isValueType, props: props });
 }
 function TypeTableGen() {
-    let innerType: number;
+    let tag: number;
     for (let name in typeTable) {
         let namePoint = stringPool.register(name);
         let typeDesc: number;
         if (typeTable[name].type.ArrayType != undefined) {
             typeDesc = typeItemDesc.Array;
-            innerType = typeTable[TypeUsedSign(typeTable[name].type.ArrayType?.innerType!)].index
+            tag = typeTable[TypeUsedSign(typeTable[name].type.ArrayType?.innerType!)].index
         } else if (typeTable[name].type.FunctionType != undefined) {
             typeDesc = typeItemDesc.Function;
-            innerType = -1;
+            tag = -1;
         } else {
             typeDesc = typeItemDesc.PlaintObj;
-            innerType = classTable.getClassIndex(typeTable[name].type.PlainType?.name!);
+            tag = classTable.getClassIndex(typeTable[name].type.PlainType?.name!);
         }
-        binTypeTable.items.push({ name: namePoint, desc: typeDesc, innerType });
+        binTypeTable.items.push({ name: namePoint, desc: typeDesc, tag });
     }
 }
 function stackFrameTableGen() {
