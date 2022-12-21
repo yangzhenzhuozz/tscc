@@ -161,14 +161,14 @@ class StackFrameTable {
 //和ir.ts中的typeTable不同
 class TypeTable {
     /**
-     * tag:对于array是数组元素类型，对于plainObj是classTable的类型，对于function则是函数入口
+     * tag:对于array是数组元素类型，对于plainObj是classTable的类型，对于function无意义
      */
-    public items: { name: number, desc: number, tag: number }[] = [];
+    public items: { name: number, desc: number, innerType: number }[] = [];
     public toBinary() {
         let buffer = new Buffer();
         for (let item of this.items) {
             buffer.writeInt64(BigInt(item.desc));
-            buffer.writeInt64(BigInt(item.tag));
+            buffer.writeInt64(BigInt(item.innerType));
             buffer.writeInt64(BigInt(item.name));
         }
         return buffer.toBinary();
