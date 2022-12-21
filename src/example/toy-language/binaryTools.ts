@@ -187,8 +187,7 @@ export function link(programScope: ProgramScope) {
     let start = new IRContainer('@start', 'begin');//在代码的最前面生成@start
     IRContainer.setContainer(start);
     let new_p = new IR('_new', undefined, undefined, undefined);
-    typeRelocationTable.push({ t1: '@program', ir: new_p });
-    new IR('p_dup');
+    typeRelocationTable.push({ t1: '@program', ir: new_p });    
     new IR('p_store');
     let call = new IR('abs_call', undefined, undefined, undefined);//初始化@program
     irAbsoluteAddressRelocationTable.push({ sym: '@program_init', ir: call });

@@ -593,7 +593,7 @@ function classScan(classScope: ClassScope) {
         let sign = `@constructor:${classScope.className}  ${constructorName}`;//构造函数的签名
         functionGen(blockScope, _constructor, sign);
     }
-    new IR('ret', globalVariable.pointSize);//classInit返回
+    new IR('ret');//classInit返回
     IRContainer.setContainer(lastSymbol);//回退
 }
 /**
@@ -701,7 +701,7 @@ export default function programScan(primitiveProgram: Program) {
             defalutValue(program.property[variableName].type!);
         }
     }
-    new IR('ret', globalVariable.pointSize);//programInit返回
+    new IR('ret');//programInit返回
     for (let typeName in program.definedType) {
         classScan(programScope.getClassScope(typeName));
     }
