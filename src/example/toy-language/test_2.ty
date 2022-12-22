@@ -6,8 +6,16 @@ class MyClass{
     MyClass(a:int){
         
     }
+    function main(){
+        var b=0;
+        var c=b;
+        new MyClass();
+        new MyClass(1);
+    };
 }
 function main(){
+    var b=0;
+    var c=b;
     new MyClass();
     new MyClass(1);
 };

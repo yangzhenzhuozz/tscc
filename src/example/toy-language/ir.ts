@@ -70,8 +70,8 @@ export enum OPCODE {
     'program_store',//将program从栈存入program指针
     'push_stack_map',//压入栈帧布局
     'pop_stack_map',//弹出栈帧布局
-    'p_getfield',
-    'p_putfield',
+    'p_getfield',//设置指针
+    'p_putfield',//读取指针
     'i32_getfield',
     'i32_putfield',
     'i32_load',

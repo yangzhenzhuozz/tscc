@@ -135,7 +135,7 @@ class BlockScope extends Scope {
             throw `scope只能是上面三种情况`;
         }
         if (this.parent == undefined) {
-            this.baseOffset = globalVariable.pointSize;//是functionScope,预留this和闭包位置
+            this.baseOffset = globalVariable.pointSize;//是functionScope,预留函数包裹类位置
         } else {
             this.baseOffset = this.parent.baseOffset;
         }

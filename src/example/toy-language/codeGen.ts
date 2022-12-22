@@ -197,7 +197,6 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], inFunction:
             let blockScope = new BlockScope(scope, node['def'][name].type?.FunctionType, node['def'][name].type?.FunctionType?.body!, { program });
             let fun = functionGen(blockScope, node['def'][name].type?.FunctionType!);
             let functionWrapScpoe = programScope.getClassScope(fun.wrapClassName);
-            let this_type = functionWrapScpoe.getProp(`@this`).prop.type!;
             let startIR = new IR('newFunc', undefined, undefined, undefined);
             irAbsoluteAddressRelocationTable.push({ sym: fun.text, ir: startIR });
             typeRelocationTable.push({ t2: fun.realTypeName, t3: fun.wrapClassName, ir: startIR });
@@ -522,7 +521,7 @@ function functionGen(blockScope: BlockScope, fun: FunctionType, functionSymbolNa
     let functionIndex = globalVariable.functionIndex++;
     let functionWrapName = `@functionWrap_${functionIndex}`;
     let property: VariableDescriptor = {};
-    //为函数对象创建两个基本值
+    //为函数对象创建两个基本值(this和捕获变量)
     property['@this'] = {
         variable: 'val',
         type: {
@@ -558,6 +557,7 @@ function classScan(classScope: ClassScope) {
     let lastSymbol = IRContainer.getContainer();//类似回溯，保留现场
     let symbol = new IRContainer(`${classScope.className}_init`);
     IRContainer.setContainer(symbol);
+    new IR('p_store', 0);//保存this指针
     //扫描property
     for (let propName of classScope.getPropNames()) {
         let prop = classScope.getProp(propName).prop;
@@ -569,8 +569,6 @@ function classScan(classScope: ClassScope) {
         } else if (prop.type?.FunctionType && prop.type?.FunctionType.body) {
             let blockScope = new BlockScope(programScope, prop.type?.FunctionType, prop.type?.FunctionType.body!, { program });
             let fun = functionGen(blockScope, prop.type?.FunctionType);
-            let functionWrapScpoe = programScope.getClassScope(fun.wrapClassName);
-            let this_type = functionWrapScpoe.getProp(`@this`).prop.type!;
             new IR('p_load', 0);
             let newIR = new IR('newFunc', undefined, undefined, undefined);
             irAbsoluteAddressRelocationTable.push({ sym: fun.text, ir: newIR });
@@ -685,13 +683,13 @@ export default function programScan(primitiveProgram: Program) {
         var prop = program.property[variableName];
         let offset = programScope.getPropOffset(variableName);
         if (prop.initAST != undefined) {
-            new IR('p_load');
+            new IR('program_load');
             let nr = nodeRecursion(programScope, prop.initAST, [], false, [], 1);
             putfield(prop.type!, offset, nr.truelist, nr.falselist);
         } else if (prop.type?.FunctionType && prop.type?.FunctionType.body) {//如果是函数定义则生成函数
             let blockScope = new BlockScope(programScope, prop.type?.FunctionType, prop.type?.FunctionType.body!, { program });
             let fun = functionGen(blockScope, prop.type?.FunctionType);
-            new IR('p_load');
+            new IR('program_load');
             let newIR = new IR('newFunc', undefined, undefined, undefined);
             irAbsoluteAddressRelocationTable.push({ sym: fun.text, ir: newIR });
             typeRelocationTable.push({ t2: fun.realTypeName, t3: fun.wrapClassName, ir: newIR });
