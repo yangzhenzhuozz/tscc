@@ -432,7 +432,7 @@ function defalutValue(type: TypeUsed): { startIR: IR, endIR: IR, truelist: IR[],
     //要注意valueType的嵌套
     return {} as any;
 }
-function BlockScan(blockScope: BlockScope, label: string[], argumentMap: { type: TypeUsed }[], frameLevel: number): { startIR: IR, endIR: IR, jmpToFunctionEnd: IR[] } {
+function BlockScan(blockScope: BlockScope, label: string[], argumentMap: { type: TypeUsed }[], frameLevel: number): { startIR: IR, endIR: IR, jmpToFunctionEnd: IR[], stackFrame: { name: string, type: TypeUsed }[] } {
     let stackFrameMapIndex = globalVariable.stackFrameMapIndex++;
     let startIR = new IR('push_stack_map', undefined, undefined, undefined);
     let endIR: IR;
@@ -488,7 +488,7 @@ function BlockScan(blockScope: BlockScope, label: string[], argumentMap: { type:
         stackFrame.push({ name: k, type: blockScope.getProp(k).prop.type! });
     }
     stackFrameTable[`@StackFrame_${stackFrameMapIndex}`] = { baseOffset: blockScope.baseOffset, frame: stackFrame };
-    return { startIR: startIR, endIR: endIR!, jmpToFunctionEnd: jmpToFunctionEnd };
+    return { startIR: startIR, endIR: endIR!, jmpToFunctionEnd: jmpToFunctionEnd, stackFrame };
 }
 function propSize(type: TypeUsed): number {
     if (type.PlainType != undefined) {
@@ -545,9 +545,10 @@ function functionGen(blockScope: BlockScope, fun: FunctionType, functionSymbolNa
     registerType({ PlainType: { name: functionWrapName } });//在类型表中注册函数包裹类的类型
     let functionIRContainer = new IRContainer(functionSymbolName ?? `@function_${functionIndex}`);
     IRContainer.setContainer(functionIRContainer);
-    let jmpToFunctionEnd = BlockScan(blockScope, [], argumentMap, 1).jmpToFunctionEnd;
+    let blockScanRet = BlockScan(blockScope, [], argumentMap, 1);
+    blockScanRet.stackFrame.unshift({ name: '@wrap', type: { PlainType: { name: functionWrapName } } });//压入函数包裹类
     let retIR = new IR('ret');
-    for (let ir of jmpToFunctionEnd) {
+    for (let ir of blockScanRet.jmpToFunctionEnd) {
         ir.operand1 = retIR.index - ir.index;//处理所有ret jmp
     }
     IRContainer.setContainer(lastSymbol);//回退

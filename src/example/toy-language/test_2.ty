@@ -1,23 +1,10 @@
-var a:int[][];
 class MyClass{
-    MyClass(){
-
-    }
-    MyClass(a:int){
-        
-    }
     function main(){
-        var b=0;
-        var c=b;
-        new MyClass();
-        new MyClass(1);
+        var a=1;
     };
 }
 function main(){
     var b=0;
-    var c=b;
-    new MyClass();
-    new MyClass(1);
 };
 valuetype class int{
     operator + ( v : int ) : int { native } ;
