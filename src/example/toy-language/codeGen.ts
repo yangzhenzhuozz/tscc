@@ -1,5 +1,5 @@
 import fs from 'fs';
-import { irAbsoluteAddressRelocationTable, globalVariable, registerType, stackFrameTable, stackFrameRelocationTable, typeRelocationTable, typeTableToBin, typeTable, nowIRContainer } from './ir.js';
+import { irAbsoluteAddressRelocationTable, globalVariable, registerType, stackFrameTable, stackFrameRelocationTable, typeRelocationTable, tmp, typeTable, nowIRContainer } from './ir.js';
 import { Scope, BlockScope, ClassScope, ProgramScope } from './scope.js';
 import { IR, IRContainer } from './ir.js'
 import { FunctionSign, FunctionSignWithArgumentAndRetType, TypeUsedSign } from './lib.js';
@@ -171,6 +171,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], inFunction:
         let blockScope = (scope as BlockScope);//def节点是block专属
         let name = Object.keys(node['def'])[0];
         blockScope.setProp(name, node['def'][name]);
+        let startIR = new IR('alloc', propSize(node['def'][name].type!));
         let offset = blockScope.getPropOffset(name);
         if (node['def'][name].initAST != undefined) {
             let nr = nodeRecursion(blockScope, node['def'][name].initAST!, label, inFunction, argumentMap, frameLevel, boolNot);
@@ -192,7 +193,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], inFunction:
                     throw `暂时不支持类型:${node['def'][name].type!.PlainType!.name}的store`;
                 }
             }
-            return { startIR: nr.startIR, endIR: assginment, truelist: [], falselist: [] };
+            return { startIR, endIR: assginment, truelist: [], falselist: [] };
         } else if (node['def'][name].type?.FunctionType && node['def'][name].type?.FunctionType?.body) {//如果是函数定义则生成函数
             let blockScope = new BlockScope(scope, node['def'][name].type?.FunctionType, node['def'][name].type?.FunctionType?.body!, { program });
             let fun = functionGen(blockScope, node['def'][name].type?.FunctionType!);
@@ -434,9 +435,12 @@ function defalutValue(type: TypeUsed): { startIR: IR, endIR: IR, truelist: IR[],
 }
 function BlockScan(blockScope: BlockScope, label: string[], argumentMap: { type: TypeUsed }[], frameLevel: number): { startIR: IR, endIR: IR, jmpToFunctionEnd: IR[], stackFrame: { name: string, type: TypeUsed }[] } {
     let stackFrameMapIndex = globalVariable.stackFrameMapIndex++;
-    let startIR = new IR('push_stack_map', undefined, undefined, undefined);
-    let endIR: IR;
+    let startIR: IR = new IR('push_stack_map', undefined, undefined, undefined);;
     stackFrameRelocationTable.push({ sym: `@StackFrame_${stackFrameMapIndex}`, ir: startIR });
+    if (blockScope.parent == undefined) {//处于函数scope中
+        new IR('alloc', globalVariable.pointSize);//给包裹类分配位置   
+    }
+    let endIR: IR;
     let jmpToFunctionEnd: IR[] = [];//记录所有返回指令;
     for (let i = 0; i < blockScope.block!.body.length; i++) {
         let nodeOrBlock = blockScope.block!.body[i];
@@ -447,14 +451,15 @@ function BlockScan(blockScope: BlockScope, label: string[], argumentMap: { type:
                 jmpToFunctionEnd = jmpToFunctionEnd.concat(nodeRet.jmpToFunctionEnd);
             }
 
-            let stmtType = (nodeOrBlock as ASTNode).type!;
-            /*
-            下面这三种stmt需要清理栈
-            a++;
-            a--;
-            new obj();
+            /**
+             * 下面这三种stmt需要清理栈
+             * a++;
+             * a--;
+             * new obj();
+             * fun();
             */
-            if ((nodeOrBlock as ASTNode)['++'] != undefined || (nodeOrBlock as ASTNode)['--'] != undefined || (nodeOrBlock as ASTNode)['_new'] != undefined) {
+            let stmtType = (nodeOrBlock as ASTNode).type!;
+            if ((nodeOrBlock as ASTNode)['++'] != undefined || (nodeOrBlock as ASTNode)['--'] != undefined || (nodeOrBlock as ASTNode)['_new'] != undefined || (nodeOrBlock as ASTNode)['call'] != undefined) {
                 if (stmtType.PlainType && program.definedType[stmtType.PlainType.name].modifier == 'valuetype') {
                     if (stmtType.PlainType.name == 'int') {
                         new IR('i32_pop');
@@ -621,9 +626,12 @@ function TypeTableGen() {
         } else if (typeTable[name].type.FunctionType != undefined) {
             typeDesc = typeItemDesc.Function;
             innerType = typeTable[name].index;
-        } else {
+        } else if (typeTable[name].type.PlainType != undefined) {
             typeDesc = typeItemDesc.PlaintObj;
             innerType = classTable.getClassIndex(typeTable[name].type.PlainType?.name!);
+        } else {
+            typeDesc = typeItemDesc.PlaintObj;
+            innerType = classTable.getClassIndex("@program");
         }
         binTypeTable.items.push({ name: namePoint, desc: typeDesc, innerType });
     }

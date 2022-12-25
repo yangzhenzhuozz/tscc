@@ -99,7 +99,8 @@ export enum OPCODE {
     'ret',
     'i32_pop',
     'p_pop',
-    '__exit'
+    '__exit',
+    'alloc'
 };
 export let nowIRContainer: IRContainer;
 export class IRContainer {
@@ -147,3 +148,4 @@ export class IR {
         nowIRContainer.irs.push(this);
     }
 }
+export let tmp = {};

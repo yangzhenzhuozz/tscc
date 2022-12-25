@@ -3,8 +3,13 @@ class MyClass{
         var a=1;
     };
 }
+function f(){
+    var b=5;
+    var c=6;
+    return b+c;
+};
 function main(){
-    var b=0;
+    f();
 };
 valuetype class int{
     operator + ( v : int ) : int { native } ;

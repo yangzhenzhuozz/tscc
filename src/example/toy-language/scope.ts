@@ -116,7 +116,8 @@ class BlockScope extends Scope {
     public defNodes: { [key: string]: { defNode: ASTNode, loads: ASTNode[] } } = {};//def:哪个节点定义的变量,loads:被哪些节点读取，在处理闭包捕获时用到
     public programScope: ProgramScope;
     public classScope: ClassScope | undefined;
-    public baseOffset: number;
+    public baseOffset: number;//基础偏移
+    public allocatedSize: number;//已经分配的空间(子scope会用到)
     constructor(scope: Scope, fun: FunctionType | undefined, block: Block, offsetPatch?: { program: Program }) {
         super(undefined, offsetPatch);
         if (scope instanceof ProgramScope) {
@@ -135,9 +136,11 @@ class BlockScope extends Scope {
             throw `scope只能是上面三种情况`;
         }
         if (this.parent == undefined) {
-            this.baseOffset = globalVariable.pointSize;//是functionScope,预留函数包裹类位置
+            this.allocatedSize = globalVariable.pointSize;//是functionScope,预留函数包裹类位置
+            this.baseOffset = 0;
         } else {
-            this.baseOffset = this.parent.baseOffset;
+            this.allocatedSize = this.parent.allocatedSize;
+            this.baseOffset = this.parent.allocatedSize;
         }
         this.fun = fun;
         this.block = block;
@@ -161,11 +164,11 @@ class BlockScope extends Scope {
                 if (type.PlainType && program.definedType[type.PlainType.name].modifier == 'valuetype') {//是值类型,offset累加size大小
                     let typeName = type.PlainType.name;
                     let size = program.definedType[typeName].size!;
-                    this.fieldOffsetMap[name] = this.baseOffset;
-                    this.baseOffset += size;
+                    this.fieldOffsetMap[name] = this.allocatedSize;
+                    this.allocatedSize += size;
                 } else {//否则按照指针处理
-                    this.fieldOffsetMap[name] = this.baseOffset;
-                    this.baseOffset += globalVariable.pointSize;
+                    this.fieldOffsetMap[name] = this.allocatedSize;
+                    this.allocatedSize += globalVariable.pointSize;
                 }
             }
         }
