@@ -397,6 +397,17 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], inFunction:
         typeRelocationTable.push({ t1: typeName, ir: newArray });
         return { startIR: startIR!, endIR: newArray, truelist: [], falselist: [], jmpToFunctionEnd: [] };
     }
+    else if (node['='] != undefined) {
+        let rightObj = nodeRecursion(scope, node['='].rightChild, label, inFunction, argumentMap, frameLevel, boolNot);
+        let leftObj = nodeRecursion(scope, node['='].leftChild, label, inFunction, argumentMap, frameLevel, boolNot);
+        //强制更改opCode
+        if (node['='].leftChild.load != undefined) {
+            leftObj.endIR.opCode = 'i32_store';
+        } else {
+            leftObj.endIR.opCode = 'i32_putfield';
+        }
+        return { startIR: rightObj.startIR, endIR: leftObj.endIR, truelist: [], falselist: [], jmpToFunctionEnd: [] };
+    }
     else if (node['_break'] != undefined) {
         //需要考虑StackFrame
         throw `_break暂未实现`;
@@ -460,7 +471,7 @@ function BlockScan(blockScope: BlockScope, label: string[], argumentMap: { type:
             */
             let stmtType = (nodeOrBlock as ASTNode).type!;
             if ((nodeOrBlock as ASTNode)['++'] != undefined || (nodeOrBlock as ASTNode)['--'] != undefined || (nodeOrBlock as ASTNode)['_new'] != undefined || (nodeOrBlock as ASTNode)['call'] != undefined) {
-                if (stmtType.PlainType && program.definedType[stmtType.PlainType.name].modifier == 'valuetype') {
+                if (stmtType.PlainType && stmtType.PlainType.name != 'void' && program.definedType[stmtType.PlainType.name].modifier == 'valuetype') {
                     if (stmtType.PlainType.name == 'int') {
                         new IR('i32_pop');
                     } else {

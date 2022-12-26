@@ -13,9 +13,9 @@ function f2(){
     var d=f1();
     var ret:int;
     if(d<20){
-        return 1;
+        ret=1;
     }else{
-        return 0;
+        ret=0;
     }
 };
 function main(){
