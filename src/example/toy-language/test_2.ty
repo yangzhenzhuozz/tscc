@@ -3,14 +3,28 @@ class MyClass{
         var a=1;
     };
 }
-function f(){
+function f1(){
     var b=5;
     var c=6;
     return b+c;
 };
+function f2(){
+    f1();
+    var d=f1();
+    var ret:int;
+    if(d<20){
+        return 1;
+    }else{
+        return 0;
+    }
+};
 function main(){
-    f();
+    f2();
 };
 valuetype class int{
     operator + ( v : int ) : int { native } ;
+    operator < ( v : int ) : bool { native } ;
+    operator ++ () : int { native } ;
+}
+valuetype class bool{
 }

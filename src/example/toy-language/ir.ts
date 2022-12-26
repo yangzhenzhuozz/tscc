@@ -84,10 +84,9 @@ export enum OPCODE {
     'i32_inc',
     'i32_dec',
     'i32_add',
-    'i32_cmp',
-    'i_if_gt',
-    'i_if_ge',
-    'i_if_lt',
+    'i_if_gt',//大于则跳转
+    'i_if_ge',//大于等于则跳转
+    'i_if_lt',//小于则跳转
     'i_if_cmp_eq',//相等则跳转
     'i_if_cmp_ne',//不相等则跳转
     'i_if_eq',//等于0则跳转

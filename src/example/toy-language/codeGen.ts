@@ -628,7 +628,11 @@ function TypeTableGen() {
             innerType = typeTable[name].index;
         } else if (typeTable[name].type.PlainType != undefined) {
             typeDesc = typeItemDesc.PlaintObj;
-            innerType = classTable.getClassIndex(typeTable[name].type.PlainType?.name!);
+            if (typeTable[name].type.PlainType?.name == 'void') {
+                innerType = -1;
+            } else {
+                innerType = classTable.getClassIndex(typeTable[name].type.PlainType?.name!);
+            }
         } else {
             typeDesc = typeItemDesc.PlaintObj;
             innerType = classTable.getClassIndex("@program");
