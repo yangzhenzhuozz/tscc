@@ -3,23 +3,23 @@ class MyClass{
         var a=1;
     };
 }
-function f1(){
+function f0(){
     var b=5;
     var c=6;
     return b+c;
 };
-function f2(){
-    f1();
-    var d=f1();
+function f1(){
+    f0();
+    var d=f0();
     var ret:int;
     if(d<20){
-        ret=1;
+        ret=22;
     }else{
-        ret=0;
+        ret=23;
     }
 };
 function main(){
-    f2();
+    f1();
 };
 valuetype class int{
     operator + ( v : int ) : int { native } ;

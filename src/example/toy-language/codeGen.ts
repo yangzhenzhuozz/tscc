@@ -400,11 +400,29 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], inFunction:
     else if (node['='] != undefined) {
         let rightObj = nodeRecursion(scope, node['='].rightChild, label, inFunction, argumentMap, frameLevel, boolNot);
         let leftObj = nodeRecursion(scope, node['='].leftChild, label, inFunction, argumentMap, frameLevel, boolNot);
+
+        let type = node['='].leftChild.type!;
         //强制更改opCode
         if (node['='].leftChild.load != undefined) {
-            leftObj.endIR.opCode = 'i32_store';
+            if (isPointType(type)) {
+                leftObj.endIR.opCode = 'p_store';
+            } else {
+                if (type!.PlainType?.name == 'int') {
+                    leftObj.endIR.opCode = 'i32_store';
+                } else {
+                    throw `暂时不支持类型:${type!.PlainType?.name}的store`;
+                }
+            }
         } else {
-            leftObj.endIR.opCode = 'i32_putfield';
+            if (isPointType(type)) {
+                leftObj.endIR.opCode = 'p_putfield';
+            } else {
+                if (type!.PlainType?.name == 'int') {
+                    leftObj.endIR.opCode = 'i32_putfield';
+                } else {
+                    throw `暂时不支持类型:${type!.PlainType?.name}的store`;
+                }
+            }
         }
         return { startIR: rightObj.startIR, endIR: leftObj.endIR, truelist: [], falselist: [], jmpToFunctionEnd: [] };
     }
@@ -463,15 +481,13 @@ function BlockScan(blockScope: BlockScope, label: string[], argumentMap: { type:
             }
 
             /**
-             * 下面这三种stmt需要清理栈
-             * a++;
-             * a--;
+             * 下面这两种stmt需要清理栈
              * new obj();
              * fun();
             */
             let stmtType = (nodeOrBlock as ASTNode).type!;
-            if ((nodeOrBlock as ASTNode)['++'] != undefined || (nodeOrBlock as ASTNode)['--'] != undefined || (nodeOrBlock as ASTNode)['_new'] != undefined || (nodeOrBlock as ASTNode)['call'] != undefined) {
-                if (stmtType.PlainType && stmtType.PlainType.name != 'void' && program.definedType[stmtType.PlainType.name].modifier == 'valuetype') {
+            if ((stmtType?.PlainType?.name != 'void') && ((nodeOrBlock as ASTNode)['_new'] != undefined || (nodeOrBlock as ASTNode)['call'] != undefined)) {
+                if (stmtType.PlainType && program.definedType[stmtType.PlainType.name].modifier == 'valuetype') {
                     if (stmtType.PlainType.name == 'int') {
                         new IR('i32_pop');
                     } else {
@@ -496,7 +512,7 @@ function BlockScan(blockScope: BlockScope, label: string[], argumentMap: { type:
      * 否则弹出一个帧(因为每个block结束只需要弹出自己的帧,ret节点改变了处理流程，所以自己控制弹出帧的数量)
      */
     if (lastNode?.desc == 'ASTNode' && (lastNode as ASTNode).ret == undefined) {
-        new IR('pop_stack_map', 1);
+        endIR = new IR('pop_stack_map', 1);
     }
     //到这里scope的所有def已经解析完毕，可以保存了
     let stackFrame: { name: string, type: TypeUsed }[] = [];
