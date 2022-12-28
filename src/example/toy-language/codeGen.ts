@@ -428,11 +428,20 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], inFunction:
     }
     else if (node['_break'] != undefined) {
         //需要考虑StackFrame
-        throw `_break暂未实现`;
+        throw `unimplement`;
     }
     else if (node['_continue'] != undefined) {
         //需要考虑StackFrame
-        throw `_continue暂未实现`;
+        throw `unimplement`;
+    }
+    else if (node['loadOperatorOverload'] != undefined) {
+        throw `unimplement`;
+    }
+    else if (node['loadException'] != undefined) {
+        throw `unimplement`;
+    }
+    else if (node['trycatch'] != undefined) {
+        throw `unimplement`;
     }
     else { throw `还没支持的AST类型` };
 }
