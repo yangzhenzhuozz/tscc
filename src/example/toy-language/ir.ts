@@ -99,7 +99,8 @@ export enum OPCODE {
     'i32_pop',
     'p_pop',
     '__exit',
-    'alloc'
+    'alloc',
+    'native_call'
 };
 export let nowIRContainer: IRContainer;
 export class IRContainer {

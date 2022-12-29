@@ -547,9 +547,10 @@ function propSize(type: TypeUsed): number {
  * @param blockScope 
  * @param fun 
  * @param functionSymbolName 为函数符号指定的名字，如果没有指定，则用默认规则生成
+ * @param nativeName native名字
  * @returns wrapClassName:函数包裹类型名、realTypeName:函数真实类型名、text:函数代码的符号名
  */
-function functionGen(blockScope: BlockScope, fun: FunctionType, functionSymbolName?: string): { wrapClassName: string, realTypeName: string, text: string, irContainer: IRContainer } {
+function functionGen(blockScope: BlockScope, fun: FunctionType, option?: { functionSymbolName?: string, nativeName?: string }): { wrapClassName: string, realTypeName: string, text: string, irContainer: IRContainer } {
     let lastSymbol = IRContainer.getContainer();//类似回溯，保留现场
     let argumentMap: { offset: number, type: TypeUsed }[] = [];
     let argOffset = 0;
@@ -584,13 +585,21 @@ function functionGen(blockScope: BlockScope, fun: FunctionType, functionSymbolNa
     };
     programScope.registerClassForCapture(functionWrapName);//注册类型
     registerType({ PlainType: { name: functionWrapName } });//在类型表中注册函数包裹类的类型
-    let functionIRContainer = new IRContainer(functionSymbolName ?? `@function_${functionIndex}`);
+    let functionIRContainer = new IRContainer(option?.functionSymbolName ?? `@function_${functionIndex}`);
     IRContainer.setContainer(functionIRContainer);
-    let blockScanRet = BlockScan(blockScope, [], argumentMap, 1);
-    blockScanRet.stackFrame.unshift({ name: '@wrap', type: { PlainType: { name: functionWrapName } } });//压入函数包裹类
-    let retIR = new IR('ret');
-    for (let ir of blockScanRet.jmpToFunctionEnd) {
-        ir.operand1 = retIR.index - ir.index;//处理所有ret jmp
+    if (!fun.isNative) {
+        let blockScanRet = BlockScan(blockScope, [], argumentMap, 1);
+        blockScanRet.stackFrame.unshift({ name: '@wrap', type: { PlainType: { name: functionWrapName } } });//压入函数包裹类
+        let retIR = new IR('ret');
+        for (let ir of blockScanRet.jmpToFunctionEnd) {
+            ir.operand1 = retIR.index - ir.index;//处理所有ret jmp
+        }
+    } else {
+        if (option?.nativeName == undefined) {
+            throw `native函数只能定义在program空间或者系统内置类型的operator overload中`;
+        }
+        new IR('native_call', stringPool.register(option?.nativeName!));//调用native函数
+        new IR('ret');
     }
     IRContainer.setContainer(lastSymbol);//回退
     return { wrapClassName: functionWrapName, realTypeName: FunctionSign(fun), text: functionIRContainer.name, irContainer: functionIRContainer };
@@ -631,7 +640,7 @@ function classScan(classScope: ClassScope) {
         _constructor.retType = { PlainType: { name: 'void' } };//所有构造函数不允许有返回值
         let blockScope = new BlockScope(classScope, _constructor, _constructor.body!, { program });
         let sign = `@constructor:${classScope.className}  ${constructorName}`;//构造函数的签名
-        functionGen(blockScope, _constructor, sign);
+        functionGen(blockScope, _constructor, { functionSymbolName: sign });
     }
     new IR('ret');//classInit返回
     IRContainer.setContainer(lastSymbol);//回退
@@ -735,9 +744,9 @@ export default function programScan(primitiveProgram: Program) {
             new IR('program_load');
             let nr = nodeRecursion(programScope, prop.initAST, [], false, [], 1);
             putfield(prop.type!, offset, nr.truelist, nr.falselist);
-        } else if (prop.type?.FunctionType && prop.type?.FunctionType.body) {//如果是函数定义则生成函数
+        } else if (prop.type?.FunctionType && (prop.type?.FunctionType.body || prop.type?.FunctionType.isNative)) {//如果是函数定义则生成函数
             let blockScope = new BlockScope(programScope, prop.type?.FunctionType, prop.type?.FunctionType.body!, { program });
-            let fun = functionGen(blockScope, prop.type?.FunctionType);
+            let fun = functionGen(blockScope, prop.type?.FunctionType, { nativeName: variableName });
             new IR('program_load');
             let newIR = new IR('newFunc', undefined, undefined, undefined);
             irAbsoluteAddressRelocationTable.push({ sym: fun.text, ir: newIR });
