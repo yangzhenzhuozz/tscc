@@ -1,7 +1,6 @@
 import Lexer from '../lexer/lexer.js'
 import Parser from "./parser.js";
 import { ParseException } from "./parser.js";
-let parser = new Parser();
 let lexer = new Lexer();
 lexer.addRule(['(1|2|3|4|5|6|7|8|9|0)(1|2|3|4|5|6|7|8|9|0)*', (arg) => { arg.value = Number(arg.yytext); return "number"; }]);
 lexer.addRule(['+', () => '+']);
@@ -18,7 +17,7 @@ let source = `
 `;
 lexer.setSource(source);
 try {
-    let r = parser.parse(lexer);//编译源码
+    let r = Parser(lexer);//编译源码
     console.log(r);
 } catch (e) {
     if (e instanceof ParseException) {
