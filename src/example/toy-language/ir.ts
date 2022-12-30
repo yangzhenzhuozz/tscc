@@ -74,8 +74,12 @@ export enum OPCODE {
     'p_putfield',//读取指针
     'i32_getfield',
     'i32_putfield',
+    'i8_getfield',
+    'i8_putfield',
     'i32_load',
     'i32_store',
+    'i8_store',
+    'i8_load',
     'p_load',
     'p_store',
     'const_i32_load',

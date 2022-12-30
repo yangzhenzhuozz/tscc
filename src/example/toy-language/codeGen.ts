@@ -189,6 +189,8 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], inFunction:
             } else {
                 if (node['def'][name].type!.PlainType!.name == 'int') {
                     assginment = new IR('i32_store', offset);
+                } else if (node['def'][name].type!.PlainType!.name == 'bool') {
+                    assginment = new IR('i8_store', offset);
                 } else {
                     throw `暂时不支持类型:${node['def'][name].type!.PlainType!.name}的store`;
                 }
@@ -402,6 +404,14 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], inFunction:
         let leftObj = nodeRecursion(scope, node['='].leftChild, label, inFunction, argumentMap, frameLevel, boolNot);
 
         let type = node['='].leftChild.type!;
+        if (type!.PlainType?.name == 'bool') {
+            if (rightObj.truelist.length > 0 || rightObj.falselist.length > 0) {//如果bool值需要回填
+                new IR('const_i8_load', 0);
+                let jmp = new IR('jmp');
+                let falseIR = new IR('const_i8_load', 1);
+                jmp.operand1 = falseIR.index - jmp.index + falseIR.length;
+            }
+        }
         //强制更改opCode
         if (node['='].leftChild.load != undefined) {
             if (isPointType(type)) {
@@ -409,6 +419,8 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], inFunction:
             } else {
                 if (type!.PlainType?.name == 'int') {
                     leftObj.endIR.opCode = 'i32_store';
+                } else if (type!.PlainType?.name == 'bool') {
+                    leftObj.endIR.opCode = 'i8_store';
                 } else {
                     throw `暂时不支持类型:${type!.PlainType?.name}的store`;
                 }
@@ -419,12 +431,18 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], inFunction:
             } else {
                 if (type!.PlainType?.name == 'int') {
                     leftObj.endIR.opCode = 'i32_putfield';
-                } else {
+                } else if (type!.PlainType?.name == 'bool') {
+                    leftObj.endIR.opCode = 'i8_putfield';
+                }
+                else {
                     throw `暂时不支持类型:${type!.PlainType?.name}的store`;
                 }
             }
         }
         return { startIR: rightObj.startIR, endIR: leftObj.endIR, truelist: [], falselist: [], jmpToFunctionEnd: [] };
+    }
+    else if (node['_for'] != undefined) {
+        throw `unimplement`;
     }
     else if (node['_break'] != undefined) {
         //需要考虑StackFrame

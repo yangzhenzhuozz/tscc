@@ -1,29 +1,13 @@
-class MyClass{
-    function main(){
-        var a=1;
-    };
-}
-function printInt(v:int):void{
+function printI32(v:int):void{
     native
 };
-function f0(){
-    var b=5;
-    var c=6;
-    return b+c;
-};
-function f1(){
-    f0();
-    var d=f0();
-    var ret:int;
-    if(d<20){
-        ret=22;
-    }else{
-        ret=23;
-    }
-    printInt(ret);
+function printI8(v:int):void{
+    native
 };
 function main(){
-    f1();
+    var a=0;
+    var b=1;
+    var c=a<b;
 };
 valuetype class int{
     operator + ( v : int ) : int { native } ;
