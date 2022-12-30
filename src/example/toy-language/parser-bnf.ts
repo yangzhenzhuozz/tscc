@@ -1369,6 +1369,9 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
                     let condition = $[5] as ASTNode | undefined;
                     let step = $[7] as ASTNode | undefined;
                     let stmt = $[9] as Block | ASTNode;
+                    if (stmt.desc == 'ASTNode') {//如果stmt是单条语句，为其创建一个block
+                        stmt = { desc: 'Block', body: [stmt] };
+                    }
                     return { desc: "ASTNode", _for: { init: init, condition: condition, step: step, stmt: stmt, label: label_def } };
                 }
             }

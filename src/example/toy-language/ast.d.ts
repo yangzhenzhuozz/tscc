@@ -100,7 +100,7 @@ interface ASTNode {
     ifElseStmt?: { condition: ASTNode, stmt1: | Block, stmt2: Block };
     do_while?: { condition: ASTNode, stmt: Block, label?: string };
     _while?: { condition: ASTNode, stmt: Block, label?: string };
-    _for?: { init?: ASTNode, condition?: ASTNode, step?: ASTNode, stmt: ASTNode | Block, label: string | undefined };
+    _for?: { init?: ASTNode, condition?: ASTNode, step?: ASTNode, stmt: Block, label: string | undefined };
     _break?: { label: string };
     _continue?: { label: string };
     _instanceof?: { obj: ASTNode, type: TypeUsed };
