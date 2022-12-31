@@ -96,6 +96,9 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
                 functionScan(new BlockScope(scope, node['def'][name].type!.FunctionType!, node['def'][name].type!.FunctionType!.body!), node['def'][name].type!.FunctionType!);//如果是定义了函数，则扫描一下
             }
         }
+        if (prop.type?.PlainType?.name == 'void') {
+            throw `void无法计算大小,任何成员都不能是void类型`;
+        }
         result = { type: prop.type!, hasRet: false };//经过推导，类型已经确定
     }
     else if (node["load"] != undefined) {
@@ -282,7 +285,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
         } else {
             throw `只有左值才能赋值`;
         }
-        result = { type: right.type, hasRet: false };
+        result = { type: { PlainType: { name: 'void' } }, hasRet: false };
     }
     else if (node["+"] != undefined) {
         let op = '+' as opType;
@@ -764,6 +767,9 @@ function ClassScan(classScope: ClassScope) {
                 let blockScope = new BlockScope(classScope, prop.getter, prop.setter.body!);
                 functionScan(blockScope, prop.setter);
             }
+        }
+        if (prop.type?.PlainType?.name == 'void') {
+            throw `void无法计算大小,任何成员都不能是void类型`;
         }
         registerType(prop.type!);//经过推导，类型已经确定了
     }

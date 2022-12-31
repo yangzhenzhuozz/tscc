@@ -188,8 +188,8 @@ let grammar: Grammar = {
         { "statement:break label_use ;": {} },//break语句
         { "statement:continue label_use ;": {} },//continue语句
         { "statement:switch ( object ) { switch_bodys }": {} },//switch语句,因为switch在C/C++等语言中可以用跳转表处理,gcc在处理switch语句时,如果各个case的值连续,也会生成一个jum_table,这里我就稍微扩展一下switch的用法
-        { "statement:assignment ;": {} },//赋值可以作为一个语句
         { "statement:call ;": {} },//函数调用可以作为一个语句
+        { "statement:assignment ;": {} },//赋值可以作为一个语句
         { "statement:increment ;": {} },//自增可以作为一个语句
         { "statement:decrement ;": {} },//自减作为一个语句
         { "statement:_new ;": {} },//new可以作为一个语句
@@ -201,7 +201,7 @@ let grammar: Grammar = {
         { "for_condition:": {} },//condition可以为空
         { "for_condition:object": {} },//condition可以是一个对象(必须是bool对象)
         { "for_step:": {} },//step可以为空
-        { "for_step:object": {} },//step可以是一个对象
+        { "for_step:statement": {} },//step可以是一个对象
         { "block:{ statements }": {} },//代码块是一对花括号中间包裹着statements
         { "label_use:": {} },//在break和continue中被使用
         { "label_use:id": {} },//在break和continue中被使用
@@ -236,6 +236,9 @@ let grammar: Grammar = {
         { "assignment:object = object": {} },//赋值运算
         { "increment:object ++": {} },//单目运算符++
         { "decrement:object --": {} },//单目运算符--
+        { "object:assignment": {} },//赋值可以作为一个obj
+        { "object:increment": {} },//自增可以作为一个obj
+        { "object:decrement": {} },//自减作为一个obj
         { "object:object + object": {} },
         { "object:object - object": {} },
         { "object:object * object": {} },

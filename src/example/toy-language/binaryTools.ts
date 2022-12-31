@@ -187,7 +187,7 @@ export function link(programScope: ProgramScope) {
     let start = new IRContainer('@start', 'begin');//在代码的最前面生成@start
     IRContainer.setContainer(start);
     let new_p = new IR('_new', undefined, undefined, undefined);
-    typeRelocationTable.push({ t1: '@program', ir: new_p });    
+    typeRelocationTable.push({ t1: '@program', ir: new_p });
     new IR('program_store');
     let call = new IR('abs_call', undefined, undefined, undefined);//初始化@program
     irAbsoluteAddressRelocationTable.push({ sym: '@program_init', ir: call });
@@ -253,7 +253,7 @@ export function link(programScope: ProgramScope) {
     return { text: irBuffer.toBinary(), irTableBuffer: irTableBuffer.toBinary(), irTable, debugIRS };
 }
 export enum typeItemDesc {
-    PlaintObj,
+    PlaintObj = 0,
     Array,
     Function
 };

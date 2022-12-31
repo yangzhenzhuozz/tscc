@@ -1,18 +1,20 @@
 function printI32(v:int):void{
     native
 };
-function printI8(v:int):void{
+function printI8(v:bool):void{
     native
 };
 function main(){
-    var a=0;
-    var b=1;
-    var c=a<b;
+    a:for(var a=0;a<2;a++){
+        a:for(var a=1;a<6;a=a+1){
+            printI32(a);
+        }
+    }
 };
 valuetype class int{
     operator + ( v : int ) : int { native } ;
     operator < ( v : int ) : bool { native } ;
-    operator ++ () : int { native } ;
+    operator ++ () : void { native } ;
 }
 valuetype class bool{
 }

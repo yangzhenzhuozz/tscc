@@ -1424,19 +1424,19 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
             }
         },//switch语句,因为switch在C/C++等语言中可以用跳转表处理,gcc在处理switch语句时,如果各个case的值连续,也会生成一个jum_table,这里我就稍微扩展一下switch的用法
         {
-            "statement:assignment ;": {
-                action: function ($, s): ASTNode {
-                    return $[0] as ASTNode;
-                }
-            }
-        },//赋值可以作为一个语句
-        {
             "statement:call ;": {
                 action: function ($, s): ASTNode {
                     return $[0] as ASTNode;
                 }
             }
         },//函数调用可以作为一个语句
+        {
+            "statement:assignment ;": {
+                action: function ($, s): ASTNode {
+                    return $[0] as ASTNode;
+                }
+            }
+        },//赋值可以作为一个语句
         {
             "statement:increment ;": {
                 action: function ($, s): ASTNode {
@@ -1640,6 +1640,27 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
                 }
             }
         },//单目运算符--
+        {
+            "object:assignment": {
+                action: function ($, s): ASTNode {
+                    return $[0] as ASTNode;
+                }
+            }
+        },//赋值可以作为一个obj
+        {
+            "object:increment": {
+                action: function ($, s): ASTNode {
+                    return $[0] as ASTNode;
+                }
+            }
+        },//自增可以作为一个obj
+        {
+            "object:decrement": {
+                action: function ($, s): ASTNode {
+                    return $[0] as ASTNode;
+                }
+            }
+        },//自减作为一个obj
         {
             "object:object + object": {
                 action: function ($, s): ASTNode {
