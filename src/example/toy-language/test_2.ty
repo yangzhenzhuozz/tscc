@@ -4,6 +4,8 @@ function printI32(v:int):void{
 function printI8(v:bool):void{
     native
 };
+var a=0;
+var b=(a++)++;
 function main(){
     a:for(var a=0;a<2;a++){
         a:for(var a=1;a<6;a=a+1){
