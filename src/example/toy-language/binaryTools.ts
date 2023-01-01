@@ -161,9 +161,9 @@ class StackFrameTable {
 //和ir.ts中的typeTable不同
 class TypeTable {
     /**
-     * innerType:对于array是数组元素类型(在TypeTable中的位置)，对于plainObj是classTable的类型，对于function则表示函数签名对应的类型(即在typeTable中的位置)
+     * innerType:对于array是数组元素类型在TypeTable中的位置，对于plainObj是classTable的类型，对于function则表示函数签名对应的类型(即在typeTable中的位置)
      */
-    public items: { name: number, desc: number, innerType: number }[] = [];
+    public items: { name: number, desc: typeItemDesc, innerType: number }[] = [];
     public toBinary() {
         let buffer = new Buffer();
         for (let item of this.items) {
