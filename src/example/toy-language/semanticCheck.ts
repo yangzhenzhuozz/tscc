@@ -527,6 +527,9 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
         result = { type: targetType, hasRet: false };
     }
     else if (node["_new"] != undefined) {
+        if(program.definedType[node["_new"].type.PlainType!.name].modifier=='valuetype'){
+            throw `值类型不能new`;
+        }
         let ts: TypeUsed[] = [];
         for (let n of node["_new"]._arguments) {
             ts.push(nodeRecursion(scope, n, label, declareRetType).type);

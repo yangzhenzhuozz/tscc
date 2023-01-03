@@ -1,5 +1,3 @@
-var i=new int();
-var arr:int[][]=new int[1][2];
 function printI32(v:int):void{
     native
 };
@@ -7,13 +5,20 @@ function printI8(v:bool):void{
     native
 };
 function main(){
-    
+    var m:myVal;
+    m.toString();
+    var arr:int[][]=new int[1][2];    
 };
+valuetype class myVal{
+    var i=10;
+    function toString(){
+        printI32(i);
+    };
+}
 valuetype class int{
     operator + ( v : int ) : int { native } ;
     operator < ( v : int ) : bool { native } ;
     operator ++ () : void { native } ;
-    int(){}
 }
 valuetype class bool{
 }

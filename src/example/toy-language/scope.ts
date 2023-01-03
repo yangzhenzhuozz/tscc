@@ -4,7 +4,7 @@ let debugID = 0;
 abstract class Scope {
     public ID;//用于调试的ID
     public property: VariableDescriptor;
-    protected fieldOffsetMap?: { [key: string]: number };//在代码生成阶段使用
+    protected fieldOffsetMap?: { [key: string]: { offset: number, size: number } };//在代码生成阶段使用
     /**
      * 
      * @param prop 
@@ -26,16 +26,17 @@ abstract class Scope {
                 if (type.PlainType && program.definedType[type.PlainType.name].modifier == 'valuetype') {//是值类型,offset累加size大小
                     let typeName = type.PlainType.name;
                     let size = program.definedType[typeName].size!;
-                    this.fieldOffsetMap[k] = offset;
+                    this.fieldOffsetMap[k] = { offset, size };
                     offset += size;
                 } else {//否则按照指针处理(包括function)
-                    this.fieldOffsetMap[k] = offset;
+                    this.fieldOffsetMap[k] = { offset, size: globalVariable.pointSize };
                     offset += globalVariable.pointSize;
                 }
             }
         }
     }
     public abstract getPropOffset(name: string): number;//只需要在自己的scope范围内搜索，不用向上搜索到class和program了
+    public abstract getPropSize(name: string): number;//只需要在自己的scope范围内搜索，不用向上搜索到class和program了
     public abstract getProp(name: string): { prop: VariableProperties, scope: Scope };
 }
 class ProgramScope extends Scope {
@@ -79,7 +80,13 @@ class ProgramScope extends Scope {
         if (this.fieldOffsetMap![name] == undefined) {
             throw `试图获取未知的属性:${name}`;
         }
-        return this.fieldOffsetMap![name];
+        return this.fieldOffsetMap![name].offset;
+    }
+    public getPropSize(name: string): number {
+        if (this.fieldOffsetMap![name] == undefined) {
+            throw `试图获取未知的属性:${name}`;
+        }
+        return this.fieldOffsetMap![name].size;
     }
 }
 class ClassScope extends Scope {
@@ -105,7 +112,13 @@ class ClassScope extends Scope {
         if (this.fieldOffsetMap![name] == undefined) {
             throw `试图获取未知的属性:${name}`;
         }
-        return this.fieldOffsetMap![name];
+        return this.fieldOffsetMap![name].offset;
+    }
+    public getPropSize(name: string): number {
+        if (this.fieldOffsetMap![name] == undefined) {
+            throw `试图获取未知的属性:${name}`;
+        }
+        return this.fieldOffsetMap![name].size;
     }
 }
 class BlockScope extends Scope {
@@ -164,10 +177,10 @@ class BlockScope extends Scope {
                 if (type.PlainType && program.definedType[type.PlainType.name].modifier == 'valuetype') {//是值类型,offset累加size大小
                     let typeName = type.PlainType.name;
                     let size = program.definedType[typeName].size!;
-                    this.fieldOffsetMap[name] = this.allocatedSize;
+                    this.fieldOffsetMap[name] = { offset: this.allocatedSize, size };
                     this.allocatedSize += size;
                 } else {//否则按照指针处理
-                    this.fieldOffsetMap[name] = this.allocatedSize;
+                    this.fieldOffsetMap[name] = { offset: this.allocatedSize, size: globalVariable.pointSize };
                     this.allocatedSize += globalVariable.pointSize;
                 }
             }
@@ -215,7 +228,16 @@ class BlockScope extends Scope {
         let scope: BlockScope | undefined = this;
         for (; scope != undefined; scope = scope.parent) {
             if (scope.fieldOffsetMap![name] != undefined) {
-                return scope.fieldOffsetMap![name];
+                return scope.fieldOffsetMap![name].offset;
+            }
+        }
+        throw `试图获取未知的属性:${name}`;
+    }
+    public getPropSize(name: string): number {
+        let scope: BlockScope | undefined = this;
+        for (; scope != undefined; scope = scope.parent) {
+            if (scope.fieldOffsetMap![name] != undefined) {
+                return scope.fieldOffsetMap![name].size;
             }
         }
         throw `试图获取未知的属性:${name}`;

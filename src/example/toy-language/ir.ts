@@ -3,7 +3,7 @@ import { TypeUsedSign } from './lib.js';
 //全局变量
 export const globalVariable = {
     pointSize: 8,//指针大小
-    stackFrameMapIndex: 0,//栈帧序号
+    stackFrameMapIndex: 1,//栈帧序号,从1开始，0预留给class_init保存this指针
     functionIndex: 0
 }
 export let irAbsoluteAddressRelocationTable: { sym: string, ir: IR }[] = [];//指令地址重定位表
@@ -70,24 +70,28 @@ export enum OPCODE {
     'program_store',//将program从栈存入program指针
     'push_stack_map',//压入栈帧布局
     'pop_stack_map',//弹出栈帧布局
-    'p_getfield',//设置指针
-    'p_putfield',//读取指针
-    'i32_getfield',
-    'i32_putfield',
-    'i8_getfield',
-    'i8_putfield',
-    'i32_load',
-    'i32_store',
-    'i8_store',
-    'i8_load',
-    'p_load',
-    'p_store',
-    'const_i32_load',
-    'const_i64_load',
-    'const_i8_load',
-    'i32_inc',
-    'i32_dec',
-    'i32_add',
+    'p_getfield',//从计算栈顶弹出一个指针，以指针作为obj基础地址，读取一个指针成员到计算栈顶
+    'p_putfield',//从计算栈顶弹出一个指针，接着再弹出一个指针，以指针作为obj的基础地址，把指针写入成员区域
+    'i8_getfield',//从计算栈顶弹出一个指针，以指针作为obj基础地址，读取一个i8成员到计算栈顶
+    'i8_putfield',//从计算栈顶弹出一个i8，接着再弹出一个指针，以指针作为obj的基础地址，把i32写入成员区域
+    'i32_getfield',//从计算栈顶弹出一个指针，以指针作为obj基础地址，读取一个i64成员到计算栈顶
+    'i32_putfield',//从计算栈顶弹出一个i32，接着再弹出一个指针，以指针作为obj的基础地址，把i8写入成员区域
+    'valueType_getfield',//从计算栈顶弹出一个指针，以指针作为obj基础地址，读取一个valueType成员到计算栈顶
+    'valueType_putfield',//从计算栈顶弹出一个valueType，接着再弹出一个指针，以指针作为obj的基础地址，把valueType写入成员区域
+    'getfield_add',//从计算栈弹出一个指针，加上偏移压入计算栈
+    'load_add',//读取局部变量区域的基础地址(bp指针),然后加上偏移压入计算栈
+    'i8_load',//从局部变量加载一个i8到计算栈
+    'i8_store',//从局部变量加载一个i8到计算栈
+    'i32_load',//从局部变量加载一个i32到计算栈
+    'i32_store',//从局部变量加载一个i32到计算栈
+    'p_load',//从局部变量加载一个指针到计算栈
+    'p_store',//从计算栈顶弹出一个指针到局部变量
+    'const_i32_load',//加载一个立即数(i32)到计算栈
+    'const_i8_load',//加载一个立即数(i8)到计算栈
+    'const_i64_load',//加载一个立即数(i64)到计算栈
+    'i32_inc',//从计算栈顶弹出i32，自增后压入
+    'i32_dec',//从计算栈顶弹出i32，自减后压入
+    'i32_add',//从计算栈中弹出两个i32，相加结果压入计算栈
     'i_if_gt',//大于则跳转
     'i_if_ge',//大于等于则跳转
     'i_if_lt',//小于则跳转
@@ -99,12 +103,12 @@ export enum OPCODE {
     'p_dup',//栈复制
     'call',//以栈顶为目标，进行调用
     'abs_call',//call一个绝对地址
-    'ret',
-    'i32_pop',
-    'p_pop',
-    '__exit',
-    'alloc',
-    'native_call',
+    'ret',//ret
+    'i32_pop',//从计算栈中弹出i32
+    'p_pop',//从计算栈中弹出指针
+    '__exit',//退出
+    'alloc',//申请局部变量空间
+    'native_call',//调用native函数
 };
 export let nowIRContainer: IRContainer;
 export class IRContainer {
