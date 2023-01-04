@@ -78,8 +78,8 @@ export enum OPCODE {
     'i32_putfield',//从计算栈顶弹出一个i32，接着再弹出一个指针，以指针作为obj的基础地址，把i8写入成员区域
     'valueType_getfield',//从计算栈顶弹出一个指针，以指针作为obj基础地址，读取一个valueType成员到计算栈顶
     'valueType_putfield',//从计算栈顶弹出一个valueType，接着再弹出一个指针，以指针作为obj的基础地址，把valueType写入成员区域
-    'getfield_add',//从计算栈弹出一个指针，加上偏移压入计算栈
-    'load_add',//读取局部变量区域的基础地址(bp指针),然后加上偏移压入计算栈
+    'getfield_address',//从计算栈弹出一个指针，加上偏移压入计算栈
+    'load_address',//读取局部变量区域的基础地址(bp指针),然后加上偏移压入计算栈
     'i8_load',//从局部变量加载一个i8到计算栈
     'i8_store',//从局部变量加载一个i8到计算栈
     'i32_load',//从局部变量加载一个i32到计算栈
@@ -103,6 +103,7 @@ export enum OPCODE {
     'p_dup',//栈复制
     'call',//以栈顶为目标，进行调用
     'abs_call',//call一个绝对地址
+    'construct_call',//构造函数调用，从计算栈中弹出一个指针，然后压入变量栈中
     'ret',//ret
     'i32_pop',//从计算栈中弹出i32
     'p_pop',//从计算栈中弹出指针

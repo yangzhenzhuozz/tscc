@@ -4,11 +4,23 @@ function printI32(v:int):void{
 function printI8(v:bool):void{
     native
 };
-function main(){
+function f1():void{
     var m:myVal;
+    m.i=3;
     m.toString();
-    var arr:int[][]=new int[1][2];    
 };
+function main(){
+    f1();
+    var b=new B();
+    b.m.toString();
+    var arr:int[][]=new int[1][2];
+};
+class B{
+    var m:myVal;
+    B(){
+        m.i=5;
+    }
+}
 valuetype class myVal{
     var i=10;
     function toString(){
