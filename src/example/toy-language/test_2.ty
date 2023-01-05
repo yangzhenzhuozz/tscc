@@ -7,23 +7,29 @@ function printI8(v:bool):void{
 function f1():void{
     var m:myVal;
     m.i=3;
-    m.toString();
+    m.print();
 };
 function main(){
     f1();
     var b=new B();
-    b.m.toString();
-    var arr:int[][]=new int[1][2];
+    b.m.print();
+    printI32(b.i);
+    b.i=16;
+    printI32(b.i);
+    var t=b.m.print;
+    t();
+    var arr:int[][]=new int[5][4];
 };
 class B{
     var m:myVal;
+    var i=22;
     B(){
         m.i=5;
     }
 }
 valuetype class myVal{
     var i=10;
-    function toString(){
+    function print(){
         printI32(i);
     };
 }

@@ -40,7 +40,7 @@ function isPointType(type: TypeUsed): boolean {
     }
 }
 /**
- * 这个参数这么多，谁看得懂，我都不懂,光最后三个bool值就晕了
+ * 这么多参数谁看得懂，我都不懂,光最后几个bool值就晕了
  * @param scope 
  * @param node 
  * @param label for while的label,jmpIRs:break或者continue的列表
@@ -48,10 +48,11 @@ function isPointType(type: TypeUsed): boolean {
  * @param argumentMap 函数参数的补偿和size，只用于loadArgument节点
  * @param isGetAddress 是否读取地址,比如 int a; a.toString(); 这里的load a就是读取a的地址而不是值，默认取false，只有accessField取true
  * @param boolNot 布尔运算的时候是否要取反向生成操作符，'||'和'&&'对leftObj采取的比较跳转指令不同，默认取反可以节约指令，默认取ture，只有||的左子节点取false
- * @param isLoaction 是否左值，在处理=的时候有用到,如果是loaction节点，则load和getField不生成真实指令，默认false，只有=左子节点取true
+ * @param isLoaction 是否左值，在处理=的时候有用到,如果是loaction节点，则load、getField、[]不生成真实指令，默认false，只有=左子节点取true
+ * @param inPlainFunction 是否为普通函数(影响block内部对this的取值方式)，需要向下传递
  * @returns 
  */
-function nodeRecursion(scope: Scope, node: ASTNode, label: { name: string, frameLevel: number, breakIRs: IR[], continueIRs: IR[] }[], inFunction: boolean, argumentMap: { type: TypeUsed }[], frameLevel: number, isGetAddress: boolean, boolNot: boolean, isLoaction: boolean): {
+function nodeRecursion(scope: Scope, node: ASTNode, label: { name: string, frameLevel: number, breakIRs: IR[], continueIRs: IR[] }[], inFunction: boolean, argumentMap: { type: TypeUsed }[], frameLevel: number, isGetAddress: boolean, boolNot: boolean, isLoaction: boolean, inPlainFunction: boolean): {
     startIR: IR, endIR: IR, truelist: IR[], falselist: IR[], jmpToFunctionEnd?: IR[],
     virtualIR?: {
         opCode: keyof typeof OPCODE,
@@ -65,7 +66,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: { name: string, frame
         return { startIR: ir, endIR: ir, truelist: [], falselist: [] };
     }
     else if (node['accessField'] != undefined) {
-        let irs = nodeRecursion(scope, node['accessField']!.obj, label, inFunction, argumentMap, frameLevel, true, true, false);
+        let irs = nodeRecursion(scope, node['accessField']!.obj, label, inFunction, argumentMap, frameLevel, true, true, false, inPlainFunction);
         let objType = node['accessField']!.obj.type!;
         let baseScope: Scope;
         if (objType.ProgramType != undefined) {
@@ -136,7 +137,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: { name: string, frame
     else if (node['immediate'] != undefined) {
         if (node["immediate"].functionValue) {
             let blockScope = new BlockScope(scope, node["immediate"].functionValue, node["immediate"].functionValue.body!, { program });
-            let fun = functionGen(blockScope, node["immediate"].functionValue);
+            let fun = functionObjGen(blockScope, node["immediate"].functionValue);
             let functionWrapScpoe = programScope.getClassScope(fun.wrapClassName);
             let this_type = functionWrapScpoe.getProp(`@this`).prop.type!;
             let this_offset = functionWrapScpoe.getPropOffset(`@this`);//this指针在函数包裹类中的offset
@@ -170,8 +171,8 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: { name: string, frame
         }
     }
     else if (node['+'] != undefined) {
-        let left = nodeRecursion(scope, node['+']!.leftChild, label, inFunction, argumentMap, frameLevel, false, true, false);
-        let right = nodeRecursion(scope, node['+']!.rightChild, label, inFunction, argumentMap, frameLevel, false, true, false);
+        let left = nodeRecursion(scope, node['+']!.leftChild, label, inFunction, argumentMap, frameLevel, false, true, false, inPlainFunction);
+        let right = nodeRecursion(scope, node['+']!.rightChild, label, inFunction, argumentMap, frameLevel, false, true, false, inPlainFunction);
         let opIR: IR;
         if (node['+']!.leftChild.type?.PlainType?.name == 'int' && node['+']!.rightChild.type?.PlainType?.name == 'int') {
             opIR = new IR('i32_add');
@@ -181,8 +182,8 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: { name: string, frame
         return { startIR: left.startIR, endIR: opIR, truelist: [], falselist: [] };
     }
     else if (node['<'] != undefined) {
-        let left = nodeRecursion(scope, node['<']!.leftChild, label, inFunction, argumentMap, frameLevel, false, true, false);
-        let right = nodeRecursion(scope, node['<']!.rightChild, label, inFunction, argumentMap, frameLevel, false, true, false);
+        let left = nodeRecursion(scope, node['<']!.leftChild, label, inFunction, argumentMap, frameLevel, false, true, false, inPlainFunction);
+        let right = nodeRecursion(scope, node['<']!.rightChild, label, inFunction, argumentMap, frameLevel, false, true, false, inPlainFunction);
         let opIR: IR;
         let tureList: IR[] = [];
         let falseList: IR[] = [];
@@ -201,14 +202,14 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: { name: string, frame
     }
     else if (node['ternary'] != undefined) {
         let condition = node['ternary']!.condition;
-        let a = nodeRecursion(scope, condition, label, inFunction, argumentMap, frameLevel, false, true, false);
+        let a = nodeRecursion(scope, condition, label, inFunction, argumentMap, frameLevel, false, true, false, inPlainFunction);
         if (a.truelist.length == 0 && a.falselist.length == 0) {//如果bool值不是通过布尔运算得到的，则必须为其插入一个判断指令
             let ir = new IR('i_if_ne');
             a.falselist.push(ir);
         }
-        let b = nodeRecursion(scope, node['ternary']!.obj1, label, inFunction, argumentMap, frameLevel, false, true, false);
+        let b = nodeRecursion(scope, node['ternary']!.obj1, label, inFunction, argumentMap, frameLevel, false, true, false, inPlainFunction);
         let ir = new IR('jmp');
-        let c = nodeRecursion(scope, node['ternary']!.obj2, label, inFunction, argumentMap, frameLevel, false, true, false);
+        let c = nodeRecursion(scope, node['ternary']!.obj2, label, inFunction, argumentMap, frameLevel, false, true, false, inPlainFunction);
         ir.operand1 = c.endIR.index - ir.index + c.endIR.length;
         backPatch(a.truelist, b.startIR.index);//回填trueList
         backPatch(a.falselist, c.startIR.index);//回填falseList
@@ -216,8 +217,12 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: { name: string, frame
     } else if (node['_this'] != undefined) {
         if (inFunction) {
             let loadFunctionBase = new IR('p_load', 0);
-            let loadThis = new IR('p_getfield', 0);//拿到正确的this
-            return { startIR: loadFunctionBase, endIR: loadThis, truelist: [], falselist: [] };;
+            if (!inPlainFunction) {
+                let loadThis = new IR('p_getfield', 0);//，如果是在函数对象中，需要再取一次值才能拿到正确的this
+                return { startIR: loadFunctionBase, endIR: loadThis, truelist: [], falselist: [] };;
+            } else {
+                return { startIR: loadFunctionBase, endIR: loadFunctionBase, truelist: [], falselist: [] };;
+            }
         } else {
             let ir = new IR('p_load', 0);
             return { startIR: ir, endIR: ir, truelist: [], falselist: [] };;
@@ -229,7 +234,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: { name: string, frame
         let startIR = new IR('alloc', propSize(node['def'][name].type!));
         let offset = blockScope.getPropOffset(name);
         if (node['def'][name].initAST != undefined) {
-            let nr = nodeRecursion(blockScope, node['def'][name].initAST!, label, inFunction, argumentMap, frameLevel, false, true, false);
+            let nr = nodeRecursion(blockScope, node['def'][name].initAST!, label, inFunction, argumentMap, frameLevel, false, true, false, inPlainFunction);
             if (nr.truelist.length > 0 || nr.falselist.length > 0) {
                 let trueIR = new IR('const_i8_load', 1);
                 let jmp = new IR('jmp');
@@ -253,7 +258,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: { name: string, frame
             return { startIR, endIR: assginment, truelist: [], falselist: [] };
         } else if (node['def'][name].type?.FunctionType && node['def'][name].type?.FunctionType?.body) {//如果是函数定义则生成函数
             let blockScope = new BlockScope(scope, node['def'][name].type?.FunctionType, node['def'][name].type?.FunctionType?.body!, { program });
-            let fun = functionGen(blockScope, node['def'][name].type?.FunctionType!);
+            let fun = functionObjGen(blockScope, node['def'][name].type?.FunctionType!);
             let functionWrapScpoe = programScope.getClassScope(fun.wrapClassName);
             let startIR = new IR('newFunc', undefined, undefined, undefined);
             irAbsoluteAddressRelocationTable.push({ sym: fun.text, ir: startIR });
@@ -362,7 +367,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: { name: string, frame
         let args = node['_new']._arguments;
         for (let i = args.length - 1; i >= 0; i--) {
             argTypes.push(args[args.length - 1 - i].type!);//顺序获取type
-            nodeRecursion(scope, args[i], label, inFunction, argumentMap, frameLevel, false, true, false);//逆序压参
+            nodeRecursion(scope, args[i], label, inFunction, argumentMap, frameLevel, false, true, false, inPlainFunction);//逆序压参
         }
         new IR('p_dup');//赋值一个指针用于调用构造函数
         let sign = `@constructor:${node['_new'].type.PlainType.name} ${FunctionSignWithArgumentAndRetType(argTypes, { PlainType: { name: 'void' } })}`;//构造函数的签名
@@ -371,11 +376,11 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: { name: string, frame
         return { startIR: ir, endIR: constructorCall, truelist: [], falselist: [] };
     }
     else if (node['||'] != undefined) {
-        let left = nodeRecursion(scope, node['||'].leftChild, label, inFunction, argumentMap, frameLevel, false, false, false);
+        let left = nodeRecursion(scope, node['||'].leftChild, label, inFunction, argumentMap, frameLevel, false, false, false, inPlainFunction);
         if (left.falselist.length == 0 && left.truelist.length == 0) {//如果没有回填，则为其创建回填指令
             left.truelist.push(new IR('i_if_eq'));
         }
-        let right = nodeRecursion(scope, node['||'].rightChild, label, inFunction, argumentMap, frameLevel, false, true, false);
+        let right = nodeRecursion(scope, node['||'].rightChild, label, inFunction, argumentMap, frameLevel, false, true, false, inPlainFunction);
         let endIR: IR;
         if (right.falselist.length == 0 && right.truelist.length == 0) {//如果没有回填，则为其创建回填指令
             endIR = new IR('i_if_ne')
@@ -388,11 +393,11 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: { name: string, frame
         return { startIR: left.startIR, endIR: endIR, truelist: truelist, falselist: right.falselist };
     }
     else if (node['&&'] != undefined) {
-        let left = nodeRecursion(scope, node['&&'].leftChild, label, inFunction, argumentMap, frameLevel, false, true, false);
+        let left = nodeRecursion(scope, node['&&'].leftChild, label, inFunction, argumentMap, frameLevel, false, true, false, inPlainFunction);
         if (left.falselist.length == 0 && left.truelist.length == 0) {//如果没有回填，则为其创建回填指令
             left.falselist.push(new IR('i_if_ne'));
         }
-        let right = nodeRecursion(scope, node['&&'].rightChild, label, inFunction, argumentMap, frameLevel, false, true, false);
+        let right = nodeRecursion(scope, node['&&'].rightChild, label, inFunction, argumentMap, frameLevel, false, true, false, inPlainFunction);
         let endIR: IR;
         if (right.falselist.length == 0 && right.truelist.length == 0) {//如果没有回填，则为其创建回填指令
             endIR = new IR('i_if_ne');
@@ -405,7 +410,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: { name: string, frame
         return { startIR: left.startIR, endIR: endIR, truelist: right.truelist, falselist: falselist };
     }
     else if (node['ifElseStmt'] != undefined) {
-        let condition = nodeRecursion(scope, node['ifElseStmt'].condition, label, inFunction, argumentMap, frameLevel, false, true, false);
+        let condition = nodeRecursion(scope, node['ifElseStmt'].condition, label, inFunction, argumentMap, frameLevel, false, true, false, inPlainFunction);
         if (condition.truelist.length == 0 && condition.falselist.length == 0) {//如果bool值不是通过布尔运算得到的，则必须为其插入一个判断指令
             let ir = new IR('i_if_ne');
             condition.falselist.push(ir);
@@ -419,7 +424,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: { name: string, frame
         return { startIR: condition.startIR, endIR: block2Ret.endIR, truelist: [], falselist: [], jmpToFunctionEnd: block1Ret.jmpToFunctionEnd.concat(block2Ret.jmpToFunctionEnd) };
     }
     else if (node['ifStmt'] != undefined) {
-        let condition = nodeRecursion(scope, node['ifStmt'].condition, label, inFunction, argumentMap, frameLevel, false, true, false);
+        let condition = nodeRecursion(scope, node['ifStmt'].condition, label, inFunction, argumentMap, frameLevel, false, true, false, inPlainFunction);
         if (condition.truelist.length == 0 && condition.falselist.length == 0) {//如果bool值不是通过布尔运算得到的，则必须为其插入一个判断指令
             let ir = new IR('i_if_ne');
             condition.falselist.push(ir);
@@ -433,7 +438,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: { name: string, frame
         let startIR: IR;
         let jmpToFunctionEnd: IR[] = [];
         if (node['ret'] != '') {
-            let ret = nodeRecursion(scope, node['ret'], label, inFunction, argumentMap, frameLevel, false, true, false);
+            let ret = nodeRecursion(scope, node['ret'], label, inFunction, argumentMap, frameLevel, false, true, false, inPlainFunction);
             startIR = ret.startIR;
             if (ret.truelist.length > 0 || ret.falselist.length > 0) {//如果需要回填，则说明是一个bool表达式
                 let trueIR = new IR('const_i8_load', 1);
@@ -456,13 +461,13 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: { name: string, frame
         let startIR: IR | undefined = undefined;
         //参数逆序压栈
         for (let i = node['call']._arguments.length - 1; i >= 0; i--) {
-            let nodeRet = nodeRecursion(scope, node['call']._arguments[i], label, inFunction, argumentMap, frameLevel, false, true, false);
+            let nodeRet = nodeRecursion(scope, node['call']._arguments[i], label, inFunction, argumentMap, frameLevel, false, true, false, inPlainFunction);
             if (startIR == undefined) {
                 startIR = nodeRet.startIR;
             }
         }
         //获取函数对象
-        let nodeRet = nodeRecursion(scope, node['call'].functionObj, label, inFunction, argumentMap, frameLevel, false, true, false);
+        let nodeRet = nodeRecursion(scope, node['call'].functionObj, label, inFunction, argumentMap, frameLevel, false, true, false, inPlainFunction);
         if (startIR == undefined) {
             startIR = nodeRet.startIR;
         }
@@ -494,7 +499,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: { name: string, frame
             type = { ArrayType: { innerType: type } };
         }
         for (let ast of initList) {
-            let astRet = nodeRecursion(scope, ast, label, inFunction, argumentMap, frameLevel, false, true, false);
+            let astRet = nodeRecursion(scope, ast, label, inFunction, argumentMap, frameLevel, false, true, false, inPlainFunction);
             if (startIR == undefined) {
                 startIR = astRet.startIR;
             }
@@ -505,8 +510,8 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: { name: string, frame
         return { startIR: startIR!, endIR: newArray, truelist: [], falselist: [], jmpToFunctionEnd: [] };
     }
     else if (node['='] != undefined) {
-        let leftObj = nodeRecursion(scope, node['='].leftChild, label, inFunction, argumentMap, frameLevel, false, true, true);
-        let rightObj = nodeRecursion(scope, node['='].rightChild, label, inFunction, argumentMap, frameLevel, false, true, false);
+        let leftObj = nodeRecursion(scope, node['='].leftChild, label, inFunction, argumentMap, frameLevel, false, true, true, inPlainFunction);
+        let rightObj = nodeRecursion(scope, node['='].rightChild, label, inFunction, argumentMap, frameLevel, false, true, false, inPlainFunction);
 
         let type = node['='].leftChild.type!;
         if (type!.PlainType?.name == 'bool') {
@@ -522,7 +527,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: { name: string, frame
         return { startIR: rightObj.startIR, endIR: endIR, truelist: [], falselist: [], jmpToFunctionEnd: [] };
     }
     else if (node['++'] != undefined) {
-        let nr = nodeRecursion(scope, node['++'], label, inFunction, argumentMap, frameLevel, false, true, false);
+        let nr = nodeRecursion(scope, node['++'], label, inFunction, argumentMap, frameLevel, false, true, false, inPlainFunction);
         new IR('i32_inc');
         let type = node['++'].type;
         let endIR: IR;
@@ -531,7 +536,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: { name: string, frame
                 endIR = new IR('i32_store', nr.endIR.operand1);
             } else {
                 //再来一次get_field操作
-                let loadASTs = nodeRecursion(scope, node['++'], label, inFunction, argumentMap, frameLevel, false, true, false);
+                let loadASTs = nodeRecursion(scope, node['++'], label, inFunction, argumentMap, frameLevel, false, true, false, inPlainFunction);
                 //把opcode强制改为put
                 loadASTs.endIR.opCode = 'i32_putfield';
                 endIR = loadASTs.endIR;
@@ -542,7 +547,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: { name: string, frame
         return { startIR: nr.startIR, endIR: endIR, truelist: [], falselist: [], jmpToFunctionEnd: [] };
     }
     else if (node['--'] != undefined) {
-        let nr = nodeRecursion(scope, node['--'], label, inFunction, argumentMap, frameLevel, false, true, false);
+        let nr = nodeRecursion(scope, node['--'], label, inFunction, argumentMap, frameLevel, false, true, false, inPlainFunction);
         new IR('i32_dec');
         let type = node['--'].type;
         let endIR: IR;
@@ -551,7 +556,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: { name: string, frame
                 endIR = new IR('i32_store', nr.endIR.operand1);
             } else {
                 //再来一次get_field操作
-                let loadASTs = nodeRecursion(scope, node['--'], label, inFunction, argumentMap, frameLevel, false, true, false);
+                let loadASTs = nodeRecursion(scope, node['--'], label, inFunction, argumentMap, frameLevel, false, true, false, inPlainFunction);
                 //把opcode强制改为put
                 loadASTs.endIR.opCode = 'i32_putfield';
                 endIR = loadASTs.endIR;
@@ -564,14 +569,14 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: { name: string, frame
     else if (node['_for'] != undefined) {
         let startIR: IR | undefined;
         if (node['_for'].init) {
-            let initRet = nodeRecursion(scope, node['_for'].init, label, inFunction, argumentMap, frameLevel, false, true, false);
+            let initRet = nodeRecursion(scope, node['_for'].init, label, inFunction, argumentMap, frameLevel, false, true, false, inPlainFunction);
             startIR = initRet.startIR;
         }
         let conditionStartIR: IR | undefined;
         let trueList: IR[] = [];
         let falseList: IR[] = [];
         if (node['_for'].condition) {
-            let conditionRet = nodeRecursion(scope, node['_for'].condition, label, inFunction, argumentMap, frameLevel, false, true, false);
+            let conditionRet = nodeRecursion(scope, node['_for'].condition, label, inFunction, argumentMap, frameLevel, false, true, false, false);
             trueList = conditionRet.truelist;
             falseList = conditionRet.falselist;
             conditionStartIR = conditionRet.startIR;
@@ -592,7 +597,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: { name: string, frame
             startIR = blockRet.startIR;
         }
         if (node['_for'].step) {
-            nodeRecursion(scope, node['_for'].step, label, inFunction, argumentMap, frameLevel, false, true, false);
+            nodeRecursion(scope, node['_for'].step, label, inFunction, argumentMap, frameLevel, false, true, false, inPlainFunction);
         }
         let loop = new IR('jmp');
         backPatch(breakIRs, loop.index + 1);
@@ -667,13 +672,17 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: { name: string, frame
         }
         return { startIR: startIR, endIR: endIR, truelist: [], falselist: [], jmpToFunctionEnd: [] };
     }
+    else if (node['[]'] != undefined) {
+        //需要判断isLoaction
+        throw `unimplement`;
+    }
     else if (node['loadOperatorOverload'] != undefined) {
         throw `unimplement`;
     }
-    else if (node['loadException'] != undefined) {
+    else if (node['trycatch'] != undefined) {
         throw `unimplement`;
     }
-    else if (node['trycatch'] != undefined) {
+    else if (node['loadException'] != undefined) {
         throw `unimplement`;
     }
     else if (node['throwStmt'] != undefined) {
@@ -698,12 +707,6 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: { name: string, frame
         throw `unimplement`;
     }
     else if (node['unbox'] != undefined) {
-        throw `unimplement`;
-    }
-    else if (node['[]'] != undefined) {
-        throw `unimplement`;
-    }
-    else if (node['[]'] != undefined) {
         throw `unimplement`;
     }
     else if (node['-'] != undefined) {
@@ -762,7 +765,16 @@ function putfield(type: TypeUsed, offset: number, truelist: IR[], falselist: IR[
     }
     return endIR;
 }
-function BlockScan(blockScope: BlockScope, label: { name: string, frameLevel: number, breakIRs: IR[], continueIRs: IR[] }[], argumentMap: { type: TypeUsed }[], frameLevel: number): { startIR: IR, endIR: IR, jmpToFunctionEnd: IR[], stackFrame: { name: string, type: TypeUsed }[] } {
+/**
+ * 
+ * @param blockScope 
+ * @param label 
+ * @param argumentMap 
+ * @param frameLevel 
+ * @param inPlainFunction 是否为普通函数(影响block内部对this的取值方式)
+ * @returns 
+ */
+function BlockScan(blockScope: BlockScope, label: { name: string, frameLevel: number, breakIRs: IR[], continueIRs: IR[] }[], argumentMap: { type: TypeUsed }[], frameLevel: number, inPlainFunction = false): { startIR: IR, endIR: IR, jmpToFunctionEnd: IR[], stackFrame: { name: string, type: TypeUsed }[] } {
     let stackFrameMapIndex = globalVariable.stackFrameMapIndex++;
     let startIR: IR = new IR('push_stack_map', undefined, undefined, undefined);
     stackFrameRelocationTable.push({ sym: `@StackFrame_${stackFrameMapIndex}`, ir: startIR });
@@ -774,7 +786,7 @@ function BlockScan(blockScope: BlockScope, label: { name: string, frameLevel: nu
     for (let i = 0; i < blockScope.block!.body.length; i++) {
         let nodeOrBlock = blockScope.block!.body[i];
         if (nodeOrBlock.desc == 'ASTNode') {
-            let nodeRet = nodeRecursion(blockScope, nodeOrBlock as ASTNode, label, true, argumentMap, frameLevel, false, true, false);
+            let nodeRet = nodeRecursion(blockScope, nodeOrBlock as ASTNode, label, true, argumentMap, frameLevel, false, true, false, inPlainFunction);
             endIR = nodeRet.endIR;
             if (nodeRet.jmpToFunctionEnd) {
                 jmpToFunctionEnd = jmpToFunctionEnd.concat(nodeRet.jmpToFunctionEnd);
@@ -834,14 +846,13 @@ function propSize(type: TypeUsed): number {
     }
 }
 /**
- * 
+ * 生成函数对象
  * @param blockScope 
  * @param fun 
- * @param functionSymbolName 为函数符号指定的名字，如果没有指定，则用默认规则生成
  * @param nativeName native名字
  * @returns wrapClassName:函数包裹类型名、realTypeName:函数真实类型名、text:函数代码的符号名
  */
-function functionGen(blockScope: BlockScope, fun: FunctionType, option?: { functionSymbolName?: string, nativeName?: string }): { wrapClassName: string, realTypeName: string, text: string, irContainer: IRContainer } {
+function functionObjGen(blockScope: BlockScope, fun: FunctionType, option?: { nativeName?: string }): { wrapClassName: string, realTypeName: string, text: string, irContainer: IRContainer } {
     let lastSymbol = IRContainer.getContainer();//类似回溯，保留现场
     let argumentMap: { offset: number, type: TypeUsed }[] = [];
     let argOffset = 0;
@@ -876,7 +887,7 @@ function functionGen(blockScope: BlockScope, fun: FunctionType, option?: { funct
     };
     programScope.registerClassForCapture(functionWrapName);//注册类型
     registerType({ PlainType: { name: functionWrapName } });//在类型表中注册函数包裹类的类型
-    let functionIRContainer = new IRContainer(option?.functionSymbolName ?? `@function_${functionIndex}`);
+    let functionIRContainer = new IRContainer(`@function_${functionIndex}`);
     IRContainer.setContainer(functionIRContainer);
     if (!fun.isNative) {
         let blockScanRet = BlockScan(blockScope, [], argumentMap, 1);
@@ -895,6 +906,33 @@ function functionGen(blockScope: BlockScope, fun: FunctionType, option?: { funct
     IRContainer.setContainer(lastSymbol);//回退
     return { wrapClassName: functionWrapName, realTypeName: FunctionSign(fun), text: functionIRContainer.name, irContainer: functionIRContainer };
 }
+/**
+ * 生成一个普通函数(构造函数和操作符重载函数)
+ * @param blockScope 
+ * @param fun 
+ * @param functionName 函数在符号表中的名字
+ * @returns 
+ */
+function PlainFunctionGen(blockScope: BlockScope, fun: FunctionType, functionName: string): { text: string, irContainer: IRContainer } {
+    let lastSymbol = IRContainer.getContainer();//类似回溯，保留现场
+    let argumentMap: { offset: number, type: TypeUsed }[] = [];
+    let argOffset = 0;
+    for (let argumentName in fun._arguments) {
+        let type = fun._arguments[argumentName].type!;
+        let size = propSize(type);
+        argOffset += size;
+        argumentMap.push({ offset: argOffset, type: type });
+    }
+    let functionIRContainer = new IRContainer(functionName);
+    IRContainer.setContainer(functionIRContainer);
+    let blockScanRet = BlockScan(blockScope, [], argumentMap, 1, true);
+    let retIR = new IR('ret');
+    for (let ir of blockScanRet.jmpToFunctionEnd) {
+        ir.operand1 = retIR.index - ir.index;//处理所有ret jmp
+    }
+    IRContainer.setContainer(lastSymbol);//回退
+    return { text: functionIRContainer.name, irContainer: functionIRContainer };
+}
 function classScan(classScope: ClassScope) {
     let lastSymbol = IRContainer.getContainer();//类似回溯，保留现场
     let symbol = new IRContainer(`${classScope.className}_init`);
@@ -909,11 +947,11 @@ function classScan(classScope: ClassScope) {
         let offset = classScope.getPropOffset(propName);
         if (prop.initAST != undefined) {
             new IR('p_load', 0);
-            let nr = nodeRecursion(classScope, prop.initAST, [], false, [], 1, false, true, false);
+            let nr = nodeRecursion(classScope, prop.initAST, [], false, [], 1, false, true, false, false);
             putfield(prop.type!, offset, nr.truelist, nr.falselist);
         } else if (prop.type?.FunctionType && prop.type?.FunctionType.body) {
             let blockScope = new BlockScope(programScope, prop.type?.FunctionType, prop.type?.FunctionType.body!, { program });
-            let fun = functionGen(blockScope, prop.type?.FunctionType);
+            let fun = functionObjGen(blockScope, prop.type?.FunctionType);
             new IR('p_load', 0);
             let newIR = new IR('newFunc', undefined, undefined, undefined);
             irAbsoluteAddressRelocationTable.push({ sym: fun.text, ir: newIR });
@@ -938,7 +976,7 @@ function classScan(classScope: ClassScope) {
         _constructor.retType = { PlainType: { name: 'void' } };//所有构造函数不允许有返回值
         let blockScope = new BlockScope(classScope, _constructor, _constructor.body!, { program });
         let sign = `@constructor:${classScope.className} ${constructorName}`;//构造函数的签名
-        functionGen(blockScope, _constructor, { functionSymbolName: sign });
+        PlainFunctionGen(blockScope, _constructor, sign);
     }
     new IR('pop_stack_map', 1);
     new IR('ret');//classInit返回
@@ -1043,11 +1081,11 @@ export default function programScan(primitiveProgram: Program) {
         let offset = programScope.getPropOffset(variableName);
         if (prop.initAST != undefined) {
             new IR('program_load');
-            let nr = nodeRecursion(programScope, prop.initAST, [], false, [], 1, false, true, false);
+            let nr = nodeRecursion(programScope, prop.initAST, [], false, [], 1, false, true, false, false);
             putfield(prop.type!, offset, nr.truelist, nr.falselist);
         } else if (prop.type?.FunctionType && (prop.type?.FunctionType.body || prop.type?.FunctionType.isNative)) {//如果是函数定义则生成函数
             let blockScope = new BlockScope(programScope, prop.type?.FunctionType, prop.type?.FunctionType.body!, { program });
-            let fun = functionGen(blockScope, prop.type?.FunctionType, { nativeName: variableName });
+            let fun = functionObjGen(blockScope, prop.type?.FunctionType, { nativeName: variableName });
             new IR('program_load');
             let newIR = new IR('newFunc', undefined, undefined, undefined);
             irAbsoluteAddressRelocationTable.push({ sym: fun.text, ir: newIR });
@@ -1069,5 +1107,4 @@ export default function programScan(primitiveProgram: Program) {
 
     finallyOutput();
 }
-console.error(`newArray还没有测试`);
-console.error(`测试代码的Class B构造函数有问题`);
+console.error(`newArray还没有测试,需要和数组访问[]配合测试才行`);
