@@ -4,31 +4,17 @@ function printI32(v:int):void{
 function printI8(v:bool):void{
     native
 };
-function f1():void{
-    var m:myVal;
-    m.i=3;
-    m.print();
-};
 function main(){
-    f1();
-    var b=new B();
-    b.m.print();
-    printI32(b.i);
-    b.i=16;
-    printI32(b.i);
-    var t=b.m.print;
-    t();
-    b.m.i++;
-    t();
-    var arr:int[][]=new int[5][4];
+    var m1:myVal;
+    var m2:myVal;
+    m1.i=5;
+    m2.i=6;
+    var marr=new myVal[2];
+    printI32(marr[0].i);
+    printI32(marr[1].i);
+    marr[0].print();
+    marr[1].print();
 };
-class B{
-    var m:myVal;
-    var i=22;
-    B(){
-        m.i=5;
-    }
-}
 valuetype class myVal{
     var i=10;
     function print(){

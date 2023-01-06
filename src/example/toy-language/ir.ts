@@ -78,6 +78,16 @@ export enum OPCODE {
     'i32_putfield',//从计算栈顶弹出一个i32，接着再弹出一个指针，以指针作为obj的基础地址，把i8写入成员区域
     'valueType_getfield',//从计算栈顶弹出一个指针，以指针作为obj基础地址，读取一个valueType成员到计算栈顶
     'valueType_putfield',//从计算栈顶弹出一个valueType，接着再弹出一个指针，以指针作为obj的基础地址，把valueType写入成员区域
+
+    /**
+     * array相关的,operand1是系数(即每个element的size)
+     */
+    'array_get_element_address',//先从计算栈弹出一个i32作为下标，再从计算栈弹出一个指针,以该指针为基础地址加上i32*element_size压入计算栈
+    'array_get_point',//先从计算栈弹出一个i32作为下标，再从计算栈弹出一个指针，以读取指针的方式读取元素值
+    'array_get_i32',//先从计算栈弹出一个i32作为下标，再从计算栈弹出一个指针，以读取i32的方式读取元素值
+    'array_get_i8',//先从计算栈弹出一个i32作为下标，再从计算栈弹出一个指针，以读取i8的方式读取元素值
+    'array_get_valueType',//先从计算栈弹出一个i32作为下标，再从计算栈弹出一个指针，以读取valueType的方式读取元素值
+
     'getfield_address',//从计算栈弹出一个指针，加上偏移压入计算栈
     'load_address',//读取局部变量区域的基础地址(bp指针),然后加上偏移压入计算栈
     'i8_load',//从局部变量加载一个i8到计算栈

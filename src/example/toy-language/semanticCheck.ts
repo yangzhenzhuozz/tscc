@@ -6,7 +6,7 @@ let program: Program;
 let programScope: ProgramScope;
 function OperatorOverLoad(scope: Scope, leftObj: ASTNode, rightObj: ASTNode | undefined, originNode: ASTNode, op: opType | opType2): { type: TypeUsed, location?: 'prop' | 'field' | 'stack' | 'array_element' } {
     let leftType = nodeRecursion(scope, leftObj, [], {}).type;
-    if(leftType.PlainType!.name=='void'){
+    if(leftType?.PlainType?.name=='void'){
             throw `void类型没有重载操作符${op}`;
     }
     registerType(leftType);

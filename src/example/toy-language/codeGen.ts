@@ -659,8 +659,33 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: { name: string, frame
         return { startIR: startIR, endIR: endIR, truelist: [], falselist: [], jmpToFunctionEnd: [] };
     }
     else if (node['[]'] != undefined) {
-        //需要判断isLoaction
-        throw `unimplement`;
+        let left = nodeRecursion(scope, node['[]'].leftChild, label, inFunction, argumentMap, frameLevel, false, true, false, inPlainFunction);
+        let right = nodeRecursion(scope, node['[]'].rightChild, label, inFunction, argumentMap, frameLevel, false, true, false, inPlainFunction);
+        let innerType = node['[]'].leftChild.type!.ArrayType!.innerType;
+        let ir: IR;
+        if (!isLoaction) {
+            if (isPointType(innerType)) {
+                ir = new IR('array_get_point', globalVariable.pointSize);
+            } else {
+                let elementSize = propSize(innerType);
+                if (isGetAddress) {
+                    ir = new IR('array_get_element_address', elementSize);//地址
+                } else {
+                    if (innerType.PlainType?.name == 'int') {
+                        ir = new IR('array_get_i32', elementSize);
+                    } else if (innerType.PlainType?.name == 'bool', elementSize) {
+                        ir = new IR('array_get_i8');
+                    }
+                    else {
+                        ir = new IR('valueType_getfield', elementSize);
+                    }
+                }
+            }
+        } else {
+            console.error('需要判断isLoaction');
+            throw `unimplement`;
+        }
+        return { startIR: left.startIR, endIR: ir, truelist: [], falselist: [], jmpToFunctionEnd: [] };
     }
     else if (node['loadOperatorOverload'] != undefined) {
         throw `unimplement`;
