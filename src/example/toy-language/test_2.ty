@@ -14,6 +14,8 @@ function main(){
     printI32(marr[1].i);
     marr[0].print();
     marr[1].print();
+    var t=marr[1];
+    t.print();
 };
 valuetype class myVal{
     var i=10;
