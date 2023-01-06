@@ -18,6 +18,8 @@ function main(){
     printI32(b.i);
     var t=b.m.print;
     t();
+    b.m.i++;
+    t();
     var arr:int[][]=new int[5][4];
 };
 class B{

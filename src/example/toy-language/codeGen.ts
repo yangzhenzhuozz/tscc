@@ -527,44 +527,30 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: { name: string, frame
         return { startIR: rightObj.startIR, endIR: endIR, truelist: [], falselist: [], jmpToFunctionEnd: [] };
     }
     else if (node['++'] != undefined) {
-        let nr = nodeRecursion(scope, node['++'], label, inFunction, argumentMap, frameLevel, false, true, false, inPlainFunction);
-        new IR('i32_inc');
-        let type = node['++'].type;
+        let left = nodeRecursion(scope, node['++'], label, inFunction, argumentMap, frameLevel, false, true, true, inPlainFunction);//取得location
+        nodeRecursion(scope, node['++'], label, inFunction, argumentMap, frameLevel, false, true, false, inPlainFunction);
         let endIR: IR;
-        if (type!.PlainType?.name == 'int') {
-            if (node['++'].load != undefined) {
-                endIR = new IR('i32_store', nr.endIR.operand1);
-            } else {
-                //再来一次get_field操作
-                let loadASTs = nodeRecursion(scope, node['++'], label, inFunction, argumentMap, frameLevel, false, true, false, inPlainFunction);
-                //把opcode强制改为put
-                loadASTs.endIR.opCode = 'i32_putfield';
-                endIR = loadASTs.endIR;
-            }
+        let virtualIR = left.virtualIR!;
+        if (node['++'].type!.PlainType?.name == 'int') {
+            new IR('i32_inc');
+            endIR = new IR(virtualIR.opCode, virtualIR.operand1, virtualIR.operand2, virtualIR.operand3);
         } else {
-            throw `暂时不支持类型:${type!.PlainType?.name}的++`;
+            throw `暂时不支持类型:${node['++'].type!.PlainType?.name}的++`;
         }
-        return { startIR: nr.startIR, endIR: endIR, truelist: [], falselist: [], jmpToFunctionEnd: [] };
+        return { startIR: left.startIR, endIR: endIR, truelist: [], falselist: [], jmpToFunctionEnd: [] };
     }
     else if (node['--'] != undefined) {
-        let nr = nodeRecursion(scope, node['--'], label, inFunction, argumentMap, frameLevel, false, true, false, inPlainFunction);
-        new IR('i32_dec');
-        let type = node['--'].type;
+        let left = nodeRecursion(scope, node['--'], label, inFunction, argumentMap, frameLevel, false, true, true, inPlainFunction);//取得location
+        nodeRecursion(scope, node['--'], label, inFunction, argumentMap, frameLevel, false, true, false, inPlainFunction);
         let endIR: IR;
-        if (type!.PlainType?.name == 'int') {
-            if (node['--'].load != undefined) {
-                endIR = new IR('i32_store', nr.endIR.operand1);
-            } else {
-                //再来一次get_field操作
-                let loadASTs = nodeRecursion(scope, node['--'], label, inFunction, argumentMap, frameLevel, false, true, false, inPlainFunction);
-                //把opcode强制改为put
-                loadASTs.endIR.opCode = 'i32_putfield';
-                endIR = loadASTs.endIR;
-            }
+        let virtualIR = left.virtualIR!;
+        if (node['--'].type!.PlainType?.name == 'int') {
+            new IR('i32_dec');
+            endIR = new IR(virtualIR.opCode, virtualIR.operand1, virtualIR.operand2, virtualIR.operand3);
         } else {
-            throw `暂时不支持类型:${type!.PlainType?.name}的++`;
+            throw `暂时不支持类型:${node['--'].type!.PlainType?.name}的++`;
         }
-        return { startIR: nr.startIR, endIR: endIR, truelist: [], falselist: [], jmpToFunctionEnd: [] };
+        return { startIR: left.startIR, endIR: endIR, truelist: [], falselist: [], jmpToFunctionEnd: [] };
     }
     else if (node['_for'] != undefined) {
         let startIR: IR | undefined;
