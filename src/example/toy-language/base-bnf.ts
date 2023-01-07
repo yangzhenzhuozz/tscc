@@ -301,7 +301,7 @@ let grammar: Grammar = {
          * 为其指定优先级为cast_priority
          */
         { "object:( type ) object": { priority: "cast_priority" } },//强制转型
-        { "_new:new plainType  ( arguments )": {} },//创建对象
+        { "_new:new type  ( arguments )": {} },//创建对象
         /**
          * 针对产生式array_init_list:array_inits array_placeholder 会出现如下二义性
          * new int [10][3]可以有如下两种解释:(把array_placeholder规约成ε)
@@ -310,8 +310,7 @@ let grammar: Grammar = {
          * 我当然希望采取第二种语法树,所以需要设置产生式优先级,即在new一个对象的时候,如果后面跟有方括号[,优先选择移入而不是规约,那么只需要把冲突的产生式优先级设置为比'['低即可
          * 设置array_placeholder作为产生式头的两个产生式优先级低于'['
          */
-        { "_new:new plainType array_init_list": {} },//创建对象数组
-        { "_new:new functionType array_init_list": {} },//创建函数数组
+        { "_new:new type array_init_list": {} },//创建数组
         { "array_init_list:array_inits array_placeholder": {} },//new 数组的时候是可以这样写的 new int [2][3][][],其中[2][3]对应了array_inits,后面的[][]对应了array_placeholder(数组占位符)
         { "array_inits:array_inits [ object ]": {} },//见array_init_list一条的解释
         { "array_inits:[ object ]": {} },//见array_init_list一条的解释

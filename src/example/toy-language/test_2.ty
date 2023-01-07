@@ -4,25 +4,23 @@ function printI32(v:int):void{
 function printI8(v:bool):void{
     native
 };
-function main(){
-    var m1:myVal;
-    var m2:myVal;
-    m1.i=5;
-    m2.i=6;
-    var marr=new myVal[2];
-    printI32(marr[0].i);
-    printI32(marr[1].i);
-    marr[0].print();
-    marr[1].print();
-    var t=marr[1];
-    t.print();
+function F(v:int):void{
+    printI32(v);
 };
-valuetype class myVal{
-    var i=10;
-    function print(){
+class C{
+    var i=5;
+    C(param:int){
+        i=param;
+    }
+}
+function main(){
+    var i=5;
+    function inner(){
+        i++;
         printI32(i);
     };
-}
+    inner();
+};
 valuetype class int{
     operator + ( v : int ) : int { native } ;
     operator < ( v : int ) : bool { native } ;

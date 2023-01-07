@@ -1,47 +1,11 @@
-    loadOperatorOverload
-    loadException
-    loadArgument
-    type
-    def
-    accessField
-    call
-    load
-    _super
-    _this
-    _program
-    immediate
-    trycatch
-    setter
-    throwStmt
-    ret
-    ifStmt
-    ifElseStmt
-    do_while
-    _while
-    _for
-    _break
-    _continue
-    _instanceof
-    not
-    '++'
-    '--'
-    ternary
-    cast
-    box
-    unbox
-    _new
-    _newArray
-    '[]'
-    "="
-    "+"
-    "-"
-    "*"
-    "/"
-    "<"
-    "<="
-    ">"
-    ">="
-    "=="
-    "||"
-    "&&"
-    _switch
+1.模板只允许program范围内的class和function定义，任何其他位置的模板都被拒绝(已经实现)
+2.在阶段二跳过模板定义的扫描
+3.只有在特化的时候，单独生成一个模板类或者模板函数，然后进行扫描
+
+待完成:
+1.newArray没有new完的情况没有考虑,即 var arr:int[][][]=new int[1][][];
+2.闭包目前有问题
+
+待测试：
+1.函数调用
+2.new对象

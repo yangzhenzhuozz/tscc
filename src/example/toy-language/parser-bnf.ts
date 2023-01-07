@@ -366,15 +366,15 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
         {
             "plainType:basic_type": {
                 priority: "low_priority_for_[",
-                action: function ($, s): { PlainType: PlainType; } {
-                    return $[0] as { PlainType: PlainType; };
+                action: function ($, s): { PlainType: PlainType } {
+                    return $[0] as { PlainType: PlainType };
                 }
             }
         },//type可以是一个base_type
         {
             "plainType:basic_type templateSpecialization": {
                 priority: "low_priority_for_[",
-                action: function ($, s): { PlainType: PlainType; } {
+                action: function ($, s): { PlainType: PlainType } {
                     let basic_type = $[0] as TypeUsed;
                     let templateSpecialization = $[1] as TypeUsed[];
                     return { PlainType: { name: basic_type.PlainType!.name, templateSpecialization: templateSpecialization } };
@@ -410,6 +410,9 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
                 priority: "low_priority_for_[",
                 action: function ($, s): TypeUsed {
                     let type = $[0] as TypeUsed;
+                    if (type.PlainType?.name == 'void') {
+                        throw `不允许创建void数组`;
+                    }
                     let array_type_list = $[1] as number;
                     let ret: TypeUsed = type;
                     for (let i = 0; i < array_type_list; i++) {
@@ -1862,9 +1865,13 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
             }
         },//强制转型
         {
-            "_new:new plainType  ( arguments )": {
+            "_new:new type  ( arguments )": {
                 action: function ($, s): ASTNode {
-                    return { desc: "ASTNode", _new: { type: $[1] as { PlainType: PlainType; }, _arguments: $[3] as ASTNode[] } };
+                    let type = $[1] as TypeUsed;
+                    if (type.PlainType == undefined) {
+                        throw `只能new一个plainObj对象`;
+                    }
+                    return { desc: "ASTNode", _new: { type: $[1] as { PlainType: PlainType }, _arguments: $[3] as ASTNode[] } };
                 }
             }
         },//创建对象
@@ -1877,21 +1884,17 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
          * 设置array_placeholder作为产生式头的两个产生式优先级低于'['
          */
         {
-            "_new:new plainType array_init_list": {
+            "_new:new type array_init_list": {
                 action: function ($, s): ASTNode {
+                    let type = $[1] as TypeUsed;
+                    if (type.ArrayType!=undefined) {
+                        throw `不允许new一个数组的数组,数组的创建语法如下: new int[3][2],不能写成new (int[3])[2]`;
+                    }
                     let init_list = $[2] as { initList: ASTNode[], placeholder: number };
-                    return { desc: "ASTNode", _newArray: { type: $[1] as { PlainType: PlainType; }, initList: init_list.initList, placeholder: init_list.placeholder } };
+                    return { desc: "ASTNode", _newArray: { type: $[1] as { PlainType: PlainType }|{ FunctionType: FunctionType }, initList: init_list.initList, placeholder: init_list.placeholder } };
                 }
             }
-        },//创建对象数组
-        {
-            "_new:new functionType array_init_list": {
-                action: function ($, s): ASTNode {
-                    let init_list = $[2] as { initList: ASTNode[], placeholder: number };
-                    return { desc: "ASTNode", _newArray: { type: $[1] as { FunctionType: FunctionType; }, initList: init_list.initList, placeholder: init_list.placeholder } };
-                }
-            }
-        },//创建函数数组
+        },//创建数组
         {
             "array_init_list:array_inits array_placeholder": {
                 action: function ($, s): { initList: ASTNode[], placeholder: number } {
