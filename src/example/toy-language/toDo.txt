@@ -11,5 +11,5 @@
 +   newArray没有new完的情况没有考虑,即 var arr:int[][][]=new int[1][][];
 +   test_4.ty 没有正确生成<判断指令
 +   应该在nodeRecursion的出口检测是有trueList或者falseList，不能在使用的时候检测，否则总有遗漏的时候
-+   <的判断是错误的
++   <的判断好像没问题
 +   仔细检测 ||、&&、ternary 对boolNot的处理
