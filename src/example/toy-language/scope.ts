@@ -37,7 +37,7 @@ abstract class Scope {
     }
     public abstract getPropOffset(name: string): number;//只需要在自己的scope范围内搜索，不用向上搜索到class和program了
     public abstract getPropSize(name: string): number;//只需要在自己的scope范围内搜索，不用向上搜索到class和program了
-    public abstract getProp(name: string): { prop: VariableProperties, scope: Scope };
+    public abstract getProp(name: string): { prop: VariableProperties, scope: Scope, crossFunction: boolean };
 }
 class ProgramScope extends Scope {
     public program: Program;
@@ -69,9 +69,9 @@ class ProgramScope extends Scope {
             throw `未定义的类型:${className}`;
         }
     }
-    public getProp(name: string): { prop: VariableProperties, scope: Scope } {
+    public getProp(name: string): { prop: VariableProperties, scope: Scope, crossFunction: boolean } {
         if (this.property[name] != undefined) {
-            return { prop: this.property[name], scope: this };
+            return { prop: this.property[name], scope: this, crossFunction: false };
         } else {
             throw `试图读取未定义的标识符:${name}`;
         }
@@ -100,10 +100,10 @@ class ClassScope extends Scope {
     public getPropNames() {
         return Object.keys(this.property);
     }
-    public getProp(name: string): { prop: VariableProperties, scope: Scope } {
+    public getProp(name: string): { prop: VariableProperties, scope: Scope, crossFunction: boolean } {
         let prop: VariableProperties | undefined = this.property[name];
         if (prop != undefined) {
-            return { prop: prop, scope: this };
+            return { prop: prop, scope: this, crossFunction: false };
         } else {
             return this.programScope.getProp(name);
         }
@@ -126,7 +126,7 @@ class BlockScope extends Scope {
     public block?: Block;//记录当前scope是属于哪个block,处理闭包时插入指令
     public fun: FunctionType | undefined;//是否是一个function scope，用于判断闭包捕获
     public captured: Set<string> = new Set();//本scope被捕获的变量
-    public defNodes: { [key: string]: { defNode: ASTNode, loads: ASTNode[] } } = {};//def:哪个节点定义的变量,loads:被哪些节点读取，在处理闭包捕获时用到
+    public defNodes: { [key: string]: { defNode: ASTNode, loads: ASTNode[], crossFunctionLoad: ASTNode[] } } = {};//def:哪个节点定义的变量,loads:被哪些节点读取，在处理闭包捕获时用到,crossFunctionLoad:跨函数的load
     public programScope: ProgramScope;
     public classScope: ClassScope | undefined;
     public baseOffset: number;//基础偏移
@@ -169,7 +169,7 @@ class BlockScope extends Scope {
         } else {
             this.property[name] = variableProperties;
             if (defNode != undefined) {
-                this.defNodes[name] = { defNode: defNode, loads: [] };
+                this.defNodes[name] = { defNode: defNode, loads: [], crossFunctionLoad: [] };
             }
             if (this.fieldOffsetMap) {//如果需要填充变量偏移
                 let type = variableProperties.type!;
@@ -186,7 +186,7 @@ class BlockScope extends Scope {
             }
         }
     }
-    public getProp(name: string): { prop: VariableProperties, scope: Scope } {
+    public getProp(name: string): { prop: VariableProperties, scope: Scope, crossFunction: boolean } {
         let prop: VariableProperties | undefined;
         let level = 0;
         let needCaptureFun: FunctionType[] = [];
@@ -206,6 +206,7 @@ class BlockScope extends Scope {
             level = 0;//不是在blockScope中的属性，清除标记
         }
         if (prop != undefined) {
+            let crossFunction: boolean = false;
             if (level > 0) {
                 for (let f of needCaptureFun) {
                     if (prop.type == undefined) {
@@ -214,8 +215,9 @@ class BlockScope extends Scope {
                     f.capture[name] = prop.type;
                 }
                 fast!.captured.add(name);//如果能找到变量,fast一定不是undeinfed
+                crossFunction = true;
             }
-            return { prop: prop, scope: fast! };
+            return { prop: prop, scope: fast!, crossFunction };
         } else {
             if (this.classScope != undefined) {
                 return this.classScope.getProp(name);

@@ -6,8 +6,8 @@ let program: Program;
 let programScope: ProgramScope;
 function OperatorOverLoad(scope: Scope, leftObj: ASTNode, rightObj: ASTNode | undefined, originNode: ASTNode, op: opType | opType2): { type: TypeUsed, location?: 'prop' | 'field' | 'stack' | 'array_element' } {
     let leftType = nodeRecursion(scope, leftObj, [], {}).type;
-    if(leftType?.PlainType?.name=='void'){
-            throw `void类型没有重载操作符${op}`;
+    if (leftType?.PlainType?.name == 'void') {
+        throw `void类型没有重载操作符${op}`;
     }
     registerType(leftType);
     //双目运算符
@@ -121,7 +121,11 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
                     throw `变量${name}声明为val,禁止赋值`;
                 }
             }
-            propDesc.scope.defNodes[name].loads.push(node);//记录下bolck有多少def节点需要被打包到闭包类,每个prop被那些地方load的,block扫描完毕的时候封闭的时候把这些load节点全部替换
+            if (propDesc.crossFunction) {
+                propDesc.scope.defNodes[name].crossFunctionLoad.push(node);//跨函数的load节点
+            } else {
+                propDesc.scope.defNodes[name].loads.push(node);//记录下bolck有多少def节点需要被打包到闭包类,每个prop被那些地方load的,block扫描完毕的时候的时候把这些load节点全部替换
+            }
             result = { type: propDesc.prop.type!, hasRet: false, location: 'stack' };//如果是读取block内部定义的变量,则这个变量一点是已经被推导出类型的，因为代码区域的变量是先定义后使用的
         } else {
             throw `未定义的其他类型Scope`;
@@ -527,7 +531,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
         result = { type: targetType, hasRet: false };
     }
     else if (node["_new"] != undefined) {
-        if(program.definedType[node["_new"].type.PlainType!.name].modifier=='valuetype'){
+        if (program.definedType[node["_new"].type.PlainType!.name].modifier == 'valuetype') {
             throw `值类型不能new`;
         }
         let ts: TypeUsed[] = [];
@@ -589,7 +593,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
     else {
         throw new Error(`未知节点`);
     }
-    node.type = result.type;
+    node.type = result.type;//给node设置类型
     registerType(result.type);//注册类型，除了instanceof之外的类型都会在这里注册
     return result;
 }
@@ -674,13 +678,37 @@ function BlockScan(blockScope: BlockScope, label: string[], declareRetType: { re
                     }
                 };
                 blockScope.defNodes[k].defNode!.def![k].initAST = { desc: 'ASTNode', _new: { type: wrapTypeUsed, _arguments: [initAST] } };
-                //创建和改造结束
+                //创建改造结束
             }
+            //处理load节点
             for (let loadNode of blockScope.defNodes[k].loads) {
                 loadNode['accessField'] = {
                     obj: {
                         desc: 'ASTNode',
                         load: k,
+                        type: wrapTypeUsed
+                    },
+                    field: "value"
+                };
+                delete loadNode.load;//把load改成accessField
+            }
+            //处理跨函数的load节点
+            for (let loadNode of blockScope.defNodes[k].crossFunctionLoad) {
+                loadNode['accessField'] = {
+                    obj: {
+                        desc: 'ASTNode',
+                        accessField: {
+                            obj: {
+                                desc: 'ASTNode',
+                                loadFunctionWrap: '',
+                                type: {
+                                    PlainType: {
+                                        name: "@uncreated_function_wrap"//在这里还没有创建函数包裹类的类型，需要在codeGen阶段才创建，这里先留空吧
+                                    }
+                                }
+                            },
+                            field: k,
+                        },
                         type: wrapTypeUsed
                     },
                     field: "value"
@@ -726,9 +754,11 @@ function functionScan(blockScope: BlockScope, fun: FunctionType): TypeUsed {
         }
         return fun.retType;
     }
-    //为所有参数创建一个def节点，并且通过unshift移入的数据是参数的逆序
+    //为所有参数创建一个def节点，要把参数按顺序压入block最前面,因为是用unshift压入的，所以遍历参数的时候要逆序
     let argIndex = 0;
-    for (let argumentName in fun._arguments) {
+    let argNames = Object.keys(fun._arguments);
+    for (let i = argNames.length - 1; i >= 0; i--) {
+        let argumentName = argNames[i];
         let defNode: ASTNode = { desc: 'ASTNode', def: {} };
         defNode.def![argumentName] = { variable: 'var', initAST: { desc: 'ASTNode', loadArgument: { index: argIndex, type: fun._arguments[argumentName].type! } } };
         fun.body!.body.unshift(defNode);//插入args的def指令
@@ -819,6 +849,7 @@ function sizeof(typeName: string): number {
         case 'double': ret = 8; break;
         case 'bool': ret = 1; break;
         case 'byte': ret = 1; break;
+        case '@point': ret = 8; break;
         default:
             for (let fieldName in program.definedType[typeName].property) {
                 let field = program.definedType[typeName].property[fieldName];
@@ -865,8 +896,7 @@ export default function semanticCheck(primitiveProgram: Program) {
         modifier: 'valuetype',
         property: {},
         operatorOverload: {},
-        _constructor: {},
-        size: globalVariable.pointSize
+        _constructor: {}
     };
     programScope.registerClassForCapture('@point');//注册point类型
     registerType({ PlainType: { name: '@point' } });//在类型表中注册类型

@@ -80,6 +80,7 @@ interface Program {
 interface ASTNode {
     hasTypeInferRecursion?: boolean;//本AST是否已经被递归推导过类型
     desc: 'ASTNode';
+    loadFunctionWrap?: '',//读取函数包裹类节点
     loadOperatorOverload?: [string, string];//读取重载操作符函数
     loadException?: TypeUsed;//读取异常
     loadArgument?: { index: number, type: TypeUsed },//从栈中读取参数
@@ -89,7 +90,7 @@ interface ASTNode {
     call?: { functionObj: ASTNode, _arguments: ASTNode[], templateSpecialization_list?: TypeUsed[] };
     load?: string;//读取某个变量
     _super?: "";
-    _this?: string;
+    _this?: string;//this对象的类型名称
     _program?: "";//访问program对象
     immediate?: { functionValue?: FunctionType; primiviteValue?: string | number; };//immediate只可以是数字、字符串、函数,对应了 1、"string"、()=>{console.log("aaa")}这几种情况
     trycatch?: { tryBlock: Block, catch_list: { catchVariable: string, catchType: TypeUsed, catchBlock: Block }[] };
