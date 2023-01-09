@@ -74,6 +74,10 @@ interface Program {
         [key: string]: TypeDef
     };
     property: VariableDescriptor;
+    templateProp: VariableDescriptor;//模板成员(模板函数),在类型检测阶段会把模板函数移入这里
+    tempalteType:{//已经定义了的模板类型,在类型检测阶段会把模板类型移入这里
+        [key: string]: TypeDef
+    };
     size?: number;
 }
 //一条语句就是一个Noe
@@ -101,7 +105,7 @@ interface ASTNode {
     ifElseStmt?: { condition: ASTNode, stmt1: | Block, stmt2: Block };
     do_while?: { condition: ASTNode, stmt: Block, label?: string };
     _while?: { condition: ASTNode, stmt: Block, label?: string };
-    _for?: { init?: ASTNode, condition?: ASTNode, step?: ASTNode, stmt: Block, label: string | undefined };
+    _for?: { init?: ASTNode, condition?: ASTNode, step?: ASTNode, stmt: ASTNode | Block, label: string | undefined };
     _break?: { label: string };
     _continue?: { label: string };
     _instanceof?: { obj: ASTNode, type: TypeUsed };

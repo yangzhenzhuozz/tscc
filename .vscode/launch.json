@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "启动当前文件",
+            "name": "执行当前文件",
             "program": "${file}",
             "request": "launch",
             "skipFiles": [

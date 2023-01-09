@@ -46,6 +46,18 @@ function isPointType(type: TypeUsed): boolean {
  * @param label for while的label,jmpIRs:break或者continue的列表
  * @param argumentMap 函数参数的补偿和size，只用于loadArgument节点
  * @param isGetAddress 是否读取地址,比如 int a; a.toString(); 这里的load a就是读取a的地址而不是值，默认取false，只有accessField取true
+ * 因为机器码的if指令如果命中则跳转，不命中则执行下一条指令，所以要想实现分支就要利用这个特性，bool反向的时候，jmp目标是falseIR，所以下一条应该是trueIR，不反向的时候，目标是trueIR，所以下一条指令是falseIR
+ * 因为&&指令流如下:
+ *      trueIR
+ *      jmp
+ *      false
+ * 所以选用boolNot=true
+ * ‖指令流如下:
+ *      false
+ *      jmp
+ *      true
+ * 所以选用
+ * boolNot=false
  * @param boolNot 布尔运算的时候是否要取反向生成操作符，'||'和'&&'对leftObj采取的比较跳转指令不同，默认取反可以节约指令，默认取ture，只有||的左子节点取false
  * @param isLoaction 是否左值，在处理=的时候有用到,如果是loaction节点，则load、getField、[]不生成真实指令，默认false，只有=左子节点取true
  * @param inConstructor 是否为普通函数(影响block内部对this的取值方式)，需要向下传递
@@ -68,57 +80,67 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: { name: string, frame
     else if (node['accessField'] != undefined) {
         let irs = nodeRecursion(scope, node['accessField']!.obj, label, argumentMap, frameLevel, true, true, false, inConstructor, functionWrapName);
         let objType = node['accessField']!.obj.type!;
-        let baseScope: Scope;
-        if (objType.ProgramType != undefined) {
-            baseScope = programScope;
-        } else if (objType.PlainType != undefined) {
-            baseScope = programScope.getClassScope(objType.PlainType.name);
-        } else {
-            throw `其他类型暂时不能访问成员`;
-        }
-        let offset = baseScope.getPropOffset(node['accessField']!.field);
-        let size = baseScope.getPropSize(node['accessField']!.field);
-        let accessFieldType = baseScope.getProp(node['accessField']!.field).prop.type!;
-        let ir: IR;
-        let virtualIR: {
-            opCode: keyof typeof OPCODE,
-            operand1?: number,
-            operand2?: number,
-            operand3?: number,
-        } | undefined;
-        if (!isLoaction) {
-            if (isPointType(accessFieldType)) {
-                ir = new IR('p_getfield', offset);
+        if (objType.ArrayType != undefined) {
+            if (node["accessField"].field != 'length') {
+                throw `数组只有length属性可访问`;
             } else {
-                if (isGetAddress) {
-                    ir = new IR('getfield_address', offset);//读取成员地址
-                } else {
-                    ir = new IR('valueType_getfield', offset, size);//读取成员
-                }
+                let ir = new IR('access_array_length');
+                return { startIR: irs.startIR, endIR: ir, truelist: [], falselist: [] };
             }
         } else {
-            if (isPointType(accessFieldType)) {
-                virtualIR = { opCode: 'p_putfield', operand1: offset };
+            let baseScope: Scope;
+            if (objType.ProgramType != undefined) {
+                baseScope = programScope;
+            } else if (objType.PlainType != undefined) {
+                baseScope = programScope.getClassScope(objType.PlainType.name);
             } else {
-                if (isGetAddress) {
-                    /**
-                     * var m:valType;
-                     * m.a.b; //且a是值类型
-                     * 这里的 .a就是isGetAddress,因为getField(m.a).b 和 a 是值类型决定了isGetAddress=true
-                     * 而
-                     * var m:valType;
-                     * m.a=10; //且a是值类型
-                     * 这里并不是对a的属性进行访问，所以这个条件永远不可到达
-                     */
-                    //先抛个异常，万一真的命中条件方便定位
-                    throw `这里是不可能到达的`;
-                } else {
-                    virtualIR = { opCode: 'valueType_putfield', operand1: offset, operand2: size };//设置成员
-                }
+                //此处条件不可能命中
+                throw `其他类型暂时不能访问成员`;//还有啥其他类型?先抛个异常再说
             }
-            ir = irs.endIR;
+            let offset = baseScope.getPropOffset(node['accessField']!.field);
+            let size = baseScope.getPropSize(node['accessField']!.field);
+            let accessFieldType = baseScope.getProp(node['accessField']!.field).prop.type!;
+            let ir: IR;
+            let virtualIR: {
+                opCode: keyof typeof OPCODE,
+                operand1?: number,
+                operand2?: number,
+                operand3?: number,
+            } | undefined;
+            if (!isLoaction) {
+                if (isPointType(accessFieldType)) {
+                    ir = new IR('p_getfield', offset);
+                } else {
+                    if (isGetAddress) {
+                        ir = new IR('getfield_address', offset);//读取成员地址
+                    } else {
+                        ir = new IR('valueType_getfield', offset, size);//读取成员
+                    }
+                }
+            } else {
+                if (isPointType(accessFieldType)) {
+                    virtualIR = { opCode: 'p_putfield', operand1: offset };
+                } else {
+                    if (isGetAddress) {
+                        /**
+                         * var m:valType;
+                         * m.a.b; //且a是值类型
+                         * 这里的 .a就是isGetAddress,因为getField(m.a).b 和 a 是值类型决定了isGetAddress=true
+                         * 而
+                         * var m:valType;
+                         * m.a=10; //且a是值类型
+                         * 这里并不是对a的属性进行访问，所以这个条件永远不可到达
+                         */
+                        //先抛个异常，万一真的命中条件方便定位
+                        throw `这里是不可能到达的`;
+                    } else {
+                        virtualIR = { opCode: 'valueType_putfield', operand1: offset, operand2: size };//设置成员
+                    }
+                }
+                ir = irs.endIR;
+            }
+            return { startIR: irs.startIR, endIR: ir, truelist: [], falselist: [], virtualIR };
         }
-        return { startIR: irs.startIR, endIR: ir, truelist: [], falselist: [], virtualIR };
     }
     else if (node['immediate'] != undefined) {
         if (node["immediate"].functionValue) {
@@ -399,8 +421,8 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: { name: string, frame
             let jmp = new IR('jmp');
             jmpToFunctionEnd.push(jmp);
         } else {//无条件返回语句
-            startIR = new IR('jmp');
             new IR('pop_stack_map', frameLevel);
+            startIR = new IR('jmp');
             jmpToFunctionEnd.push(startIR);
         }
         return { startIR: startIR, endIR: jmpToFunctionEnd[0], truelist: [], falselist: [], jmpToFunctionEnd: jmpToFunctionEnd };
@@ -536,11 +558,24 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: { name: string, frame
         } else {
             label.push({ name: '', frameLevel, breakIRs, continueIRs });
         }
-        let blockRet = BlockScan(new BlockScope(scope, undefined, node['_for'].stmt, { program }), label, argumentMap, frameLevel + 1, inConstructor, functionWrapName);
-        label.pop();
-        if (!startIR) {
-            startIR = blockRet.startIR;
+        let jmpToFunctionEnd: IR[] = [];
+        let forLoopBodyStratIR: IR | undefined;
+        if (node['_for'].stmt.desc == 'ASTNode') {
+            let nr = nodeRecursion(scope, node['_for'].stmt as ASTNode, label, argumentMap, frameLevel, false, true, false, false, functionWrapName);
+            if (!startIR) {
+                startIR = nr.startIR;
+            }
+            forLoopBodyStratIR = nr.startIR;
+            jmpToFunctionEnd = nr.jmpToFunctionEnd ?? [];
+        } else {
+            let blockRet = BlockScan(new BlockScope(scope, undefined, node['_for'].stmt, { program }), label, argumentMap, frameLevel + 1, inConstructor, functionWrapName);
+            if (!startIR) {
+                startIR = blockRet.startIR;
+            }
+            forLoopBodyStratIR = blockRet.startIR;
+            jmpToFunctionEnd = blockRet.jmpToFunctionEnd;
         }
+        label.pop();
         if (node['_for'].step) {
             nodeRecursion(scope, node['_for'].step, label, argumentMap, frameLevel, false, true, false, inConstructor, functionWrapName);
         }
@@ -550,14 +585,14 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: { name: string, frame
             loop.operand1 = conditionStartIR.index - loop.index;
             if (trueList.length > 0 || falseList.length > 0) {
                 backPatch(falseList, loop.index + 1);//for语句后面一定会有指令(至少一定会有一条ret或者pop_stackFrame指令,因为for一定是定义在functio或者block中的)
-                backPatch(trueList, blockRet.startIR.index);
+                backPatch(trueList, forLoopBodyStratIR.index);
             }
             backPatch(continueIRs, conditionStartIR.index);
         } else {
-            loop.operand1 = blockRet.startIR.index - loop.index;
-            backPatch(continueIRs, blockRet.startIR.index);
+            loop.operand1 = forLoopBodyStratIR.index - loop.index;
+            backPatch(continueIRs, forLoopBodyStratIR.index);
         }
-        return { startIR: startIR, endIR: loop, truelist: [], falselist: [], jmpToFunctionEnd: [] };
+        return { startIR: startIR, endIR: loop, truelist: [], falselist: [], jmpToFunctionEnd };
     }
     else if (node['_break'] != undefined) {
         let lab: {

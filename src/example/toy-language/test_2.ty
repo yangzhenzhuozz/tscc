@@ -4,16 +4,12 @@ function printI32(v:int):void{
 function printI8(v:bool):void{
     native
 };
+class myClass{
+     myClass(){}
+     function add<K>(){};
+}
+function add<V>(){};
 function main(){
-    printI8(1<2);
-    if(1<2){
-        printI32(11);
-    }else{
-        printI32(22);
-    }
-    for(;1<2;){
-        printI32(22);
-    }
 };
 valuetype class int{
     operator + ( v : int ) : int { native } ;

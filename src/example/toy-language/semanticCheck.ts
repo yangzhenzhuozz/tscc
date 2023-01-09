@@ -156,11 +156,12 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
         let accessName = node["accessField"].field;
         let accessedType = nodeRecursion(scope, node["accessField"].obj, label, declareRetType).type;
         let type: undefined | TypeUsed;
+        //允许访问数组的length属性
         if (accessedType.ArrayType != undefined) {
             if (node["accessField"].field != 'length') {
                 throw `数组只有length属性可访问`;
             } else {
-                result = { type: { PlainType: { name: 'number' } }, hasRet: false };
+                result = { type: { PlainType: { name: 'int' } }, hasRet: false };
             }
         } else if (accessedType.FunctionType != undefined) {
             throw `函数目前没有任何属性可访问`;
@@ -531,6 +532,9 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
         result = { type: targetType, hasRet: false };
     }
     else if (node["_new"] != undefined) {
+        if(!program.definedType[node["_new"].type.PlainType.name]){
+            throw `new一个未知类型:${node["_new"].type.PlainType.name}，请检查代码`;
+        }
         if (program.definedType[node["_new"].type.PlainType!.name].modifier == 'valuetype') {
             throw `值类型不能new`;
         }
@@ -724,10 +728,8 @@ function BlockScan(blockScope: BlockScope, label: string[], declareRetType: { re
 }
 function functionScan(blockScope: BlockScope, fun: FunctionType): TypeUsed {
     if (fun.templates) {
-        if (blockScope.classScope) {
-            throw `class内部的function不能是模板函数`;
-        }
-        console.log(fun.templates);
+        //因为在program中定义的模板类和模板函数已经被移除了，所以这里不允许出现任何模板函数定义
+        throw `不允许在class内部或者block内部定义模板函数`;
     }
     if ((fun).hasFunctionScan) {//避免已经处理过的函数被重复处理
         /**
@@ -871,6 +873,21 @@ function sizeof(typeName: string): number {
 export default function semanticCheck(primitiveProgram: Program) {
     program = primitiveProgram;
     programScope = new ProgramScope(program);
+    program.templateProp = {};
+    program.tempalteType = {};
+    for (let variableName in program.property) {
+        var prop = program.property[variableName];
+        if (prop.type?.FunctionType?.templates) {
+            program.templateProp[variableName] = program.property[variableName];
+            delete program.property[variableName];//移动模板函数
+        }
+    }
+    for (let typeName of Object.keys(program.definedType)) {
+        if (program.definedType[typeName].templates) {
+            program.tempalteType[typeName] = program.definedType[typeName];
+            delete program.definedType[typeName];//移动模板类
+        }
+    }
     //扫描definedType
     let primitiveTypeNames = Object.keys(program.definedType);//这是最开始定义的类型，后面还有因为闭包而新增的类型
     for (let typeName of primitiveTypeNames) {
@@ -938,3 +955,4 @@ export default function semanticCheck(primitiveProgram: Program) {
     program.size = programSize;
     return program;
 }
+console.error('在模板特化的时候，生成相应的对象，并进行类型检查，生成的位置为program中');

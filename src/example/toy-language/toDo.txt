@@ -8,8 +8,12 @@
 -   跨越多层的闭包捕获,要让每一层都捕获
 -   函数参数顺序不对
 
-+   newArray没有new完的情况没有考虑,即 var arr:int[][][]=new int[1][][];
-+   test_4.ty 没有正确生成<判断指令
-+   应该在nodeRecursion的出口检测是有trueList或者falseList，不能在使用的时候检测，否则总有遗漏的时候
-+   <的判断好像没问题
-+   仔细检测 ||、&&、ternary 对boolNot的处理
+-   test_4.ty 没有正确生成<判断指令
+-   应该在nodeRecursion的出口检测是有trueList或者falseList，不能在使用的时候检测，否则总有遗漏的时候
+-   <的判断好像没问题
+-   仔细检测 ||、&&、ternary 对boolNot的处理
+
+-   newArray没有new完的情况没有考虑,即 var arr:int[][][]=new int[1][][];
+-   数组的length还没有实现
+
++   模板特化

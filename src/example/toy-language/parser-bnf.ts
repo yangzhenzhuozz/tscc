@@ -194,7 +194,7 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
                         }
                     }
                     let ret: { [key: string]: TypeDef } = JSON.parse("{}");//为了生成的解析器不报红
-                    ret[basic_type.PlainType!.name] = { modifier: modifier, property: class_units.property, operatorOverload: class_units.operatorOverload, extends: extends_declare, _constructor: class_units._constructor };
+                    ret[basic_type.PlainType!.name] = { modifier: modifier, templates: template_declare, property: class_units.property, operatorOverload: class_units.operatorOverload, extends: extends_declare, _constructor: class_units._constructor };
                     return ret;
                 }
             }
@@ -385,13 +385,22 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
             "functionType:template_definition ( parameter_declare ) => type": {
                 priority: "low_priority_for_[",
                 action: function ($, s): TypeUsed {
-                    let template_definition = $[0] as string[];
-                    for (let t of template_definition) {
-                        userTypeDictionary.delete(t);
-                    }
-                    let parameter_declare = $[2] as VariableDescriptor;
-                    let ret_type = $[5] as TypeUsed;
-                    return { FunctionType: { capture: {}, templates: template_definition, _arguments: parameter_declare, retType: ret_type } };
+                    /**
+                     * 设计文法的时候考虑到这种情况
+                     * funtion add<T>(a:T,b:T){return a+b};
+                     * var f=add;
+                     * f<int>(1,2);
+                     * 但是实现的时候发现，这样做需要在运行时实现模板特化，太复杂了，暂时放弃
+                     */
+                    throw `不允许使用泛型函数类型`;
+
+                    // let template_definition = $[0] as string[];
+                    // for (let t of template_definition) {
+                    //     userTypeDictionary.delete(t);
+                    // }
+                    // let parameter_declare = $[2] as VariableDescriptor;
+                    // let ret_type = $[5] as TypeUsed;
+                    // return { FunctionType: { capture: {}, templates: template_definition, _arguments: parameter_declare, retType: ret_type } };
                 }
             }
         },//泛型函数类型
@@ -1366,16 +1375,13 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
         },//while语句
         {
             "statement:label_def for ( for_init ; for_condition ; for_step ) statement": {
-                action: function ($, s): ASTNode {
+                action: function ($, s): Block {
                     let label_def = $[0] as string | undefined;
                     let init = $[3] as ASTNode | undefined;
                     let condition = $[5] as ASTNode | undefined;
                     let step = $[7] as ASTNode | undefined;
                     let stmt = $[9] as Block | ASTNode;
-                    if (stmt.desc == 'ASTNode') {//如果stmt是单条语句，为其创建一个block
-                        stmt = { desc: 'Block', body: [stmt] };
-                    }
-                    return { desc: "ASTNode", _for: { init: init, condition: condition, step: step, stmt: stmt, label: label_def } };
+                    return { desc: 'Block', body: [{ desc: "ASTNode", _for: { init: init, condition: condition, step: step, stmt: stmt, label: label_def } }] };
                 }
             }
         },//for_loop
@@ -1827,11 +1833,20 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
         {
             "object:template_definition ( parameter_declare ) => { statements }": {
                 action: function ($, s): ASTNode {
-                    let template_definition = $[0] as string[];
-                    for (let t of template_definition) {
-                        userTypeDictionary.delete(t);
-                    }
-                    return { desc: "ASTNode", immediate: { functionValue: { capture: {}, _arguments: $[2] as VariableDescriptor, body: $[6] as Block, templates: $[0] as string[] } } };
+                    /**
+                     * 设计文法的时候考虑到这种情况
+                     * var add=<T>(a:T,b:T)=>{return a+b};
+                     * var f=add;
+                     * f<int>(1,2);
+                     * 但是实现的时候发现，这样做需要在运行时实现模板特化，太复杂了，暂时放弃
+                     */
+                    throw `不允许使用泛型lambda`;
+
+                    // let template_definition = $[0] as string[];
+                    // for (let t of template_definition) {
+                    //     userTypeDictionary.delete(t);
+                    // }
+                    // return { desc: "ASTNode", immediate: { functionValue: { capture: {}, _arguments: $[2] as VariableDescriptor, body: $[6] as Block, templates: $[0] as string[] } } };
                 }
             }
         },//模板lambda
@@ -1887,11 +1902,11 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
             "_new:new type array_init_list": {
                 action: function ($, s): ASTNode {
                     let type = $[1] as TypeUsed;
-                    if (type.ArrayType!=undefined) {
+                    if (type.ArrayType != undefined) {
                         throw `不允许new一个数组的数组,数组的创建语法如下: new int[3][2],不能写成new (int[3])[2]`;
                     }
                     let init_list = $[2] as { initList: ASTNode[], placeholder: number };
-                    return { desc: "ASTNode", _newArray: { type: $[1] as { PlainType: PlainType }|{ FunctionType: FunctionType }, initList: init_list.initList, placeholder: init_list.placeholder } };
+                    return { desc: "ASTNode", _newArray: { type: $[1] as { PlainType: PlainType } | { FunctionType: FunctionType }, initList: init_list.initList, placeholder: init_list.placeholder } };
                 }
             }
         },//创建数组

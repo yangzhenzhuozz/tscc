@@ -122,6 +122,7 @@ export enum OPCODE {
     'p_pop',//从计算栈中弹出指针
     '__exit',//退出
     'alloc',//申请局部变量空间
+    'access_array_length',//读取数组的length
     'native_call',//调用native函数
 };
 export let nowIRContainer: IRContainer;
