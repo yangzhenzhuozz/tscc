@@ -1,13 +1,13 @@
 import fs from 'fs';
-import { irAbsoluteAddressRelocationTable, globalVariable, registerType, stackFrameTable, stackFrameRelocationTable, typeRelocationTable, tmp, typeTable, nowIRContainer, OPCODE } from './ir.js';
+import { irAbsoluteAddressRelocationTable, stackFrameTable, stackFrameRelocationTable, typeRelocationTable, tmp, typeTable, nowIRContainer, OPCODE, globalVariable, program } from './ir.js';
 import { Scope, BlockScope, ClassScope, ProgramScope } from './scope.js';
 import { IR, IRContainer } from './ir.js'
 import { FunctionSign, FunctionSignWithArgumentAndRetType, TypeUsedSign } from './lib.js';
 import { classTable, stringPool, typeItemDesc, typeTable as binTypeTable, stackFrameTable as binStackFrameTable, link } from './binaryTools.js'
+import { registerType } from './semanticCheck.js';
 /**
  * 经过几轮扫描，有一些步骤是重复的，为了能清晰掌握每个步骤的顺序(其实就是在设计前一步的时候不知道后面应该怎么做，要做什么，想起来已经晚了)，先将就用着吧
  */
-let program: Program;
 let programScope: ProgramScope;
 /**
  * 
@@ -30,7 +30,7 @@ function merge(a: IR[], b: IR[]) {
  */
 function isPointType(type: TypeUsed): boolean {
     if (type.PlainType?.name) {
-        if (program.definedType[type.PlainType!.name].modifier == 'valuetype') {
+        if (program.getDefinedType(type.PlainType!.name).modifier == 'valuetype') {
             return false;
         } else {
             return true;
@@ -867,7 +867,7 @@ function BlockScan(blockScope: BlockScope, label: { name: string, frameLevel: nu
 function propSize(type: TypeUsed): number {
     if (type.PlainType != undefined) {
         if (!isPointType(type)) {
-            return program.definedType[type.PlainType.name].size!;
+            return program.getDefinedType(type.PlainType.name).size!;
         } else {
             return globalVariable.pointSize;
         }
@@ -910,13 +910,13 @@ function functionObjGen(blockScope: BlockScope, fun: FunctionType, option?: { na
     }
     blockScope.parent = undefined;//查询完捕获变量之后切断和外层函数的联系
     //注册函数容器
-    program.definedType[functionWrapName] = {
+    program.setDefinedType(functionWrapName, {
         operatorOverload: {},
         _constructor: {},
         property: property,
         size: globalVariable.pointSize + Object.keys(fun.capture).length * globalVariable.pointSize
-    };
-    programScope.registerClassForCapture(functionWrapName);//注册类型
+    });
+    programScope.registerClass(functionWrapName);//注册类型
     registerType({ PlainType: { name: functionWrapName } });//在类型表中注册函数包裹类的类型
     let functionIRContainer = new IRContainer(`@function_${functionIndex}`);
     IRContainer.setContainer(functionIRContainer);
@@ -1004,8 +1004,8 @@ function classScan(classScope: ClassScope) {
     }
     //扫描构造函数
     //扫描构造函数
-    for (let constructorName in program.definedType[classScope.className]._constructor) {
-        let _constructor = program.definedType[classScope.className]._constructor[constructorName];
+    for (let constructorName in program.getDefinedType(classScope.className)._constructor) {
+        let _constructor = program.getDefinedType(classScope.className)._constructor[constructorName];
         _constructor.retType = { PlainType: { name: 'void' } };//所有构造函数不允许有返回值
         let blockScope = new BlockScope(classScope, _constructor, _constructor.body!, { program });
         let sign = `@constructor:${classScope.className} ${constructorName}`;//构造函数的签名
@@ -1076,8 +1076,8 @@ function finallyOutput() {
     //注册@program
     ClassTableItemGen(program.property, program.size!, '@program', false);
     registerType({ PlainType: { name: '@program' } });
-    for (let k in program.definedType) {
-        ClassTableItemGen(program.definedType[k].property, program.definedType[k].size!, k, program.definedType[k].modifier == 'valuetype');
+    for (let k of program.getDefinedTypeNames()) {
+        ClassTableItemGen(program.getDefinedType(k).property, program.getDefinedType(k).size!, k, program.getDefinedType(k).modifier == 'valuetype');
     }
     fs.writeFileSync(`./src/example/toy-language/output/classTable.bin`, Buffer.from(classTable.toBinary()));
     fs.writeFileSync(`./src/example/toy-language/output/classTable.json`, JSON.stringify(classTable.items, null, 4));
@@ -1100,8 +1100,7 @@ function finallyOutput() {
     fs.writeFileSync(`./src/example/toy-language/output/stringPool.bin`, Buffer.from(stringPool.toBinary()));//字符串池最后输出
     fs.writeFileSync(`./src/example/toy-language/output/stringPool.json`, JSON.stringify(stringPool.items, null, 4));
 }
-export default function programScan(primitiveProgram: Program) {
-    program = primitiveProgram;
+export default function programScan() {
     programScope = new ProgramScope(program, { program: program });
 
     stackFrameTable[`@StackFrame_0`] = { baseOffset: 0, frame: [{ name: '@this', type: { PlainType: { name: `@point` } } }] };//给class_init分配的frame
@@ -1136,7 +1135,7 @@ export default function programScan(primitiveProgram: Program) {
         }
     }
     new IR('ret');//programInit返回
-    for (let typeName in program.definedType) {
+    for (let typeName of program.getDefinedTypeNames()) {
         classScan(programScope.getClassScope(typeName));
     }
 

@@ -3,10 +3,12 @@ import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
 import { userTypeDictionary } from './lexrule.js';
 import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
+import { Program } from "./program.js";
 let grammar: Grammar = {
     userCode: `
 import { userTypeDictionary } from './lexrule.js';
 import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
+import { Program } from "./program.js";
     `,
     tokens: ['native', 'var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'throw', 'super', 'basic_type', 'instanceof'],
     association: [
@@ -17,6 +19,7 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
         { 'left': ['==', '!='] },
         { 'left': ['||'] },
         { 'left': ['&&'] },
+        { 'nonassoc': ['priority_for_plainType'] },//见"object:object instanceof type"注释的情况三，小于符号<即可
         { 'left': ['>', '<', '<=', '>='] },
         { 'left': ['+', '-'] },
         { 'left': ['*', '/'] },
@@ -39,17 +42,15 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
             "program:import_stmts program_units": {
                 action: function ($, s): Program {
                     let program_units = $[1] as VariableDescriptor | { [key: string]: TypeDef };
-                    let ret: Program = JSON.parse("{}");//为了生成的解析器不报红
-                    ret.definedType = {};
-                    ret.property = {};
+                    let program: Program = new Program();//为了生成的解析器不报红
                     for (let k in program_units) {
                         if (program_units[k].hasOwnProperty("modifier")) {//是类型定义
-                            ret.definedType[k] = program_units[k] as TypeDef;
+                            program.setDefinedType(k, program_units[k] as TypeDef);
                         } else {//是变量定义
-                            ret.property[k] = program_units[k] as VariableProperties;
+                            program.property[k] = program_units[k] as VariableProperties;
                         }
                     }
-                    return ret;
+                    return program;
                 }
             }
         },//整个程序由导入语句组和程序单元组构成
@@ -344,6 +345,7 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
         },//type可以用圆括号包裹
         {
             "type:plainType": {
+                priority: "priority_for_plainType",
                 action: function ($, s): TypeUsed {
                     return $[0] as TypeUsed;
                 }
@@ -372,7 +374,7 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
             }
         },//type可以是一个base_type
         {
-            "plainType:basic_type templateSpecialization": {
+            "plainType:plainType templateSpecialization": {
                 priority: "low_priority_for_[",
                 action: function ($, s): { PlainType: PlainType } {
                     let basic_type = $[0] as TypeUsed;
@@ -1594,6 +1596,19 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
             }
         },//取成员
         /**
+         * function add<T>(a:T,b:T){return a+b;}
+         * var f=a<int>;
+         */
+        {
+            "object:object templateSpecialization": {
+                action: function ($, s): ASTNode {
+                    let obj = $[0] as ASTNode;
+                    let types = $[1] as TypeUsed[];
+                    return { desc: "ASTNode", specializationObj: { obj, types } };
+                }
+            }
+        },//模板对象实例化
+        /**
         * obj_1 + obj_2  ( obj_3 )  ,中间的+可以换成 - * / < > || 等等双目运算符
         * 会出现如下二义性:
         * 1、 (obj_1 + obj_2)  ( object_3 ) ,先将obj_1和obj_2进行双目运算，然后再使用双目运算符的结果作为函数对象进行函数调用
@@ -1611,16 +1626,6 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
                 }
             }
         },//函数调用
-        {
-            "call:object < templateSpecialization_list > ( arguments )": {
-                action: function ($, s): ASTNode {
-                    let obj = $[0] as ASTNode;
-                    let templateSpecialization_list = $[2] as TypeUsed[];
-                    let _arguments = $[5] as ASTNode[];
-                    return { desc: "ASTNode", call: { functionObj: obj, templateSpecialization_list: templateSpecialization_list, _arguments: _arguments } };
-                }
-            }
-        },//模板函数调用
         /**
          * 一系列的双目运算符,二义性如下:
          * a+b*c
@@ -1755,7 +1760,13 @@ import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
          * 情况2: a+b instanceof int
          * 2.1 a+(b instanceof int)
          * 2.2 (a+b) instanceof int
-         * 我希望instanceof的优先级低于所有的其他运算符,对于上述情况都选择第二种AST进行规约,所以定义了instanceof的优先级低于所有的其他运算符(除了赋值符号)
+         * 上述两种情况instanceof的优先级应该低于所有的其他运算符,对于上述情况都选择第二种AST进行规约,所以定义了instanceof的优先级低于所有的其他运算符(除了赋值符号)
+         * 情况3: a instanceof set<int>
+         * 3.1  (a instanceof set)<int>  这种对应了文法规则 object:object templateSpecialization,因为文法可以把a instanceof set解析成一个object
+         * 3.2  a instanceof (set<int>)  这种语法树是我们想要的
+         * 对于项 a instanceof set .< int >的移入规约冲突应该采用移入
+         * 即对于项集中的两个项 type->plainType .,< 和 templateSpecialization->.< templateSpecialization_list >
+         * 令产生式type->plainType的优先级小于符号<即可解决(优先级符号:priority_for_plainType)
          */
         {
             "object:object instanceof type": {

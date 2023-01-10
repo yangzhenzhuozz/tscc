@@ -21,7 +21,7 @@ interface TypeDef {//定义的类型
     recursiveChecked?: boolean;//是否已经进行了值类型循环包含的检查
     recursiveFlag?: boolean;//递归检查标记
     templates?: string[];//模板列表
-    extends?: TypeUsed;//基类
+    extends?: TypeUsed;//基类,已经不允许继承了，这个字段先留着吧
     operatorOverload: {//重载列表
         [key in opType | opType2]?: {//key为操作符
             [key: string]: FunctionType;//key为函数签名(不包含返回值的签名),magic表示该操作由vm实现，翻译的时候原样保留
@@ -49,7 +49,7 @@ interface TypeUsed {
 }
 interface PlainType {
     name: string;//使用的类型
-    templateSpecialization?: TypeUsed[];//实例化模板的类型
+    templateSpecialization?: TypeUsed[];//特化模板的类型
 }
 interface ArrayType {
     innerType: TypeUsed;
@@ -69,17 +69,6 @@ type Block = {
     desc: NodeDesc;
     body: Array<(ASTNode | Block)>;
 };
-interface Program {
-    definedType: {//已经定义了的类型
-        [key: string]: TypeDef
-    };
-    property: VariableDescriptor;
-    templateProp: VariableDescriptor;//模板成员(模板函数),在类型检测阶段会把模板函数移入这里
-    tempalteType:{//已经定义了的模板类型,在类型检测阶段会把模板类型移入这里
-        [key: string]: TypeDef
-    };
-    size?: number;
-}
 //一条语句就是一个Noe
 interface ASTNode {
     hasTypeInferRecursion?: boolean;//本AST是否已经被递归推导过类型
@@ -88,6 +77,7 @@ interface ASTNode {
     loadOperatorOverload?: [string, string];//读取重载操作符函数
     loadException?: TypeUsed;//读取异常
     loadArgument?: { index: number, type: TypeUsed },//从栈中读取参数
+    specializationObj?: { obj: ASTNode, types: TypeUsed[] },//特化模板对象
     type?: TypeUsed;//表达式的类型
     def?: VariableDescriptor;
     accessField?: { obj: ASTNode, field: string };

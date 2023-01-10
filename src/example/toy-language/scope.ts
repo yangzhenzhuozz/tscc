@@ -1,4 +1,5 @@
-import { globalVariable } from './ir.js'
+import { globalVariable } from './ir.js';
+import { Program } from './program.js';
 
 let debugID = 0;
 abstract class Scope {
@@ -23,9 +24,9 @@ abstract class Scope {
             let offset = 0;
             for (let k in this.property) {
                 let type = this.property[k].type!;
-                if (type.PlainType && program.definedType[type.PlainType.name].modifier == 'valuetype') {//是值类型,offset累加size大小
+                if (type.PlainType && program.getDefinedType(type.PlainType.name).modifier == 'valuetype') {//是值类型,offset累加size大小
                     let typeName = type.PlainType.name;
-                    let size = program.definedType[typeName].size!;
+                    let size = program.getDefinedType(typeName).size!;
                     this.fieldOffsetMap[k] = { offset, size };
                     offset += size;
                 } else {//否则按照指针处理(包括function)
@@ -46,12 +47,12 @@ class ProgramScope extends Scope {
         super(program.property, offsetPatch);
         this.program = program;
         //创建所有的classScope
-        for (let typeName in program.definedType) {
-            let type = program.definedType[typeName];
+        for (let typeName of program.getDefinedTypeNames()) {
+            let type = program.getDefinedType(typeName);
             if (type.extends != undefined) {//有继承于其他类
                 throw `不支持extends:${typeName}`;
             } else {
-                this.classMap[typeName] = new ClassScope(program.definedType[typeName].property, typeName, this, offsetPatch);
+                this.classMap[typeName] = new ClassScope(program.getDefinedType(typeName).property, typeName, this, offsetPatch);
             }
         }
     }
@@ -59,8 +60,8 @@ class ProgramScope extends Scope {
      * 注册因为闭包捕获而新增的类型
      * @param name 
      */
-    public registerClassForCapture(name: string) {
-        this.classMap[name] = new ClassScope(this.program.definedType[name].property, name, this, { program: this.program });
+    public registerClass(name: string) {
+        this.classMap[name] = new ClassScope(this.program.getDefinedType(name).property, name, this, { program: this.program });
     }
     public getClassScope(className: string): ClassScope {
         if (this.classMap[className] != undefined) {
@@ -174,9 +175,9 @@ class BlockScope extends Scope {
             if (this.fieldOffsetMap) {//如果需要填充变量偏移
                 let type = variableProperties.type!;
                 let program = this.programScope.program;
-                if (type.PlainType && program.definedType[type.PlainType.name].modifier == 'valuetype') {//是值类型,offset累加size大小
+                if (type.PlainType && program.getDefinedType(type.PlainType.name).modifier == 'valuetype') {//是值类型,offset累加size大小
                     let typeName = type.PlainType.name;
-                    let size = program.definedType[typeName].size!;
+                    let size = program.getDefinedType(typeName).size!;
                     this.fieldOffsetMap[name] = { offset: this.allocatedSize, size };
                     this.allocatedSize += size;
                 } else {//否则按照指针处理

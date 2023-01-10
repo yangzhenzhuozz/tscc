@@ -34,7 +34,11 @@ export function FunctionSignWithArgument(ts: TypeUsed[]) {
 //类型签名
 export function TypeUsedSign(type: TypeUsed): string {
     if (type.PlainType != undefined) {
-        return type.PlainType.name;
+        let templateSpecializationStr = '';
+        if (type.PlainType.templateSpecialization) {
+            templateSpecializationStr = '<' + type.PlainType.templateSpecialization.map((type) => TypeUsedSign(type)).reduce((p, c) => `${p},${c}`) + '>';
+        }
+        return type.PlainType.name + templateSpecializationStr;
     } else if (type.ArrayType != undefined) {
         return `Array<${TypeUsedSign(type.ArrayType.innerType)}>`;
     } else if (type.ProgramType != undefined) {

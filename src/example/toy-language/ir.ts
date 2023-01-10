@@ -1,36 +1,25 @@
-import { TypeUsedSign } from './lib.js';
+/**
+ * 本文件存放一些全局使用的对象和变量
+ */
 
-//全局变量
-export const globalVariable = {
-    pointSize: 8,//指针大小
-    stackFrameMapIndex: 1,//栈帧序号,从1开始，0预留给class_init保存this指针
-    functionIndex: 0
-}
+import { TypeUsedSign } from "./lib.js";
+import { Program } from "./program.js";
+
 export let irAbsoluteAddressRelocationTable: { sym: string, ir: IR }[] = [];//指令地址重定位表
 export let typeRelocationTable: { t1?: string, t2?: string, t3?: string, ir: IR }[] = [];//type重定向表
 export let stackFrameRelocationTable: { sym: string, ir: IR }[] = [];//stackFrame重定向表
 export let irContainerList: IRContainer[] = [];//符号表
 export let stackFrameTable: { [key: string]: { baseOffset: number, frame: { name: string, type: TypeUsed }[] } } = {};//栈布局记录
 export let typeTable: { [key: string]: { index: number, type: TypeUsed } } = {};//类型表
-let typeIndex = 0;
-//注册类型
-export function registerType(type: TypeUsed): number {
-    if (type.FunctionType != undefined) {
-        type = JSON.parse(JSON.stringify(type));
-        delete type.FunctionType?.body;//删除body,避免重复引用
-    }
-    let sign = TypeUsedSign(type);
-    let ret: number;
-    if (typeTable[sign] != undefined) {
-        ret = typeTable[sign].index;
-    } else {
-        typeTable[sign] = { index: typeIndex, type: type };
-        ret = typeIndex++;
-    }
-    if (type.ArrayType != undefined) {//如果是数组类型，注册内部类型
-        registerType(type.ArrayType.innerType);
-    }
-    return ret;
+
+export const globalVariable = {
+    pointSize: 8,//指针大小
+    stackFrameMapIndex: 1,//栈帧序号,从1开始，0预留给class_init保存this指针
+    functionIndex: 0
+}
+export let program: Program;
+export function setProgram(p: Program) {
+    program = p;
 }
 export function typeTableToBin(): ArrayBuffer {
     let length: BigUint64Array;

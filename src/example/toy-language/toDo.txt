@@ -17,3 +17,7 @@
 -   数组的length还没有实现
 
 +   模板特化
+
+class Set<T>{
+    var val:Set<T>;
+}

@@ -1,4 +1,4 @@
-import { globalVariable, IR, IRContainer, OPCODE, stackFrameRelocationTable, irAbsoluteAddressRelocationTable, irContainerList, typeRelocationTable, typeTable as irTypeTable } from "./ir.js";
+import { IR, IRContainer, OPCODE, stackFrameRelocationTable, irAbsoluteAddressRelocationTable, irContainerList, typeRelocationTable, typeTable as irTypeTable } from "./ir.js";
 import { TypeUsedSign } from "./lib.js";
 import { ProgramScope } from "./scope.js";
 

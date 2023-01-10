@@ -1,8 +1,7 @@
 //预处理AST
-import { FunctionSign, FunctionSignWithArgumentAndRetType, TypeUsedSign, FunctionSignWithArgument } from './lib.js';
+import { program, globalVariable, typeTable } from './ir.js';
+import { FunctionSignWithArgumentAndRetType, TypeUsedSign, FunctionSignWithArgument } from './lib.js';
 import { Scope, BlockScope, ClassScope, ProgramScope } from './scope.js';
-import { globalVariable, registerType } from './ir.js'
-let program: Program;
 let programScope: ProgramScope;
 function OperatorOverLoad(scope: Scope, leftObj: ASTNode, rightObj: ASTNode | undefined, originNode: ASTNode, op: opType | opType2): { type: TypeUsed, location?: 'prop' | 'field' | 'stack' | 'array_element' } {
     let leftType = nodeRecursion(scope, leftObj, [], {}).type;
@@ -20,7 +19,7 @@ function OperatorOverLoad(scope: Scope, leftObj: ASTNode, rightObj: ASTNode | un
             return { type: leftType.ArrayType.innerType, location: 'array_element' };
         } else {
             let sign = FunctionSignWithArgument([rightType]);
-            let opFunction = program.definedType[leftType.PlainType!.name].operatorOverload[op as opType]?.[sign];
+            let opFunction = program.getDefinedType(leftType.PlainType!.name).operatorOverload[op as opType]?.[sign];
             if (opFunction == undefined) {
                 throw `类型${TypeUsedSign(leftType)}没有 ${op} (${TypeUsedSign(rightType)})的重载函数`;
             } else if (opFunction.isNative == undefined || !opFunction.isNative) {
@@ -35,7 +34,7 @@ function OperatorOverLoad(scope: Scope, leftObj: ASTNode, rightObj: ASTNode | un
     //单目运算符
     else {
         let sign = FunctionSignWithArgument([]);
-        let opFunction = program.definedType[leftType.PlainType!.name].operatorOverload[op as opType]![sign];
+        let opFunction = program.getDefinedType(leftType.PlainType!.name).operatorOverload[op as opType]![sign];
         if (opFunction.isNative == undefined || !opFunction.isNative) {
             delete originNode[op];//删除原来的操作符
             originNode.call = { functionObj: { desc: 'ASTNode', loadOperatorOverload: [op, sign] }, _arguments: [] };
@@ -188,7 +187,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
             result = { type: type, hasRet: false, location: 'field' };
         } else {
             let className = accessedType.PlainType!.name;
-            let prop = program.definedType[className].property[accessName];
+            let prop = program.getDefinedType(className).property[accessName];
             if (prop == undefined) {
                 throw `访问了类型${className}中不存在的属性${accessName}`;
             }
@@ -512,7 +511,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
         if (targetType.PlainType?.name == 'object') {
             //任何对象都可以转换为object
             if (srcType.PlainType != undefined) {
-                if (program.definedType[srcType.PlainType.name].modifier == 'valuetype') {
+                if (program.getDefinedType(srcType.PlainType.name).modifier == 'valuetype') {
                     node['box'] = node["cast"];//装箱
                     delete node["cast"];
                 }
@@ -520,7 +519,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
         } else {
             if (srcType.PlainType?.name == 'object') {
                 if (targetType.PlainType != undefined) {
-                    if (program.definedType[targetType.PlainType.name].modifier == 'valuetype') {
+                    if (program.getDefinedType(targetType.PlainType.name).modifier == 'valuetype') {
                         node['unbox'] = node["cast"];//拆箱
                         delete node["cast"];
                     }
@@ -532,10 +531,10 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
         result = { type: targetType, hasRet: false };
     }
     else if (node["_new"] != undefined) {
-        if(!program.definedType[node["_new"].type.PlainType.name]){
+        if (!program.getDefinedType(node["_new"].type.PlainType.name)) {
             throw `new一个未知类型:${node["_new"].type.PlainType.name}，请检查代码`;
         }
-        if (program.definedType[node["_new"].type.PlainType!.name].modifier == 'valuetype') {
+        if (program.getDefinedType(node["_new"].type.PlainType!.name).modifier == 'valuetype') {
             throw `值类型不能new`;
         }
         let ts: TypeUsed[] = [];
@@ -543,7 +542,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
             ts.push(nodeRecursion(scope, n, label, declareRetType).type);
         }
         let callsign: string = FunctionSignWithArgumentAndRetType(ts, { PlainType: { name: 'void' } });//根据调用参数生成一个签名,构造函数没有返回值
-        if (program.definedType[node["_new"].type.PlainType!.name]._constructor[callsign] == undefined) {
+        if (program.getDefinedType(node["_new"].type.PlainType!.name)._constructor[callsign] == undefined) {
             throw '无法找到合适的构造函数'
         }
         result = { type: node["_new"].type, hasRet: false };
@@ -644,7 +643,7 @@ function BlockScan(blockScope: BlockScope, label: string[], declareRetType: { re
                     }
                 }
             };
-            program.definedType[wrapClassName] = wrapTypeDef;
+            program.setDefinedType(wrapClassName, wrapTypeDef);
             wrapClassNames.push(wrapClassName);
             delete blockScope.defNodes[k].defNode!.def![k];//删除def节点原来的所有内容
             blockScope.defNodes[k].defNode!.def![k] = {
@@ -811,7 +810,7 @@ function ClassScan(classScope: ClassScope) {
         }
         registerType(prop.type!);//经过推导，类型已经确定了
     }
-    let operatorOverloads = program.definedType[classScope.className].operatorOverload;
+    let operatorOverloads = program.getDefinedType(classScope.className).operatorOverload;
     for (let op in operatorOverloads) {//扫描重载操作符
         for (let sign in operatorOverloads[op as opType | opType2]) {
             let blockScope = new BlockScope(classScope, operatorOverloads[op as opType | opType2]![sign], operatorOverloads[op as opType | opType2]![sign].body!);
@@ -819,8 +818,8 @@ function ClassScan(classScope: ClassScope) {
         }
     }
     //扫描构造函数
-    for (let constructorName in program.definedType[classScope.className]._constructor) {
-        let _constructor = program.definedType[classScope.className]._constructor[constructorName];
+    for (let constructorName in program.getDefinedType(classScope.className)._constructor) {
+        let _constructor = program.getDefinedType(classScope.className)._constructor[constructorName];
         _constructor.retType = { PlainType: { name: 'void' } };//所有构造函数不允许有返回值
         let blockScope = new BlockScope(classScope, _constructor, _constructor.body!);
         functionScan(blockScope, _constructor);
@@ -828,19 +827,19 @@ function ClassScan(classScope: ClassScope) {
 }
 //深度优先搜索，检查是否有值类型直接或者间接包含自身
 function valueTypeRecursiveCheck(typeName: string) {
-    if (program.definedType[typeName].recursiveFlag == true) {
+    if (program.getDefinedType(typeName).recursiveFlag == true) {
         throw `值类型${typeName}直接或者间接包含自身`
     } else {
-        program.definedType[typeName].recursiveFlag = true;
-        for (let fieldName in program.definedType[typeName].property) {//遍历所有成员
-            if (program.definedType[typeName].property[fieldName].type!.PlainType != undefined) {
-                let fieldTypeName = program.definedType[typeName].property[fieldName].type!.PlainType?.name!;
-                if (program.definedType[fieldTypeName].recursiveChecked != true && fieldTypeName != undefined && program.definedType[fieldTypeName].modifier == 'valuetype') {//如果有值类型的成员，则递归遍历
+        program.getDefinedType(typeName).recursiveFlag = true;
+        for (let fieldName in program.getDefinedType(typeName).property) {//遍历所有成员
+            if (program.getDefinedType(typeName).property[fieldName].type!.PlainType != undefined) {
+                let fieldTypeName = program.getDefinedType(typeName).property[fieldName].type!.PlainType?.name!;
+                if (program.getDefinedType(fieldTypeName).recursiveChecked != true && fieldTypeName != undefined && program.getDefinedType(fieldTypeName).modifier == 'valuetype') {//如果有值类型的成员，则递归遍历
                     valueTypeRecursiveCheck(fieldTypeName);
                 }
             }
         }
-        program.definedType[typeName].recursiveChecked = true;
+        program.getDefinedType(typeName).recursiveChecked = true;
     }
 }
 function sizeof(typeName: string): number {
@@ -853,11 +852,11 @@ function sizeof(typeName: string): number {
         case 'byte': ret = 1; break;
         case '@point': ret = 8; break;
         default:
-            for (let fieldName in program.definedType[typeName].property) {
-                let field = program.definedType[typeName].property[fieldName];
+            for (let fieldName in program.getDefinedType(typeName).property) {
+                let field = program.getDefinedType(typeName).property[fieldName];
                 if (field.type!.PlainType != undefined) {
                     let fieldTypeName = field.type!.PlainType.name;
-                    if (program.definedType[fieldTypeName].modifier != 'valuetype') {
+                    if (program.getDefinedType(fieldTypeName).modifier != 'valuetype') {
                         ret += globalVariable.pointSize;//非值类型
                     } else {
                         ret += sizeof(fieldTypeName);
@@ -870,8 +869,83 @@ function sizeof(typeName: string): number {
     }
     return ret;
 }
-export default function semanticCheck(primitiveProgram: Program) {
-    program = primitiveProgram;
+//深度遍历对象，把所有的类型全部替换
+function dfsForTypeReplace(type: TypeUsed, map: { [key: string]: TypeUsed }) {
+}
+//替换所有prop的类型
+function propTypeReplace(prop: VariableDescriptor, map: { [key: string]: TypeUsed }) {
+    for (let k in prop) {
+        if (prop[k].type) {//如果prop有声明类型
+            //替换已经声明的类型
+            dfsForTypeReplace(prop[k].type!, map);
+        }
+        if (prop[k].initAST) {//如果prop有声明类型
+            //替换initAST中的所有类型
+        }
+        //如果有get或者set，替换
+        if (getter ?: FunctionType;//getter
+        setter ?: FunctionType;//setter
+        )
+    }
+}
+function templateTypeSpecialization(type: TypeUsed, specializationList: TypeUsed[]) {
+    let realTypeName = type.PlainType!.name;
+    let className = realTypeName + '<' + type.PlainType!.templateSpecialization!.map((type) => TypeUsedSign(type)).reduce((p, c) => `${p},${c}`) + '>';
+    program.setDefinedType(className, JSON.parse(JSON.stringify(program.tempalteType[type.PlainType!.name])));//深拷贝，避免污染原来的模板类
+    programScope.registerClass(className);
+    let map: { [key: string]: TypeUsed } = {};
+    if (program.tempalteType[realTypeName].templates?.length != specializationList.length) {
+        throw `类型${type.PlainType!.name}声明的模板类型数量和实例化的数量不匹配`;
+    } else {
+        for (let i = 0; i < program.tempalteType[realTypeName].templates!.length; i++) {
+            let k = program.tempalteType[realTypeName].templates![i];
+            map[k] = specializationList[i];
+        }
+        console.log(`需要深度遍历${className},把所有的PlainType:{name=T}}的统统换成specializationList中的元素`);
+        propTypeReplace(program.getDefinedType(className).property, map);
+        // dfsForTypeReplace(program.getDefinedType(className).operatorOverload, map);
+        // dfsForTypeReplace(program.getDefinedType(className)._constructor, map);
+        ClassScan(programScope.getClassScope(className));
+        throw `需要特化模板类${type.PlainType?.name}`;
+    }
+}
+let typeIndex = 0;
+/**
+ * 源码中所有的类型在sematicChecK中都会调用registerType注册一遍，所以在这个函数中可以实例化模板
+ * @param type 
+ * @returns 
+ */
+export function registerType(type: TypeUsed): number {
+    if (type.FunctionType != undefined) {
+        type = JSON.parse(JSON.stringify(type));
+        delete type.FunctionType?.body;//删除body,避免重复引用
+    }
+    let sign = TypeUsedSign(type);
+    //如果是一个模板类,则进行特化
+    if (type.PlainType && program.tempalteType[type.PlainType.name]) {
+        if (!type.PlainType.templateSpecialization) {
+            throw `模板类:${type.PlainType.name}必须特化之后才能使用`;
+        }
+        //检查是否已经特化过了
+        if (program.getDefinedType(sign) == undefined) {
+            templateTypeSpecialization(type, type.PlainType.templateSpecialization);
+        }
+        type.PlainType.name = sign;//强制更新类型名
+    }
+    let ret: number;
+    //如果已经注册了，则直接返回注册结果
+    if (typeTable[sign] != undefined) {
+        ret = typeTable[sign].index;
+    } else {
+        typeTable[sign] = { index: typeIndex, type: type };
+        ret = typeIndex++;
+    }
+    if (type.ArrayType != undefined) {//如果是数组类型，注册内部类型
+        registerType(type.ArrayType.innerType);
+    }
+    return ret;
+}
+export default function semanticCheck() {
     programScope = new ProgramScope(program);
     program.templateProp = {};
     program.tempalteType = {};
@@ -879,17 +953,17 @@ export default function semanticCheck(primitiveProgram: Program) {
         var prop = program.property[variableName];
         if (prop.type?.FunctionType?.templates) {
             program.templateProp[variableName] = program.property[variableName];
-            delete program.property[variableName];//移动模板函数
+            program.movePropToTemplateProp(variableName);//移动模板函数
         }
     }
-    for (let typeName of Object.keys(program.definedType)) {
-        if (program.definedType[typeName].templates) {
-            program.tempalteType[typeName] = program.definedType[typeName];
-            delete program.definedType[typeName];//移动模板类
+    for (let typeName of program.getDefinedTypeNames()) {
+        if (program.getDefinedType(typeName).templates) {
+            program.tempalteType[typeName] = program.getDefinedType(typeName);
+            program.moveDefinedTypeToTemplateType(typeName);//移动模板类
         }
     }
     //扫描definedType
-    let primitiveTypeNames = Object.keys(program.definedType);//这是最开始定义的类型，后面还有因为闭包而新增的类型
+    let primitiveTypeNames = Object.keys(program.getDefinedType);//这是最开始定义的类型，后面还有因为闭包而新增的类型
     for (let typeName of primitiveTypeNames) {
         ClassScan(programScope.getClassScope(typeName));
     }
@@ -909,29 +983,29 @@ export default function semanticCheck(primitiveProgram: Program) {
         }
         registerType(prop.type!);//经过推导，类型已经确定了
     }
-    program.definedType['@point'] = {
+    program.setDefinedType('@point', {
         modifier: 'valuetype',
         property: {},
         operatorOverload: {},
         _constructor: {}
-    };
-    programScope.registerClassForCapture('@point');//注册point类型
+    });
+    programScope.registerClass('@point');//注册point类型
     registerType({ PlainType: { name: '@point' } });//在类型表中注册类型
     //扫描因为闭包捕获而新增的类型
     for (let typeName of wrapClassNames) {
-        programScope.registerClassForCapture(typeName);//因为包裹类不会用到其他未注册的类型，所以可以边注册边使用
+        programScope.registerClass(typeName);//因为包裹类不会用到其他未注册的类型，所以可以边注册边使用
         ClassScan(programScope.getClassScope(typeName));
         registerType({ PlainType: { name: typeName } });
     }
     //检查值类型是否递归包含
-    for (let typeName in program.definedType) {
-        if (program.definedType[typeName].recursiveChecked != true && program.definedType[typeName].modifier == 'valuetype') {
+    for (let typeName in program.getDefinedType) {
+        if (program.getDefinedType(typeName).recursiveChecked != true && program.getDefinedType(typeName).modifier == 'valuetype') {
             valueTypeRecursiveCheck(typeName);
         }
     }
 
-    for (let typeName in program.definedType) {//计算每个类型的size和索引，同时注册类型
-        program.definedType[typeName].size = sizeof(typeName);
+    for (let typeName in program.getDefinedType) {//计算每个类型的size和索引，同时注册类型
+        program.getDefinedType(typeName).size = sizeof(typeName);
         registerType({ PlainType: { name: typeName } });//在类型表中注册类型
     }
     let programSize = 0;
@@ -943,7 +1017,7 @@ export default function semanticCheck(primitiveProgram: Program) {
             if (fieldTypeName == 'void') {
                 throw `void无法计算大小,任何成员都不能是void类型`;
             }
-            if (program.definedType[fieldTypeName].modifier != 'valuetype') {
+            if (program.getDefinedType(fieldTypeName).modifier != 'valuetype') {
                 programSize += globalVariable.pointSize;//非值类型
             } else {
                 programSize += sizeof(fieldTypeName);
@@ -953,6 +1027,4 @@ export default function semanticCheck(primitiveProgram: Program) {
         }
     }
     program.size = programSize;
-    return program;
 }
-console.error('在模板特化的时候，生成相应的对象，并进行类型检查，生成的位置为program中');

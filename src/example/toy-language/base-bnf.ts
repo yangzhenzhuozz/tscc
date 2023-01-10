@@ -10,6 +10,7 @@ let grammar: Grammar = {
         { 'left': ['==', '!='] },
         { 'left': ['||'] },
         { 'left': ['&&'] },
+        { 'nonassoc': ['priority_for_plainType'] },//见"object:object instanceof type"注释的情况三，小于符号<即可
         { 'left': ['>', '<', '<=', '>='] },
         { 'left': ['+', '-'] },
         { 'left': ['*', '/'] },
@@ -79,11 +80,11 @@ let grammar: Grammar = {
          * 合法的输入应该是new int[][][][](),当然这只是符合文法而已,在语义检查的时候我们会进行错误处理,有的type是不允许被new的(说的就是array_type)
          */
         { "type:( type )": {} },//type可以用圆括号包裹
-        { "type:plainType": {} },//简单类型
+        { "type:plainType": {priority:"priority_for_plainType"} },//简单类型
         { "type:functionType": {} },//函数类型
         { "type:arrayType": {} },//数组类型
         { "plainType:basic_type": { priority: "low_priority_for_[" } },//type可以是一个base_type
-        { "plainType:basic_type templateSpecialization": { priority: "low_priority_for_[" } },//type可以是一个base_type templateSpecialization
+        { "plainType:plainType templateSpecialization": { priority: "low_priority_for_[" } },//type可以是一个base_type templateSpecialization
         { "functionType:template_definition ( parameter_declare ) => type": { priority: "low_priority_for_[" } },//泛型函数类型
         { "functionType:( parameter_declare ) => type": { priority: "low_priority_for_[" } },//函数类型
         { "arrayType:type array_type_list": { priority: "low_priority_for_[" } },//数组类型
@@ -214,6 +215,11 @@ let grammar: Grammar = {
         { "object:( object )": {} },//括号括住的object还是一个object
         { "object:object . id": {} },//取成员
         /**
+         * function add<T>(a:T,b:T){return a+b;}
+         * var f=a<int>;
+         */
+        { "object:object templateSpecialization": {} },//模板对象实例化
+        /**
         * obj_1 + obj_2  ( obj_3 )  ,中间的+可以换成 - * / < > || 等等双目运算符
         * 会出现如下二义性:
         * 1、 (obj_1 + obj_2)  ( object_3 ) ,先将obj_1和obj_2进行双目运算，然后再使用双目运算符的结果作为函数对象进行函数调用
@@ -225,7 +231,6 @@ let grammar: Grammar = {
         * 也采用方案2，令函数调用优先级高于强制转型
         */
         { "call:object  ( arguments )": {} },//函数调用
-        { "call:object < templateSpecialization_list > ( arguments )": {} },//模板函数调用
         /**
          * 一系列的双目运算符,二义性如下:
          * a+b*c
@@ -258,7 +263,13 @@ let grammar: Grammar = {
          * 情况2: a+b instanceof int
          * 2.1 a+(b instanceof int)
          * 2.2 (a+b) instanceof int
-         * 我希望instanceof的优先级低于所有的其他运算符,对于上述情况都选择第二种AST进行规约,所以定义了instanceof的优先级低于所有的其他运算符(除了赋值符号)
+         * 上述两种情况instanceof的优先级应该低于所有的其他运算符,对于上述情况都选择第二种AST进行规约,所以定义了instanceof的优先级低于所有的其他运算符(除了赋值符号)
+         * 情况3: a instanceof set<int>
+         * 3.1  (a instanceof set)<int>  这种对应了文法规则 object:object templateSpecialization,因为文法可以把a instanceof set解析成一个object
+         * 3.2  a instanceof (set<int>)  这种语法树是我们想要的
+         * 对于项 a instanceof set .< int >的移入规约冲突应该采用移入
+         * 即对于项集中的两个项 type->plainType .,< 和 templateSpecialization->.< templateSpecialization_list >
+         * 令产生式type->plainType的优先级小于符号<即可解决(优先级符号:priority_for_plainType)
          */
         { "object:object instanceof type": {} },
         /**双目运算符结束 */
