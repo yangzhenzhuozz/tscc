@@ -9,7 +9,7 @@ class myClass<V>{
 }
 function add<V>(){};
 function main(){
-    var t:myClass<int>;
+    printI32(0);
 };
 valuetype class int{
     operator + ( v : int ) : int { native } ;

@@ -869,25 +869,6 @@ function sizeof(typeName: string): number {
     }
     return ret;
 }
-//深度遍历对象，把所有的类型全部替换
-function dfsForTypeReplace(type: TypeUsed, map: { [key: string]: TypeUsed }) {
-}
-//替换所有prop的类型
-function propTypeReplace(prop: VariableDescriptor, map: { [key: string]: TypeUsed }) {
-    for (let k in prop) {
-        if (prop[k].type) {//如果prop有声明类型
-            //替换已经声明的类型
-            dfsForTypeReplace(prop[k].type!, map);
-        }
-        if (prop[k].initAST) {//如果prop有声明类型
-            //替换initAST中的所有类型
-        }
-        //如果有get或者set，替换
-        if (getter ?: FunctionType;//getter
-        setter ?: FunctionType;//setter
-        )
-    }
-}
 function templateTypeSpecialization(type: TypeUsed, specializationList: TypeUsed[]) {
     let realTypeName = type.PlainType!.name;
     let className = realTypeName + '<' + type.PlainType!.templateSpecialization!.map((type) => TypeUsedSign(type)).reduce((p, c) => `${p},${c}`) + '>';
@@ -902,7 +883,7 @@ function templateTypeSpecialization(type: TypeUsed, specializationList: TypeUsed
             map[k] = specializationList[i];
         }
         console.log(`需要深度遍历${className},把所有的PlainType:{name=T}}的统统换成specializationList中的元素`);
-        propTypeReplace(program.getDefinedType(className).property, map);
+        // propTypeReplace(program.getDefinedType(className).property, map);
         // dfsForTypeReplace(program.getDefinedType(className).operatorOverload, map);
         // dfsForTypeReplace(program.getDefinedType(className)._constructor, map);
         ClassScan(programScope.getClassScope(className));
@@ -962,9 +943,9 @@ export default function semanticCheck() {
             program.moveDefinedTypeToTemplateType(typeName);//移动模板类
         }
     }
-    //扫描definedType
-    let primitiveTypeNames = Object.keys(program.getDefinedType);//这是最开始定义的类型，后面还有因为闭包而新增的类型
-    for (let typeName of primitiveTypeNames) {
+
+    //扫描definedType,后续还有一些新增的类(闭包、函数包裹类)
+    for (let typeName of program.getDefinedTypeNames()) {
         ClassScan(programScope.getClassScope(typeName));
     }
     //扫描property
@@ -998,13 +979,13 @@ export default function semanticCheck() {
         registerType({ PlainType: { name: typeName } });
     }
     //检查值类型是否递归包含
-    for (let typeName in program.getDefinedType) {
+    for (let typeName of program.getDefinedTypeNames()) {
         if (program.getDefinedType(typeName).recursiveChecked != true && program.getDefinedType(typeName).modifier == 'valuetype') {
             valueTypeRecursiveCheck(typeName);
         }
     }
 
-    for (let typeName in program.getDefinedType) {//计算每个类型的size和索引，同时注册类型
+    for (let typeName of program.getDefinedTypeNames()) {//计算每个类型的size和索引，同时注册类型
         program.getDefinedType(typeName).size = sizeof(typeName);
         registerType({ PlainType: { name: typeName } });//在类型表中注册类型
     }
