@@ -19,7 +19,7 @@ function main() {
     userTypeDictionary.add('double');
     userTypeDictionary.add('bool');
     userTypeDictionary.add('void');
-    let source = fs.readFileSync("./src/example/toy-language/test_2.ty", 'utf-8').toString();
+    let source = fs.readFileSync("./src/example/toy-language/test.ty", 'utf-8').toString();
     lexer.setSource(source);
     try {
         lexer.compile();

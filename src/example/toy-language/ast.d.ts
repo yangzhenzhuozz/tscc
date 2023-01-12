@@ -76,23 +76,22 @@ interface ASTNode {
     loadFunctionWrap?: '',//读取函数包裹类节点
     loadOperatorOverload?: [string, string];//读取重载操作符函数
     loadException?: TypeUsed;//读取异常
-    loadArgument?: { index: number, type: TypeUsed },//从栈中读取参数
+    loadArgument?: { index: number },//从栈中读取参数
     specializationObj?: { obj: ASTNode, types: TypeUsed[] },//特化模板对象
     type?: TypeUsed;//表达式的类型
     def?: VariableDescriptor;
     accessField?: { obj: ASTNode, field: string };
-    call?: { functionObj: ASTNode, _arguments: ASTNode[], templateSpecialization_list?: TypeUsed[] };
+    call?: { functionObj: ASTNode, _arguments: ASTNode[] };
     load?: string;//读取某个变量
     _super?: "";
     _this?: string;//this对象的类型名称
     _program?: "";//访问program对象
     immediate?: { functionValue?: FunctionType; primiviteValue?: string | number; };//immediate只可以是数字、字符串、函数,对应了 1、"string"、()=>{console.log("aaa")}这几种情况
     trycatch?: { tryBlock: Block, catch_list: { catchVariable: string, catchType: TypeUsed, catchBlock: Block }[] };
-    setter?: { left: ASTNode, right: ASTNode };
     throwStmt?: ASTNode;
     ret?: ASTNode | "";
     ifStmt?: { condition: ASTNode, stmt: Block };
-    ifElseStmt?: { condition: ASTNode, stmt1: | Block, stmt2: Block };
+    ifElseStmt?: { condition: ASTNode, stmt1: Block, stmt2: Block };
     do_while?: { condition: ASTNode, stmt: Block, label?: string };
     _while?: { condition: ASTNode, stmt: Block, label?: string };
     _for?: { init?: ASTNode, condition?: ASTNode, step?: ASTNode, stmt: ASTNode | Block, label: string | undefined };
@@ -121,5 +120,6 @@ interface ASTNode {
     "=="?: { rightChild: ASTNode; leftChild: ASTNode; };
     "||"?: { rightChild: ASTNode; leftChild: ASTNode; };
     "&&"?: { rightChild: ASTNode; leftChild: ASTNode; };
+    //在源码扫描阶段，会生成matchObj,代码检查阶段会生成condition，并删除matchObj
     _switch?: { pattern: ASTNode, defalutStmt?: Block, matchList: { matchObj?: ASTNode, condition?: ASTNode, stmt: Block }[] };//default没有matchObj
 }

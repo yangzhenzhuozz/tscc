@@ -5,17 +5,23 @@ function printI8(v:bool):void{
     native
 };
 class C<T>{
+    var value:T;
     C(){}
     var f:(v:T)=>void;
     function print(v:T){
-        printI32(v);
+        this.value=v;
+        printI32(v+this.value);
     };
 }
+function add<T>(a:T,b:T):T{
+    return a+b;
+};
 function main(){
-    var c=new C<int>();
+    var c:C<int> = new C<int>();
     c.print(5);
     c.f=c.print;
-    c.f(3);
+    c.f(add<int>(1,6));
+    printI32(add<int>(1,6));
 };
 valuetype class int{
     operator + ( v : int ) : int { native } ;

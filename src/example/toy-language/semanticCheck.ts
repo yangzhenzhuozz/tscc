@@ -2,6 +2,7 @@
 import { program, globalVariable, typeTable } from './ir.js';
 import { FunctionSignWithArgumentAndRetType, TypeUsedSign, FunctionSignWithArgument } from './lib.js';
 import { Scope, BlockScope, ClassScope, ProgramScope } from './scope.js';
+import { ClassSpecialize, FunctionSpecialize } from './templateSpecialize.js';
 let programScope: ProgramScope;
 function OperatorOverLoad(scope: Scope, leftObj: ASTNode, rightObj: ASTNode | undefined, originNode: ASTNode, op: opType | opType2): { type: TypeUsed, location?: 'prop' | 'field' | 'stack' | 'array_element' } {
     let leftType = nodeRecursion(scope, leftObj, [], {}).type;
@@ -18,30 +19,39 @@ function OperatorOverLoad(scope: Scope, leftObj: ASTNode, rightObj: ASTNode | un
             typeCheck(rightType, { PlainType: { name: 'int' } }, `数组索引必须是int`);
             return { type: leftType.ArrayType.innerType, location: 'array_element' };
         } else {
-            let sign = FunctionSignWithArgument([rightType]);
-            let opFunction = program.getDefinedType(leftType.PlainType!.name).operatorOverload[op as opType]?.[sign];
-            if (opFunction == undefined) {
-                throw `类型${TypeUsedSign(leftType)}没有 ${op} (${TypeUsedSign(rightType)})的重载函数`;
-            } else if (opFunction.isNative == undefined || !opFunction.isNative) {
+            if (leftType.PlainType) {
+                let sign = FunctionSignWithArgument([rightType]);
+                let opFunction = program.getDefinedType(leftType.PlainType!.name).operatorOverload[op as opType]?.[sign];
+                if (opFunction == undefined) {
+                    throw `类型${TypeUsedSign(leftType)}没有 ${op} (${TypeUsedSign(rightType)})的重载函数`;
+                } else if (opFunction.isNative == undefined || !opFunction.isNative) {
+                    delete originNode[op];//删除原来的操作符
+                    originNode.call = { functionObj: { desc: 'ASTNode', loadOperatorOverload: [op, sign] }, _arguments: [rightObj] };//改为函数调用
+                } else {
+                    //由vm实现
+                }
+                return { type: opFunction.retType! };
+            } else {
+                throw `类型${TypeUsedSign(leftType)}没有操作符${op}`;
+            }
+        }
+    }
+    //单目运算符
+    else {
+        if (leftType.PlainType) {
+            let sign = FunctionSignWithArgument([]);
+            let opFunction = program.getDefinedType(leftType.PlainType!.name).operatorOverload[op as opType]![sign];
+            if (opFunction.isNative == undefined || !opFunction.isNative) {
                 delete originNode[op];//删除原来的操作符
-                originNode.call = { functionObj: { desc: 'ASTNode', loadOperatorOverload: [op, sign] }, _arguments: [rightObj] };//改为函数调用
+                originNode.call = { functionObj: { desc: 'ASTNode', loadOperatorOverload: [op, sign] }, _arguments: [] };
             } else {
                 //由vm实现
             }
             return { type: opFunction.retType! };
         }
-    }
-    //单目运算符
-    else {
-        let sign = FunctionSignWithArgument([]);
-        let opFunction = program.getDefinedType(leftType.PlainType!.name).operatorOverload[op as opType]![sign];
-        if (opFunction.isNative == undefined || !opFunction.isNative) {
-            delete originNode[op];//删除原来的操作符
-            originNode.call = { functionObj: { desc: 'ASTNode', loadOperatorOverload: [op, sign] }, _arguments: [] };
-        } else {
-            //由vm实现
+        else {
+            throw `类型${TypeUsedSign(leftType)}没有操作符${op}`;
         }
-        return { type: opFunction.retType! };
     }
 }
 /**
@@ -132,7 +142,11 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
 
     }
     else if (node["call"] != undefined) {
-        let funType = nodeRecursion(scope, node["call"].functionObj, label, declareRetType).type.FunctionType!;//FunctionType不可能为undefined
+        let nodeType = nodeRecursion(scope, node["call"].functionObj, label, declareRetType).type!;//FunctionType不可能为undefined;
+        if (!nodeType.FunctionType) {
+            throw `必须call一个函数`;
+        }
+        let funType = nodeType.FunctionType;
         if (funType.retType == undefined) {//说明函数没有被推导过
             functionScan(new BlockScope(scope, funType, funType.body!), funType);
         }
@@ -531,6 +545,8 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
         result = { type: targetType, hasRet: false };
     }
     else if (node["_new"] != undefined) {
+        //进行模板检查
+        TempalteCheck(node["_new"].type);
         if (!program.getDefinedType(node["_new"].type.PlainType.name)) {
             throw `new一个未知类型:${node["_new"].type.PlainType.name}，请检查代码`;
         }
@@ -543,7 +559,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
         }
         let callsign: string = FunctionSignWithArgumentAndRetType(ts, { PlainType: { name: 'void' } });//根据调用参数生成一个签名,构造函数没有返回值
         if (program.getDefinedType(node["_new"].type.PlainType!.name)._constructor[callsign] == undefined) {
-            throw '无法找到合适的构造函数'
+            throw `无法找到合适的构造函数:${node["_new"].type.PlainType!.name}`
         }
         result = { type: node["_new"].type, hasRet: false };
     }
@@ -591,7 +607,39 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
         result = { type: node["loadException"], hasRet: false };
     }
     else if (node["loadArgument"] != undefined) {
-        result = { type: node["loadArgument"].type, hasRet: false };
+        result = { type: node.type!, hasRet: false };
+    }
+    else if (node['specializationObj'] != undefined) {
+        let spce = node['specializationObj'];
+        let fieldName = spce.obj['load']!;
+        let realObjName = fieldName + '<' + spce.types!.map((type) => TypeUsedSign(type)).reduce((p, c) => `${p},${c}`) + '>';
+        if (spce.obj['load'] != undefined) {
+            if (program.property[realObjName] == undefined) {
+                //如果这个模板对象的特化对象，则进行特化
+                if (program.templateProp[fieldName] != undefined) {
+                    let tmpFunObj = JSON.parse(JSON.stringify(program.templateProp[fieldName])) as VariableProperties;//拷贝一份，避免修改掉原来的数据
+                    let map: { [key: string]: TypeUsed } = {};
+                    for (let i = 0; i < tmpFunObj.type!.FunctionType!.templates!.length; i++) {
+                        let k = tmpFunObj.type!.FunctionType!.templates![i];
+                        map[k] = spce.types[i];
+                    }
+
+                    tmpFunObj.type!.FunctionType!.templates = undefined;//已经特化了，移除模板定义
+                    FunctionSpecialize(tmpFunObj.type!.FunctionType!, map);
+                    program.property[realObjName] = tmpFunObj;
+                    //把函数对象注入到program中
+                    let blockScope = new BlockScope(programScope, tmpFunObj.type!.FunctionType, tmpFunObj.type!.FunctionType!.body!);
+                    functionScan(blockScope, tmpFunObj.type!.FunctionType!);
+                } else {
+                    throw `尝试特化一个未定义的模板对象`;
+                }
+            }
+        } else {
+            throw `特化对象仅仅能特化program作用域的函数对象`;
+        }
+        delete node.specializationObj;//把specializationObj改为program
+        node.accessField = { obj: { desc: 'ASTNode', _program: '' }, field: realObjName };//load阶段还不知道是不是property,由access节点处理进行判断
+        return nodeRecursion(scope, node, label, declareRetType, assignmentObj);//处理access节点需要附带这个参数
     }
     else {
         throw new Error(`未知节点`);
@@ -761,7 +809,7 @@ function functionScan(blockScope: BlockScope, fun: FunctionType): TypeUsed {
     for (let i = argNames.length - 1; i >= 0; i--) {
         let argumentName = argNames[i];
         let defNode: ASTNode = { desc: 'ASTNode', def: {} };
-        defNode.def![argumentName] = { variable: 'var', initAST: { desc: 'ASTNode', loadArgument: { index: argIndex, type: fun._arguments[argumentName].type! } } };
+        defNode.def![argumentName] = { variable: 'var', initAST: { desc: 'ASTNode', loadArgument: { index: argIndex }, type: fun._arguments[argumentName].type } };
         fun.body!.body.unshift(defNode);//插入args的def指令
         argIndex++;
     }
@@ -869,60 +917,78 @@ function sizeof(typeName: string): number {
     }
     return ret;
 }
-function templateTypeSpecialization(type: TypeUsed, specializationList: TypeUsed[]) {
-    let realTypeName = type.PlainType!.name;
-    let className = realTypeName + '<' + type.PlainType!.templateSpecialization!.map((type) => TypeUsedSign(type)).reduce((p, c) => `${p},${c}`) + '>';
-    program.setDefinedType(className, JSON.parse(JSON.stringify(program.tempalteType[type.PlainType!.name])));//深拷贝，避免污染原来的模板类
-    programScope.registerClass(className);
-    let map: { [key: string]: TypeUsed } = {};
-    if (program.tempalteType[realTypeName].templates?.length != specializationList.length) {
-        throw `类型${type.PlainType!.name}声明的模板类型数量和实例化的数量不匹配`;
-    } else {
-        for (let i = 0; i < program.tempalteType[realTypeName].templates!.length; i++) {
-            let k = program.tempalteType[realTypeName].templates![i];
-            map[k] = specializationList[i];
+/**
+ * 模板检查，目前只有两个地方用到
+ * 1. var obj:MyClass<T>;//第一次用到这个类型会进行注册(第一次进行注册一定是第一次用到,因为nodeRecursion是深度优先搜索，最先搜索到的节点一定是AST最先需要使用该类型的地方)
+ * 2. var obj=new MyClass<T>();
+ * 在new操作符和类型注册的时候各做一次
+ * @param type 
+ */
+function TempalteCheck(type: { PlainType: PlainType }) {
+    let sign = TypeUsedSign(type);
+    //如果目标类型是一个模板类
+    if (program.tempalteType[type.PlainType.name]) {
+        //没有写特化代码
+        if (!type.PlainType.templateSpecialization) {
+            throw `模板类:${type.PlainType.name}必须特化之后才能使用`;
         }
-        console.log(`需要深度遍历${className},把所有的PlainType:{name=T}}的统统换成specializationList中的元素`);
-        // propTypeReplace(program.getDefinedType(className).property, map);
-        // dfsForTypeReplace(program.getDefinedType(className).operatorOverload, map);
-        // dfsForTypeReplace(program.getDefinedType(className)._constructor, map);
-        ClassScan(programScope.getClassScope(className));
-        throw `需要特化模板类${type.PlainType?.name}`;
+        //检查该模板类是否已经特化，如果没有特化则进行特化
+        if (program.getDefinedType(sign) == undefined) {
+            let realTypeName = type.PlainType!.name;
+            if (programScope.program.tempalteType[realTypeName].templates?.length != type.PlainType.templateSpecialization.length) {
+                throw `类型${type.PlainType!.name}声明的模板类型数量和实例化的数量不匹配`;
+            } else {
+                let map: { [key: string]: TypeUsed } = {};
+                for (let i = 0; i < programScope.program.tempalteType[realTypeName].templates!.length; i++) {
+                    let k = programScope.program.tempalteType[realTypeName].templates![i];
+                    map[k] = type.PlainType.templateSpecialization[i];
+                }
+                let className = realTypeName + '<' + type.PlainType!.templateSpecialization!.map((type) => TypeUsedSign(type)).reduce((p, c) => `${p},${c}`) + '>';
+                let templateClass = JSON.parse(JSON.stringify(programScope.program.tempalteType[type.PlainType!.name])) as TypeDef;
+                ClassSpecialize(templateClass, map);
+                programScope.program.setDefinedType(className, templateClass);//深拷贝，避免污染原来的模板类
+                programScope.registerClass(className);
+                ClassScan(programScope.getClassScope(className));
+            }
+
+        }
+        type.PlainType.name = sign;//强制更新类型名
+        type.PlainType.templateSpecialization = undefined;//移除特化参数
+        /**
+         * 这样更新没有问题，特化模板类的时候一定是一个PlainType，这时候直接更新他的name即可
+         */
+
+    } else if (!program.tempalteType[type.PlainType.name] && type.PlainType.templateSpecialization) {
+        throw `非模板类:${type.PlainType.name}不能特化`;
     }
 }
-let typeIndex = 0;
+
+let globalTypeIndexInTypeTable = 0;
 /**
  * 源码中所有的类型在sematicChecK中都会调用registerType注册一遍，所以在这个函数中可以实例化模板
  * @param type 
  * @returns 
  */
 export function registerType(type: TypeUsed): number {
-    if (type.FunctionType != undefined) {
-        type = JSON.parse(JSON.stringify(type));
-        delete type.FunctionType?.body;//删除body,避免重复引用
+    if (type.PlainType != undefined) {
+        TempalteCheck(type as { PlainType: PlainType });
     }
     let sign = TypeUsedSign(type);
-    //如果是一个模板类,则进行特化
-    if (type.PlainType && program.tempalteType[type.PlainType.name]) {
-        if (!type.PlainType.templateSpecialization) {
-            throw `模板类:${type.PlainType.name}必须特化之后才能使用`;
-        }
-        //检查是否已经特化过了
-        if (program.getDefinedType(sign) == undefined) {
-            templateTypeSpecialization(type, type.PlainType.templateSpecialization);
-        }
-        type.PlainType.name = sign;//强制更新类型名
-    }
     let ret: number;
     //如果已经注册了，则直接返回注册结果
     if (typeTable[sign] != undefined) {
         ret = typeTable[sign].index;
     } else {
-        typeTable[sign] = { index: typeIndex, type: type };
-        ret = typeIndex++;
+        typeTable[sign] = { index: globalTypeIndexInTypeTable, type: type };
+        ret = globalTypeIndexInTypeTable++;
     }
     if (type.ArrayType != undefined) {//如果是数组类型，注册内部类型
         registerType(type.ArrayType.innerType);
+    }
+    //这样做只影响typeTable的数据，对原来的program无影响
+    if (type.FunctionType != undefined) {
+        type = JSON.parse(JSON.stringify(type));
+        (type as FunctionType).body = undefined;//删除body,避免重复引用
     }
     return ret;
 }
