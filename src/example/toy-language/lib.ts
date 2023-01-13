@@ -40,7 +40,7 @@ export function TypeUsedSign(type: TypeUsed): string {
         }
         return type.PlainType.name + templateSpecializationStr;
     } else if (type.ArrayType != undefined) {
-        return `Array<${TypeUsedSign(type.ArrayType.innerType)}>`;
+        return `@Array<${TypeUsedSign(type.ArrayType.innerType)}>`;
     } else if (type.ProgramType != undefined) {
         return `@program`;
     }

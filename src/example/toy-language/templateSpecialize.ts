@@ -1,4 +1,4 @@
-import { TypeUsedSign } from "./lib.js";
+import { FunctionSign, TypeUsedSign } from "./lib.js";
 import { ClassScope, ProgramScope } from "./scope.js";
 
 /**
@@ -286,5 +286,8 @@ export function ClassSpecialize(typedef: TypeDef, map: { [key: string]: TypeUsed
     for (let constructorName in typedef._constructor) {
         let _constructor = typedef._constructor[constructorName];
         FunctionSpecialize(_constructor, map);
+        let newSign = FunctionSign(_constructor);
+        typedef._constructor[newSign] = typedef._constructor[constructorName];
+        delete typedef._constructor[constructorName];
     }
 }

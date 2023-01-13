@@ -493,22 +493,22 @@ import { Program } from "./program.js";
                     let class_units = $[0] as { operatorOverload: { [key: string]: { [key: string]: FunctionType } }, property: VariableDescriptor, _constructor: { [key: string]: FunctionType } };
                     let class_unit = $[1] as { [key: string]: FunctionType } | VariableDescriptor | [{ [key: string]: FunctionType }];//{ [key: string]: FunctionType }是为了表示一个操作符重载
                     if (Array.isArray(class_unit)) {//是_constructor
-                        let single = Object.keys(class_unit[0])[0];
-                        if (class_units._constructor[single] != undefined) {
-                            throw new Error(`构造函数签名${single}重复`);
+                        let sign = Object.keys(class_unit[0])[0];
+                        if (class_units._constructor[sign] != undefined) {
+                            throw new Error(`构造函数签名${sign}重复`);
                         }
-                        class_units._constructor[single] = class_unit[0][single];
+                        class_units._constructor[sign] = class_unit[0][sign];
                     } else {
                         for (let k in class_unit) {
                             if (class_unit[k].hasOwnProperty("_arguments")) {//是操作符重载,VariableDescriptor没有argument属性,k一定是'='|'+'|'-'|'*'|'/'|'<'|'<='|'>'|'>='|'=='|'||'|'&&'中的一个
-                                let single = FunctionSignWithoutRetType((class_unit as { [key: string]: FunctionType })[k]);
+                                let sign = FunctionSignWithoutRetType((class_unit as { [key: string]: FunctionType })[k]);
                                 if (class_units.operatorOverload[k] == undefined) {
                                     class_units.operatorOverload[k] = {};
                                 }
-                                if (class_units.operatorOverload[k][single] != undefined) {
-                                    throw new Error(`重载操作符${k}->${single}重复定义`);
+                                if (class_units.operatorOverload[k][sign] != undefined) {
+                                    throw new Error(`重载操作符${k}->${sign}重复定义`);
                                 } else {
-                                    class_units.operatorOverload[k][single] = (class_unit as { [key: string]: FunctionType })[k];
+                                    class_units.operatorOverload[k][sign] = (class_unit as { [key: string]: FunctionType })[k];
                                 }
                             } else {//是普通成员
                                 if (!class_units.property.hasOwnProperty(k)) {//之前没有定义过这个成员
@@ -617,8 +617,8 @@ import { Program } from "./program.js";
                     let statements = $[5] as Block;
                     let ret: { [key: string]: FunctionType } = JSON.parse("{}");//为了生成的解析器不报红
                     let functionType: FunctionType = { capture: {}, _construct_for_type: basic_type.PlainType!.name, _arguments: parameter_declare, body: statements, retType: { PlainType: { name: 'void' } } };
-                    let single: string = FunctionSign(functionType);
-                    ret[single] = functionType;
+                    let sign: string = FunctionSign(functionType);
+                    ret[sign] = functionType;
                     return [ret];
                 }
             }
