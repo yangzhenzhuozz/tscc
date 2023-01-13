@@ -2,15 +2,15 @@ import fs from "fs";
 import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
 import { userTypeDictionary } from './lexrule.js';
-import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
+import { FunctionSign, FunctionSignWithoutRetType, TypeUsedSign } from "./lib.js"
 import { Program } from "./program.js";
 let grammar: Grammar = {
     userCode: `
 import { userTypeDictionary } from './lexrule.js';
-import { FunctionSign, FunctionSignWithoutRetType } from "./lib.js"
+import { FunctionSign, FunctionSignWithoutRetType, TypeUsedSign } from "./lib.js"
 import { Program } from "./program.js";
     `,
-    tokens: ['native', 'var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'throw', 'super', 'basic_type', 'instanceof'],
+    tokens: ['extension', 'native', 'var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'throw', 'super', 'basic_type', 'instanceof'],
     association: [
         { 'right': ['='] },
         { 'right': ['?'] },
@@ -41,12 +41,30 @@ import { Program } from "./program.js";
         {
             "program:import_stmts program_units": {
                 action: function ($, s): Program {
-                    let program_units = $[1] as VariableDescriptor | { [key: string]: TypeDef };
+                    let program_units = $[1] as VariableDescriptor | { [key: string]: TypeDef } | { [key: string]: ExtensionMethod };
                     let program: Program = new Program();//为了生成的解析器不报红
                     for (let k in program_units) {
-                        if (program_units[k].hasOwnProperty("modifier")) {//是类型定义
+                        if (program_units[k].hasOwnProperty('thisName')) {//是扩展方法定义
+                            let extensionMethod = (program_units[k] as ExtensionMethod);
+                            let extensionTypeName = TypeUsedSign(extensionMethod.extensionType);//因为不允许扩展模板类，所以这里的名字一定和definedType一样
+                            let extendFunName = extensionMethod.extendFunName;
+                            if (program.getDefinedType(extensionTypeName)?.property[extendFunName] != undefined) {
+                                throw `类型${extensionTypeName}扩展方法的名字和该类型已有成员${extendFunName}重复`;
+                            }
+                            program.extensionMethodsDef[extensionTypeName] = {
+                                [extendFunName]: extensionMethod
+                            };
+                        }
+                        else if (program_units[k].hasOwnProperty("modifier")) {//是类型定义
+                            let defClass = (program_units[k] as TypeDef);
+                            for (let fieldName in defClass.property) {
+                                if (program.extensionMethodsDef[k]?.[fieldName] != undefined) {
+                                    throw `类型${k}扩展方法的名字和该类型已有成员${fieldName}重复`;
+                                }
+                            }
                             program.setDefinedType(k, program_units[k] as TypeDef);
-                        } else {//是变量定义
+                        }
+                        else {//是变量定义
                             program.property[k] = program_units[k] as VariableProperties;
                         }
                     }
@@ -66,11 +84,11 @@ import { Program } from "./program.js";
         },//程序单元组可以为空
         {
             "program_units:program_units program_unit": {
-                action: function ($, s): VariableDescriptor | { [key: string]: TypeDef } {
-                    let program_units = $[0] as VariableDescriptor | { [key: string]: TypeDef };
-                    let program_unit = $[1] as VariableDescriptor | { [key: string]: TypeDef };
+                action: function ($, s): VariableDescriptor | { [key: string]: TypeDef } | { [key: string]: ExtensionMethod } {
+                    let program_units = $[0] as VariableDescriptor | { [key: string]: TypeDef } | { [key: string]: ExtensionMethod };
+                    let program_unit = $[1] as VariableDescriptor | { [key: string]: TypeDef } | { [key: string]: ExtensionMethod };
                     if (program_units[Object.keys(program_unit)[0]] != undefined) {
-                        throw new Error(`重复定义变量或者类型${Object.keys(program_unit)[0]}`);
+                        throw new Error(`重复定义变量、类型、或者扩展方法${Object.keys(program_unit)[0]}`);
                     } else {
                         program_units[Object.keys(program_unit)[0]] = program_unit[Object.keys(program_unit)[0]];
                     }
@@ -85,6 +103,13 @@ import { Program } from "./program.js";
                 }
             }
         },//程序单元可以是一条声明语句
+        {
+            "program_unit:extension_method": {
+                action: function ($, s): { [key: string]: ExtensionMethod } {
+                    return $[0] as { [key: string]: ExtensionMethod };
+                }
+            }
+        },//扩展方法
         {
             "program_unit:class_definition": {
                 action: function ($, s): { [key: string]: TypeDef } {
@@ -263,6 +288,94 @@ import { Program } from "./program.js";
                 }
             }
         },//函数定义语句，native函数
+        {
+            "extension_method:extension function id ( this plainType id , parameter_declare ) { statements }": {
+                action: function ($, s): { [key: string]: ExtensionMethod } {
+                    let extensionType = $[5] as TypeUsed;
+                    if (extensionType.PlainType!.templateSpecialization) {
+                        throw `不能扩展模板类的方法`;
+                    }
+                    let id = `@extension@${TypeUsedSign(extensionType)}@${$[2] as string}`;
+                    let thisName = $[6] as string;
+                    let _arguments = $[8] as VariableDescriptor;
+                    let body = $[11] as Block;
+                    return {
+                        [id]: {
+                            extensionType,
+                            thisName,
+                            extendFunName: $[2] as string,
+                            fun: { capture: {}, _arguments, isNative: false, body }
+                        }
+                    };
+                }
+            }
+        },//有参扩展方法
+        {
+            "extension_method:extension function id ( this plainType id ) { statements }": {
+                action: function ($, s): { [key: string]: ExtensionMethod } {
+                    let extensionType = $[5] as TypeUsed;
+                    if (extensionType.PlainType!.templateSpecialization) {
+                        throw `不能扩展模板类的方法`;
+                    }
+                    let id = `@extension@${TypeUsedSign(extensionType)}@${$[2] as string}`;
+                    let thisName = $[6] as string;
+                    let body = $[9] as Block;
+                    return {
+                        [id]: {
+                            extensionType,
+                            thisName,
+                            extendFunName: $[2] as string,
+                            fun: { capture: {}, _arguments: {}, isNative: false, body }
+                        }
+                    };
+                }
+            }
+        },//无参扩展方法
+        {
+            "extension_method:extension function id ( this plainType id , parameter_declare ) : type { statements }": {
+                action: function ($, s): { [key: string]: ExtensionMethod } {
+                    let extensionType = $[5] as TypeUsed;
+                    if (extensionType.PlainType!.templateSpecialization) {
+                        throw `不能扩展模板类的方法`;
+                    }
+                    let id = `@extension@${TypeUsedSign(extensionType)}@${$[2] as string}`;
+                    let thisName = $[6] as string;
+                    let _arguments = $[8] as VariableDescriptor;
+                    let retType = $[11] as TypeUsed;
+                    let body = $[13] as Block;
+                    return {
+                        [id]: {
+                            extensionType,
+                            thisName,
+                            extendFunName: $[2] as string,
+                            fun: { capture: {}, _arguments, isNative: false, retType, body }
+                        }
+                    };
+                }
+            }
+        },//有参扩展方法(声明了返回值)
+        {
+            "extension_method:extension function id ( this plainType id ) : type { statements }": {
+                action: function ($, s): { [key: string]: ExtensionMethod } {
+                    let extensionType = $[5] as TypeUsed;
+                    if (extensionType.PlainType!.templateSpecialization) {
+                        throw `不能扩展模板类的方法`;
+                    }
+                    let id = `@extension@${TypeUsedSign(extensionType)}@${$[2] as string}`;
+                    let thisName = $[6] as string;
+                    let retType = $[9] as TypeUsed;
+                    let body = $[11] as Block;
+                    return {
+                        [id]: {
+                            extensionType,
+                            thisName,
+                            extendFunName: $[2] as string,
+                            fun: { capture: {}, _arguments: {}, isNative: false, retType, body }
+                        }
+                    };
+                }
+            }
+        },//无参扩展方法(声明了返回值)
         {
             "modifier:valuetype": {
                 action: function ($, s): string {

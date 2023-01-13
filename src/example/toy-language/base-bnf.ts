@@ -1,7 +1,7 @@
 import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
 let grammar: Grammar = {
-    tokens: ['native', 'var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'throw', 'super', 'basic_type', 'instanceof'],
+    tokens: ['extension', 'native', 'var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'throw', 'super', 'basic_type', 'instanceof'],
     association: [
         { 'right': ['='] },
         { 'right': ['?'] },
@@ -34,6 +34,7 @@ let grammar: Grammar = {
         { "program_units:program_units program_unit": {} },//程序单元组由一个或者多个程序单元组成
         { "program_unit:declare ;": {} },//程序单元可以是一条声明语句
         { "program_unit:class_definition": {} },//程序单元可以是一个类定义语句
+        { "program_unit:extension_method": {} },//扩展方法
         /**
          * var和val的区别就是一个可修改，一个不可修改,val类似于其他语言的const
          */
@@ -50,6 +51,10 @@ let grammar: Grammar = {
         { "function_definition:function id template_declare ( parameter_declare ) { statements }": {} },//函数定义语句，同样太长，不列表,返回值类型可以不声明，自动推导,lambda就不用写返回值声明
         { "function_definition:function id template_declare ( parameter_declare ) : type { statements }": {} },//函数定义语句，同样太长，不列表
         { "function_definition:function id template_declare ( parameter_declare ) : type { native }": {} },//函数定义语句，native函数,返回值必须声明
+        { "extension_method:extension function id ( this plainType id , parameter_declare ) { statements }": {} },//有参扩展方法
+        { "extension_method:extension function id ( this plainType id ) { statements }": {} },//无参扩展方法
+        { "extension_method:extension function id ( this plainType id , parameter_declare ) : type { statements }": {} },//有参扩展方法(声明了返回值)
+        { "extension_method:extension function id ( this plainType id ) : type { statements }": {} },//无参扩展方法(声明了返回值)
         { "modifier:valuetype": {} },//modifier可以是"valuetype"
         { "modifier:sealed": {} },//modifier可以是"sealed"
         { "modifier:": {} },//modifier可以为空
@@ -80,7 +85,7 @@ let grammar: Grammar = {
          * 合法的输入应该是new int[][][][](),当然这只是符合文法而已,在语义检查的时候我们会进行错误处理,有的type是不允许被new的(说的就是array_type)
          */
         { "type:( type )": {} },//type可以用圆括号包裹
-        { "type:plainType": {priority:"priority_for_plainType"} },//简单类型
+        { "type:plainType": { priority: "priority_for_plainType" } },//简单类型
         { "type:functionType": {} },//函数类型
         { "type:arrayType": {} },//数组类型
         { "plainType:basic_type": { priority: "low_priority_for_[" } },//type可以是一个base_type

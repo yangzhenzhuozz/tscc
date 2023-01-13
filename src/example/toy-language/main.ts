@@ -7,7 +7,7 @@ import codeGen from './codeGen.js'
 import { setProgram } from "./ir.js";
 function basic_typeScan(source: string) {
     //把所有用户定义的class设置为basic_type
-    let regularExpression: RegExp = /class\s+([a-zA-Z_][a-zA-Z_0-9]*)/g;
+    let regularExpression: RegExp = /class[\s\r\n]+([a-zA-Z_][a-zA-Z_0-9]*)/g;
     for (let group: RegExpExecArray | null; (group = regularExpression.exec(source)) != null;) {
         let str = group[1]!;
         userTypeDictionary.add(str);

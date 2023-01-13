@@ -105,7 +105,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
                  * 都会生成一个def节点,一个有body，一个没有(函数声明没有，函数定义有)
                  * 所以遇到这种情况，通通扫描一次，在functionScan中，如果function.body==undefined,则直接放弃扫描
                 */
-                functionScan(new BlockScope(scope, node['def'][name].type!.FunctionType!, node['def'][name].type!.FunctionType!.body!), node['def'][name].type!.FunctionType!);//如果是定义了函数，则扫描一下
+                functionScan(new BlockScope(scope, node['def'][name].type!.FunctionType!, node['def'][name].type!.FunctionType!.body!, {}), node['def'][name].type!.FunctionType!);//如果是定义了函数，则扫描一下
             }
         }
         if (prop.type?.PlainType?.name == 'void') {
@@ -148,7 +148,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
         }
         let funType = nodeType.FunctionType;
         if (funType.retType == undefined) {//说明函数没有被推导过
-            functionScan(new BlockScope(scope, funType, funType.body!), funType);
+            functionScan(new BlockScope(scope, funType, funType.body!, {}), funType);
         }
         if (funType == undefined) {
             throw `必须调用一个函数`;
@@ -199,51 +199,65 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
                 }
             }
             result = { type: type, hasRet: false, location: 'field' };
-        } else {
+        }
+        //最后剩下的就是访问class中的成员了
+        else {
             let className = accessedType.PlainType!.name;
-            let prop = program.getDefinedType(className).property[accessName];
-            if (prop == undefined) {
-                throw `访问了类型${className}中不存在的属性${accessName}`;
+            if (program.extensionMethodsDef[className]?.[accessName] != undefined) {
+                //把accessField改成callEXM
+                node.callEXM = {
+                    obj: node['accessField'].obj,
+                    extendFuntionRealname: `@extension@${className}@${accessName}`
+                };
+                delete node.accessField;
+                //类型扫描的时候仍然用extensionMethodsDef，因为在类型检查的第一步就是扫描扩展方法，可以保证扩展方法已经被functionScan检查过
+                result = { type: { FunctionType: program.extensionMethodsDef[className][accessName].fun }, hasRet: false, location: 'field' };
             }
-            let classScope = programScope.getClassScope(className);//切换scope
-            if (prop.getter != undefined || prop.setter != undefined) {
-                if (assignmentObj) {
-                    if (prop.setter == undefined) {
-                        throw `${className}.${accessName}没有setter`;
+            else {
+                let prop = program.getDefinedType(className).property[accessName];
+                if (prop == undefined) {
+                    throw `访问了类型${className}中不存在的属性${accessName}`;
+                }
+                let classScope = programScope.getClassScope(className);//切换scope
+                if (prop.getter != undefined || prop.setter != undefined) {
+                    if (assignmentObj) {
+                        if (prop.setter == undefined) {
+                            throw `${className}.${accessName}没有setter`;
+                        } else {
+                            //改成set调用
+                            functionScan(new BlockScope(classScope, prop.setter, prop.setter.body!, {}), prop.setter);
+                            type = prop.setter._arguments[0].type!;//argument已经定义了类型
+                            node.call = { functionObj: { desc: 'ASTNode', accessField: { obj: node["accessField"].obj, field: `@set_${node["accessField"].field}` } }, _arguments: [assignmentObj] };
+                        }
                     } else {
-                        //改成set调用
-                        functionScan(new BlockScope(classScope, prop.setter, prop.setter.body!), prop.setter);
-                        type = prop.setter._arguments[0].type!;//argument已经定义了类型
-                        node.call = { functionObj: { desc: 'ASTNode', accessField: { obj: node["accessField"].obj, field: `@set_${node["accessField"].field}` } }, _arguments: [assignmentObj] };
+                        if (prop.getter == undefined) {
+                            throw `${className}.${accessName}没有getter`;
+                        } else {
+                            //改成get调用
+                            type = functionScan(new BlockScope(classScope, prop.getter, prop.getter.body!, {}), prop.getter);
+                            node.call = { functionObj: { desc: 'ASTNode', accessField: { obj: node["accessField"].obj, field: `@get_${node["accessField"].field}` } }, _arguments: [] };//改为get
+                        }
                     }
+                    delete node.accessField;//删除accessField节点
+                    result = { type: type, location: 'prop', hasRet: false };
                 } else {
-                    if (prop.getter == undefined) {
-                        throw `${className}.${accessName}没有getter`;
-                    } else {
-                        //改成get调用
-                        type = functionScan(new BlockScope(classScope, prop.getter, prop.getter.body!), prop.getter);
-                        node.call = { functionObj: { desc: 'ASTNode', accessField: { obj: node["accessField"].obj, field: `@get_${node["accessField"].field}` } }, _arguments: [] };//改为get
+                    type = prop.type;
+                    if (type == undefined) {
+                        let initAST = prop.initAST!;
+                        if ((initAST).hasTypeInferRecursion) {
+                            throw `类型推导出现了循环:${className}.${accessName}`;
+                        }
+                        (initAST).hasTypeInferRecursion = true;//标记一下这个属性已经在推导路径中被使用过了
+                        type = nodeRecursion(classScope, initAST, label, declareRetType).type;
+                        delete (initAST).hasTypeInferRecursion;//删除标记,回溯常用手法
                     }
-                }
-                delete node.accessField;//删除accessField节点
-                result = { type: type, location: 'prop', hasRet: false };
-            } else {
-                type = prop.type;
-                if (type == undefined) {
-                    let initAST = prop.initAST!;
-                    if ((initAST).hasTypeInferRecursion) {
-                        throw `类型推导出现了循环:${className}.${accessName}`;
+                    if (assignmentObj != undefined) {
+                        if (prop.variable == 'val') {
+                            throw `${className}.${accessName}声明为val,禁止赋值`;
+                        }
                     }
-                    (initAST).hasTypeInferRecursion = true;//标记一下这个属性已经在推导路径中被使用过了
-                    type = nodeRecursion(classScope, initAST, label, declareRetType).type;
-                    delete (initAST).hasTypeInferRecursion;//删除标记,回溯常用手法
+                    result = { type: type, hasRet: false, location: 'field' };
                 }
-                if (assignmentObj != undefined) {
-                    if (prop.variable == 'val') {
-                        throw `${className}.${accessName}声明为val,禁止赋值`;
-                    }
-                }
-                result = { type: type, hasRet: false, location: 'field' };
             }
         }
     }
@@ -274,7 +288,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
                 result = { type: { PlainType: { name: 'int' } }, hasRet: false };
             }
         } else {//是一个函数体
-            functionScan(new BlockScope(scope, node["immediate"].functionValue!, node["immediate"].functionValue!.body!), node["immediate"].functionValue!);
+            functionScan(new BlockScope(scope, node["immediate"].functionValue!, node["immediate"].functionValue!.body!, {}), node["immediate"].functionValue!);
             let functionType: FunctionType = {
                 isNative: node["immediate"].functionValue!.isNative,
                 _arguments: node["immediate"].functionValue!._arguments,
@@ -364,7 +378,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
         result = { type: opRet.type, location: opRet.location, hasRet: false };
     }
     else if (node["trycatch"] != undefined) {
-        let tryScope = new BlockScope(scope, undefined, node["trycatch"].tryBlock);//catch语句只能出现在block内部
+        let tryScope = new BlockScope(scope, undefined, node["trycatch"].tryBlock, {});//catch语句只能出现在block内部
         let tryBlockRet = BlockScan(tryScope, label, declareRetType);//此时的block一定是BlockScope
         let hasRet: boolean = tryBlockRet.hasRet;
         let firstRetType: TypeUsed | undefined;
@@ -377,7 +391,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
             let def: ASTNode = { desc: 'ASTNode', def: varialbe };
             let catchBlock = _catch.catchBlock;
             catchBlock.body.unshift(def);//插入一个读取exception指令
-            let catchScope = new BlockScope(scope, undefined, catchBlock);//catch语句只能出现在block内部
+            let catchScope = new BlockScope(scope, undefined, catchBlock, {});//catch语句只能出现在block内部
             let catchBlockRet = BlockScan(catchScope, label, declareRetType ?? firstRetType);//优先使用声明的返回值类型
             if (!catchBlockRet.hasRet) {
                 hasRet = false;
@@ -410,16 +424,16 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
     else if (node["ifStmt"] != undefined) {
         let conditionType = nodeRecursion(scope, node["ifStmt"].condition, label, declareRetType).type;
         typeCheck(conditionType, { PlainType: { name: 'bool' } }, `if条件只能是bool值`);
-        let blockScope = new BlockScope(scope, undefined, node["ifStmt"].stmt);//ifStmt语句只能出现在block内部
+        let blockScope = new BlockScope(scope, undefined, node["ifStmt"].stmt, {});//ifStmt语句只能出现在block内部
         let blockRet = BlockScan(blockScope, label, declareRetType);
         result = { hasRet: false, retType: undefined, type: { PlainType: { name: 'void' } } };
     }
     else if (node["ifElseStmt"] != undefined) {
         let type = nodeRecursion(scope, node["ifElseStmt"].condition, label, declareRetType).type;
         typeCheck(type, { PlainType: { name: 'bool' } }, `if条件只能是bool值`);
-        let blockScope_1 = new BlockScope(scope, undefined, node["ifElseStmt"].stmt1);//ifElseStmt语句只能出现在block内部
+        let blockScope_1 = new BlockScope(scope, undefined, node["ifElseStmt"].stmt1, {});//ifElseStmt语句只能出现在block内部
         let if_stmt_ret = BlockScan(blockScope_1, label, declareRetType);
-        let blockScope_2 = new BlockScope(scope, undefined, node["ifElseStmt"].stmt2);//ifElseStmt语句只能出现在block内部
+        let blockScope_2 = new BlockScope(scope, undefined, node["ifElseStmt"].stmt2, {});//ifElseStmt语句只能出现在block内部
         let else_stmt_ret = BlockScan(blockScope_2, label, declareRetType ?? if_stmt_ret.retType);
         let hasRet = if_stmt_ret.hasRet && else_stmt_ret.hasRet;
         result = { hasRet: hasRet, retType: hasRet ? if_stmt_ret.retType : undefined, type: { PlainType: { name: 'void' } } };
@@ -430,7 +444,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
         }
         let type = nodeRecursion(scope, node["do_while"].condition, label, declareRetType).type;
         typeCheck(type, { PlainType: { name: 'bool' } }, `do while条件只能是bool值`);
-        let blockScope = new BlockScope(scope, undefined, node["do_while"].stmt);//do_while语句只能出现在block内部
+        let blockScope = new BlockScope(scope, undefined, node["do_while"].stmt, {});//do_while语句只能出现在block内部
         let blockRet = BlockScan(blockScope, label, declareRetType);
         label.pop();
         result = { hasRet: false, retType: undefined, type: { PlainType: { name: 'void' } } };
@@ -441,7 +455,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
         }
         let type = nodeRecursion(scope, node["_while"].condition, label, declareRetType).type;
         typeCheck(type, { PlainType: { name: 'bool' } }, `while条件只能是bool值`);
-        let blockScope = new BlockScope(scope, undefined, node["_while"].stmt);//while语句只能出现在block内部
+        let blockScope = new BlockScope(scope, undefined, node["_while"].stmt, {});//while语句只能出现在block内部
         let blockRet = BlockScan(blockScope, label, declareRetType);
         label.pop();
         result = { hasRet: false, retType: undefined, type: { PlainType: { name: 'void' } } };
@@ -463,7 +477,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
         if (node["_for"].stmt.desc == 'ASTNode') {
             nodeRecursion(scope, node["_for"].stmt as ASTNode, label, declareRetType);
         } else {
-            let blockScope = new BlockScope(scope, undefined, node["_for"].stmt);//for语句只能出现在block内部
+            let blockScope = new BlockScope(scope, undefined, node["_for"].stmt, {});//for语句只能出现在block内部
             BlockScan(blockScope, label, declareRetType);
         }
         label.pop();
@@ -587,13 +601,13 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
             if (conditionType.PlainType?.name != 'bool') {
                 throw `case列表和switch object必须可以进行==操作，且返回值必须为bool`;
             }
-            let caseRet = BlockScan(new BlockScope(scope, undefined, caseStmt.stmt), label, declareRetType);
+            let caseRet = BlockScan(new BlockScope(scope, undefined, caseStmt.stmt, {}), label, declareRetType);
             if (!caseRet.hasRet) {
                 allCaseHasRet = false;
             }
         }
         if (node["_switch"].defalutStmt != undefined) {
-            let defaultRet = BlockScan(new BlockScope(scope, undefined, node["_switch"].defalutStmt), label, declareRetType);
+            let defaultRet = BlockScan(new BlockScope(scope, undefined, node["_switch"].defalutStmt, {}), label, declareRetType);
             defaultRetType = defaultRet.retType;
             if (!defaultRet.hasRet) {
                 allCaseHasRet = false;
@@ -628,7 +642,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
                     FunctionSpecialize(tmpFunObj.type!.FunctionType!, map);
                     program.property[realObjName] = tmpFunObj;
                     //把函数对象注入到program中
-                    let blockScope = new BlockScope(programScope, tmpFunObj.type!.FunctionType, tmpFunObj.type!.FunctionType!.body!);
+                    let blockScope = new BlockScope(programScope, tmpFunObj.type!.FunctionType, tmpFunObj.type!.FunctionType!.body!, {});
                     functionScan(blockScope, tmpFunObj.type!.FunctionType!);
                 } else {
                     throw `尝试特化一个未定义的模板对象`;
@@ -649,7 +663,6 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
     return result;
 }
 let captureWrapIndex = 0;
-let wrapClassNames: string[] = [];
 /**
  * 返回值表示是否为一个ret block
  * declareRetType 声明的返回值
@@ -665,7 +678,7 @@ function BlockScan(blockScope: BlockScope, label: string[], declareRetType: { re
             ret = { hasRet: nodeRet.hasRet, retType: nodeRet.retType };
         } else {
             let block = nodeOrBlock as Block;
-            ret = BlockScan(new BlockScope(blockScope, undefined, block), label, declareRetType);
+            ret = BlockScan(new BlockScope(blockScope, undefined, block, {}), label, declareRetType);
         }
         if (ret.hasRet) {
             if (i != blockScope.block!.body.length - 1) {
@@ -691,13 +704,18 @@ function BlockScan(blockScope: BlockScope, label: string[], declareRetType: { re
                     }
                 }
             };
+            //注册闭包
             program.setDefinedType(wrapClassName, wrapTypeDef);
-            wrapClassNames.push(wrapClassName);
+            programScope.registerClass(wrapClassName);//因为包裹类不会用到其他未注册的类型，所以可以边注册边使用
+            ClassScan(programScope.getClassScope(wrapClassName));
+            registerType({ PlainType: { name: wrapClassName } });
+
             delete blockScope.defNodes[k].defNode!.def![k];//删除def节点原来的所有内容
             blockScope.defNodes[k].defNode!.def![k] = {
                 variable: variable,
                 type: wrapTypeUsed
             };//重新定义def节点
+
             if (initAST != undefined) {//如果有初始化部分，则为其创建一个构造函数,并调用构造函数
                 let constructorSign = FunctionSignWithArgumentAndRetType([sourceType], { PlainType: { name: 'void' } });
                 let _arguments: VariableDescriptor = {};
@@ -729,8 +747,14 @@ function BlockScan(blockScope: BlockScope, label: string[], declareRetType: { re
                     }
                 };
                 blockScope.defNodes[k].defNode!.def![k].initAST = { desc: 'ASTNode', _new: { type: wrapTypeUsed, _arguments: [initAST] } };
-                //创建改造结束
             }
+            //捕获包裹类已经创建完毕，进行注册
+            program.setDefinedType(wrapClassName, wrapTypeDef);
+            programScope.registerClass(wrapClassName);//因为包裹类不会用到其他未注册的类型，所以可以边注册边使用
+            ClassScan(programScope.getClassScope(wrapClassName));
+            registerType({ PlainType: { name: wrapClassName } });
+
+
             //处理load节点
             for (let loadNode of blockScope.defNodes[k].loads) {
                 loadNode['accessField'] = {
@@ -840,16 +864,16 @@ function ClassScan(classScope: ClassScope) {
                     prop.type = initType;//如果是需要推导的类型，进行填充
                 }
             } else if (prop.type?.FunctionType) {
-                let blockScope = new BlockScope(classScope, prop.type?.FunctionType, prop.type?.FunctionType.body!);
+                let blockScope = new BlockScope(classScope, prop.type?.FunctionType, prop.type?.FunctionType.body!, {});
                 functionScan(blockScope, prop.type?.FunctionType);
             }
         } else {//扫描prop
             if (prop.getter != undefined) {
-                let blockScope = new BlockScope(classScope, prop.getter, prop.getter.body!);
+                let blockScope = new BlockScope(classScope, prop.getter, prop.getter.body!, {});
                 functionScan(blockScope, prop.getter);
             }
             if (prop.setter != undefined) {
-                let blockScope = new BlockScope(classScope, prop.getter, prop.setter.body!);
+                let blockScope = new BlockScope(classScope, prop.getter, prop.setter.body!, {});
                 functionScan(blockScope, prop.setter);
             }
         }
@@ -861,7 +885,7 @@ function ClassScan(classScope: ClassScope) {
     let operatorOverloads = program.getDefinedType(classScope.className).operatorOverload;
     for (let op in operatorOverloads) {//扫描重载操作符
         for (let sign in operatorOverloads[op as opType | opType2]) {
-            let blockScope = new BlockScope(classScope, operatorOverloads[op as opType | opType2]![sign], operatorOverloads[op as opType | opType2]![sign].body!);
+            let blockScope = new BlockScope(classScope, operatorOverloads[op as opType | opType2]![sign], operatorOverloads[op as opType | opType2]![sign].body!, {});
             functionScan(blockScope, operatorOverloads[op as opType | opType2]![sign]);
         }
     }
@@ -869,7 +893,7 @@ function ClassScan(classScope: ClassScope) {
     for (let constructorName in program.getDefinedType(classScope.className)._constructor) {
         let _constructor = program.getDefinedType(classScope.className)._constructor[constructorName];
         _constructor.retType = { PlainType: { name: 'void' } };//所有构造函数不允许有返回值
-        let blockScope = new BlockScope(classScope, _constructor, _constructor.body!);
+        let blockScope = new BlockScope(classScope, _constructor, _constructor.body!, {});
         functionScan(blockScope, _constructor);
     }
 }
@@ -992,8 +1016,73 @@ export function registerType(type: TypeUsed): number {
     }
     return ret;
 }
+/**
+ * 把下面代码中的isLess
+ * class myClass{
+ *      var i=0;
+ *      myClass(){}
+ *  }
+ *  extension function isLess(this myClass v,a:int):bool{
+ *      return v.i<a;
+ *  }
+ * 替换成
+ * @extension@myClass@isLess(v:myClass){
+ *      return (a:int)=>{
+ *          return v.i<a;
+ *      };
+ *  }
+ * 
+ * 如下的扩展函数调用
+ * var obj:myClass;
+ * obj.isLess(2);
+ * 会被改造成
+ * obj.callEXM(@extension@myClass@isLess)(2);
+ * 变成链式调用
+ */
+function extensionMethodReplace(exm: ExtensionMethod) {
+    let typeName = TypeUsedSign(exm.extensionType);
+    program.extensionMethodsImpl[typeName] = {
+        [exm.extendFunName]: {
+            capture: {},
+            _arguments: {
+                [exm.thisName]: {
+                    variable: 'var',
+                    type: exm.extensionType
+                }
+            },
+            body: {
+                desc: 'Block',
+                body: [
+                    {
+                        desc: 'ASTNode',
+                        ret: {
+                            desc: 'ASTNode',
+                            immediate: {
+                                functionValue: exm.fun
+                            }
+                        }
+                    }
+                ]
+            }
+        }
+    };
+}
 export default function semanticCheck() {
-    programScope = new ProgramScope(program);
+    programScope = new ProgramScope(program, {});
+    // 把所有的扩展函数挪到extensionMethodsImpl
+    for (let extendTypeName in program.extensionMethodsDef) {
+        for (let methodName in program.extensionMethodsDef[extendTypeName]) {
+            extensionMethodReplace(program.extensionMethodsDef[extendTypeName][methodName]);
+        }
+    }
+    //对扩展函数进行类型检查
+    for (let extendTypeName in program.extensionMethodsImpl) {
+        for (let methodName in program.extensionMethodsImpl[extendTypeName]) {
+            let fun = program.extensionMethodsImpl[extendTypeName][methodName];
+            let blockScope = new BlockScope(programScope, fun, fun.body!, {});
+            functionScan(blockScope, fun);
+        }
+    }
     program.templateProp = {};
     program.tempalteType = {};
     for (let variableName in program.property) {
@@ -1010,7 +1099,7 @@ export default function semanticCheck() {
         }
     }
 
-    //扫描definedType,后续还有一些新增的类(闭包、函数包裹类)
+    //扫描definedType
     for (let typeName of program.getDefinedTypeNames()) {
         ClassScan(programScope.getClassScope(typeName));
     }
@@ -1025,7 +1114,7 @@ export default function semanticCheck() {
                 prop.type = initType;
             }
         } if (prop.type?.FunctionType) {
-            let blockScope = new BlockScope(programScope, prop.type?.FunctionType, prop.type?.FunctionType.body!);
+            let blockScope = new BlockScope(programScope, prop.type?.FunctionType, prop.type?.FunctionType.body!, {});
             functionScan(blockScope, prop.type?.FunctionType);
         }
         registerType(prop.type!);//经过推导，类型已经确定了
@@ -1038,12 +1127,7 @@ export default function semanticCheck() {
     });
     programScope.registerClass('@point');//注册point类型
     registerType({ PlainType: { name: '@point' } });//在类型表中注册类型
-    //扫描因为闭包捕获而新增的类型
-    for (let typeName of wrapClassNames) {
-        programScope.registerClass(typeName);//因为包裹类不会用到其他未注册的类型，所以可以边注册边使用
-        ClassScan(programScope.getClassScope(typeName));
-        registerType({ PlainType: { name: typeName } });
-    }
+
     //检查值类型是否递归包含
     for (let typeName of program.getDefinedTypeNames()) {
         if (program.getDefinedType(typeName).recursiveChecked != true && program.getDefinedType(typeName).modifier == 'valuetype') {

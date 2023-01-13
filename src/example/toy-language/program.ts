@@ -7,6 +7,8 @@ export class Program {
     tempalteType: {//已经定义了的模板类型,在类型检测阶段会把模板类型移入这里
         [key: string]: TypeDef
     } = {};
+    extensionMethodsImpl: { [key: string]: { [key: string]: FunctionType } } = {};//扩展方法实现,第一层key是类型名，第二层是方法名
+    extensionMethodsDef: { [key: string]: { [key: string]: ExtensionMethod } } = {};//扩展方法定义,第一层key是类型名，第二层是方法名
     size?: number;
     public getDefinedType(name: string): TypeDef {
         return this.definedType[name];

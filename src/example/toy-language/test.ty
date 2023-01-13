@@ -1,32 +1,27 @@
+class MyClass{
+    var i=0;
+    MyClass(){
+    }
+}
+extension function isLess(this MyClass v,a:int):bool{
+    printI32(v.i);
+    printI32(v.i);
+    return v.i<a;
+}
+
+function main(){
+    var obj=new MyClass();
+    printI8(obj.isLess(5));
+};
+
+
+
+
 function printI32(v:int):void{
     native
 };
 function printI8(v:bool):void{
     native
-};
-class Array<T>{
-    var arr:T[];
-    Array(v:T[]){
-        this.arr=v;
-    }
-    function map(cb:(item:T)=>T){
-        for(var i=0;i<arr.length;i++){
-            arr[i]=cb(arr[i]);
-        }
-    };
-}
-function main(){
-    var arr=new int[100];
-    var s=new Array<int>(arr);
-    var i=0;
-    s.map((item:int)=>{
-        i++;
-        return i;
-    });
-    s.map((item:int)=>{
-        printI32(item);
-        return 0;
-    });
 };
 valuetype class int{
     operator + ( v : int ) : int { native } ;

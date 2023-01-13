@@ -10,16 +10,17 @@ abstract class Scope {
      * 
      * @param prop 
      * @param offsetPatch 在执行完类型推导之后，可以计算各个变量的偏移
+     * @param option.program  在类型检查阶段用不上，在代码生成阶段有用，用于决定是否计算各个属性的偏移和size
      */
-    constructor(prop: VariableDescriptor | undefined, offsetPatch?: { program: Program }) {
+    constructor(prop: VariableDescriptor | undefined, option: { program?: Program }) {
         this.ID = debugID++;
         if (prop == undefined) {
             this.property = {};
         } else {
             this.property = prop;
         }
-        if (offsetPatch) {
-            let { program } = offsetPatch;
+        if (option.program) {
+            let program = option.program;
             this.fieldOffsetMap = {};
             let offset = 0;
             for (let k in this.property) {
@@ -43,8 +44,8 @@ abstract class Scope {
 class ProgramScope extends Scope {
     public program: Program;
     private classMap: { [key: string]: ClassScope } = {};
-    constructor(program: Program, offsetPatch?: { program: Program }) {
-        super(program.property, offsetPatch);
+    constructor(program: Program, option: { program?: Program }) {
+        super(program.property, option);
         this.program = program;
         //创建所有的classScope
         for (let typeName of program.getDefinedTypeNames()) {
@@ -52,7 +53,7 @@ class ProgramScope extends Scope {
             if (type.extends != undefined) {//有继承于其他类
                 throw `不支持extends:${typeName}`;
             } else {
-                this.classMap[typeName] = new ClassScope(program.getDefinedType(typeName).property, typeName, this, offsetPatch);
+                this.classMap[typeName] = new ClassScope(program.getDefinedType(typeName).property, typeName, this, option);
             }
         }
     }
@@ -93,8 +94,8 @@ class ProgramScope extends Scope {
 class ClassScope extends Scope {
     public className: string;
     public programScope: ProgramScope;
-    constructor(prop: VariableDescriptor | undefined, className: string, programScope: ProgramScope, offsetPatch?: { program: Program }) {
-        super(prop, offsetPatch);
+    constructor(prop: VariableDescriptor | undefined, className: string, programScope: ProgramScope, option: { program?: Program }) {
+        super(prop, option);
         this.programScope = programScope;
         this.className = className;
     }
@@ -132,8 +133,16 @@ class BlockScope extends Scope {
     public classScope: ClassScope | undefined;
     public baseOffset: number;//基础偏移
     public allocatedSize: number;//已经分配的空间(子scope会用到)
-    constructor(scope: Scope, fun: FunctionType | undefined, block: Block, offsetPatch?: { program: Program }) {
-        super(undefined, offsetPatch);
+    
+    /**
+     * 
+     * @param scope 
+     * @param fun 
+     * @param block 
+     * @param option.isEXM 是否在扩展方法中，决定了要不要预留this指针
+     */
+    constructor(scope: Scope, fun: FunctionType | undefined, block: Block, option: { program?: Program, isEXM?: boolean }) {
+        super(undefined, option);
         if (scope instanceof ProgramScope) {
             this.parent = undefined;
             this.programScope = scope;
@@ -150,8 +159,13 @@ class BlockScope extends Scope {
             throw `scope只能是上面三种情况`;
         }
         if (this.parent == undefined) {
-            this.allocatedSize = globalVariable.pointSize;//是functionScope,预留函数包裹类或者this指针位置
-            this.baseOffset = 0;
+            if(option.isEXM){
+                this.allocatedSize = 0;//是最外层的functionScope,不需要预留函数包裹类或者this指针位置
+                this.baseOffset = 0;
+            }else{
+                this.allocatedSize = globalVariable.pointSize;//是最外层的functionScope,预留函数包裹类或者this指针位置
+                this.baseOffset = 0;
+            }
         } else {
             this.allocatedSize = this.parent.allocatedSize;
             this.baseOffset = this.parent.allocatedSize;

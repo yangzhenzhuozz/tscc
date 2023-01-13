@@ -15,6 +15,12 @@ Reflect.ownKeys({
 */
 type opType = '+' | '-' | '*' | '/' | '<' | '<=' | '>' | '>=' | '==' | '||' | '&&' | '[]';//双目运算符
 type opType2 = '++' | '--';//单目运算符
+interface ExtensionMethod {
+    extensionType: TypeUsed;//扩展的类型
+    thisName: string;//this指针指向的名字
+    extendFunName: string;//被扩展的函数名
+    fun: FunctionType;//定义的函数体
+}
 interface TypeDef {//定义的类型
     modifier?: 'valuetype' | 'sealed';
     size?: number;
@@ -73,12 +79,15 @@ type Block = {
 interface ASTNode {
     hasTypeInferRecursion?: boolean;//本AST是否已经被递归推导过类型
     desc: 'ASTNode';
+    type?: TypeUsed;//表达式的类型
+
+
+    callEXM?: { obj: ASTNode, extendFuntionRealname: string };//调用扩展函数
     loadFunctionWrap?: '',//读取函数包裹类节点
     loadOperatorOverload?: [string, string];//读取重载操作符函数
     loadException?: TypeUsed;//读取异常
     loadArgument?: { index: number },//从栈中读取参数
     specializationObj?: { obj: ASTNode, types: TypeUsed[] },//特化模板对象
-    type?: TypeUsed;//表达式的类型
     def?: VariableDescriptor;
     accessField?: { obj: ASTNode, field: string };
     call?: { functionObj: ASTNode, _arguments: ASTNode[] };
