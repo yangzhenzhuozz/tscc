@@ -1,5 +1,5 @@
-class MyClass{
-    var i=0;
+valuetype class MyClass{
+    var i=43707;
     MyClass(){
     }
 }
@@ -8,9 +8,12 @@ extension function isLess(this MyClass v,a:int):bool{
     printI32(v.i);
     return v.i<a;
 }
-
+function f(){
+    return 1006;
+};
 function main(){
-    var obj=new MyClass();
+    var obj:MyClass;
+    obj.i=1234;
     printI8(obj.isLess(5));
 };
 
@@ -30,3 +33,4 @@ valuetype class int{
 }
 valuetype class bool{
 }
+
