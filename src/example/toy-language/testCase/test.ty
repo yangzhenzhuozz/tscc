@@ -1,14 +1,32 @@
-var i=64;
+valuetype class MyClass{
+    var value=55;
+    MyClass(){}
+    function bar(){
+        printI32(value);
+    };
+}
+function foo(){
+    var i:MyClass;
+    return i.bar;
+};
+function f2(v:int){
+    printI32(v);
+};
+class MyClass2{
+    var i=10;
+    MyClass2(v:int){
+        if(v>5){
+            i=100;
+            return;
+        }else{
+            i=0;
+            return;
+        }
+    }
+}
 function main(){
-    i.bar();
-    {
-        var i=10;
-        i.bar();
-    }
-    for(var i=0;i<15;i++)
-    {
-        i.bar();
-    }
+    var obj=new MyClass2(6);
+    printI32(obj.i);
 };
 
 extension function bar(this int v){

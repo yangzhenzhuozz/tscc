@@ -1,4 +1,5 @@
 //预处理AST
+import { isPointType } from './codeGen.js';
 import { program, globalVariable, typeTable } from './ir.js';
 import { FunctionSignWithArgumentAndRetType, TypeUsedSign, FunctionSignWithArgument } from './lib.js';
 import { Scope, BlockScope, ClassScope, ProgramScope } from './scope.js';
@@ -203,6 +204,41 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
         //最后剩下的就是访问class中的成员了
         else {
             let className = accessedType.PlainType!.name;
+            /**
+             * 如果现在还是load节点，说明是读取局部变量，可以开始做成员变量判断了
+             * 访问局部变量的成员函数时，通通用闭包捕获起来
+             *  function f(para:int){
+             *      var i=5;
+             *      var j=6;
+             *      var f1=i.toString;
+             *      var f2=j.toString;
+             *      if(para>5)
+             *          return f1;
+             *      else
+             *          return f2;
+             *  }
+             *  这种情况下根本无法追踪toString被哪个变量使用了,如果不捕获这个变量，函数返回之后，这个变量将会不可控
+             *
+             * 
+             *  经过前面行的nodeRecursion之后，如果是load program或者class成员，load节点会被替换成accessField节点
+             */
+
+            if (node["accessField"].obj.load != undefined) {
+                let definedType = program.getDefinedType(className);
+                let accessValueTypeFucntionMemberOrextensionMethod = false;//是否访问了值类型的成员函数或者扩展方法
+                //正在尝试访问一个值类型的成员
+                if (definedType.modifier == 'valuetype') {
+                    if (definedType.property[accessName] != undefined && definedType.property[accessName].type?.FunctionType != undefined) {
+                        accessValueTypeFucntionMemberOrextensionMethod = true;//访问了成员函数
+                    } else if(program.extensionMethodsDef[className]?.[accessName] != undefined){
+                        accessValueTypeFucntionMemberOrextensionMethod = true;//访问了扩展方法
+                    }
+                }
+                if (accessValueTypeFucntionMemberOrextensionMethod) {
+                    (scope as BlockScope).captured.add(node["accessField"].obj.load);//把这个变量捕获
+                }
+            }
+
             if (program.extensionMethodsDef[className]?.[accessName] != undefined) {
                 //把accessField改成callEXM
                 node.callEXM = {
@@ -710,13 +746,13 @@ function BlockScan(blockScope: BlockScope, label: string[], declareRetType: { re
             ClassScan(programScope.getClassScope(wrapClassName));
             registerType({ PlainType: { name: wrapClassName } });
 
-            delete blockScope.defNodes[k].defNode!.def![k];//删除def节点原来的所有内容
+            delete blockScope.defNodes[k].defNode!.def![k];//删除原来的def节点
             blockScope.defNodes[k].defNode!.def![k] = {
                 variable: variable,
                 type: wrapTypeUsed
             };//重新定义def节点
 
-            if (initAST != undefined) {//如果有初始化部分，则为其创建一个构造函数,并调用构造函数
+            if (initAST != undefined) {//如果有初始化部分，则为其创建构造函数,并调用构造函数
                 let constructorSign = FunctionSignWithArgumentAndRetType([sourceType], { PlainType: { name: 'void' } });
                 let _arguments: VariableDescriptor = {};
                 _arguments['initVal'] = {
@@ -747,6 +783,45 @@ function BlockScan(blockScope: BlockScope, label: string[], declareRetType: { re
                     }
                 };
                 blockScope.defNodes[k].defNode!.def![k].initAST = { desc: 'ASTNode', _new: { type: wrapTypeUsed, _arguments: [initAST] } };
+            } else {
+                //被捕获的变量在没有initAST情况下也需要做一些处理
+                if (!isPointType(sourceType)) {
+                    /**
+                     * 如果被捕获的变量没有initAST，但是是一个值类型，则仍然需要为其生成一个init指令
+                     * 这里相当于这样的代码
+                     * var obj:MyClass;//值类型
+                     * function f(){
+                     *     print(obj.i);//捕获obj
+                     * }
+                     * 虽然obj被改造成如下代码
+                     * var obj:capture_class;//引用类型
+                     * function f(){
+                     *     print(obj.i);//捕获obj
+                     * }
+                     * 虽然对于指针来说没有初始化的情况默认指向null，但是从语义上面对于值类型应该默认调用其_init相关代码
+                     * 所以需要调用new capture_class，也需要为其创建一个无参构造函数
+                     */
+                    let constructorSign = FunctionSignWithArgumentAndRetType([], { PlainType: { name: 'void' } });
+                    wrapTypeDef._constructor[constructorSign] = {
+                        capture: {},
+                        _construct_for_type: wrapClassName,
+                        _arguments: {},//无参构造函数
+                        body: {
+                            desc: 'Block',
+                            body: []//函数体是空白的
+                        }
+                    };
+                    blockScope.defNodes[k].defNode!.def![k].initAST = { desc: 'ASTNode', _new: { type: wrapTypeUsed, _arguments: [] } };
+                }
+                else {
+                    /**
+                     * 这里相当于这样的代码
+                     * var obj:MyClass;//引用类型,但是没有初始化，自然就是null
+                     * function f(){
+                     *     print(obj.i);//捕获obj,并且试图访问obj的属性i，肯定会抛出空指针异常
+                     * }
+                     */
+                }
             }
             //捕获包裹类已经创建完毕，进行注册
             program.setDefinedType(wrapClassName, wrapTypeDef);
@@ -775,7 +850,7 @@ function BlockScan(blockScope: BlockScope, label: string[], declareRetType: { re
                         accessField: {
                             obj: {
                                 desc: 'ASTNode',
-                                loadFunctionWrap: '',
+                                getFunctionWrapName: '',
                                 type: {
                                     PlainType: {
                                         name: "@uncreated_function_wrap"//在这里还没有创建函数包裹类的类型，需要在codeGen阶段才创建，这里先留空吧

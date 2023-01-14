@@ -83,7 +83,7 @@ interface ASTNode {
 
 
     callEXM?: { obj: ASTNode, extendFuntionRealname: string };//调用扩展函数
-    loadFunctionWrap?: '',//读取函数包裹类节点
+    getFunctionWrapName?: '',//获取函数包裹类名称
     loadOperatorOverload?: [string, string];//读取重载操作符函数
     loadException?: TypeUsed;//读取异常
     loadArgument?: { index: number },//从栈中读取参数

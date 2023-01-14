@@ -1,0 +1,48 @@
+valuetype class MyClass{
+    var i:int=39;
+    function bar(){
+        printI32(i);
+    };
+}
+function f(){
+    var i:MyClass;
+    return i.bar;
+};
+function f2(v:int){
+    printI32(v);
+};
+function main(){
+    var fun=f();
+    fun();
+    f2(11);
+    fun();
+    fun();
+};
+
+extension function bar(this int v){
+    printI32(v);
+}
+
+
+
+function printI32(v:int):void{
+    native
+};
+function printI8(v:bool):void{
+    native
+};
+valuetype class int{
+    operator + ( v : int ) : int { native } ;
+    operator - ( v : int ) : int { native } ;
+    operator * ( v : int ) : int { native } ;
+    operator / ( v : int ) : int { native } ;
+    operator ++ () : void { native } ;
+    operator -- () : void { native } ;
+    operator < ( v : int ) : bool { native } ;
+    operator <= ( v : int ) : bool { native } ;
+    operator > ( v : int ) : bool { native } ;
+    operator >= ( v : int ) : bool { native } ;
+}
+valuetype class bool{
+}
+

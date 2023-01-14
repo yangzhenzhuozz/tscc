@@ -23,3 +23,28 @@
 -   值类型扩展方法
 
 -   右值值类型成员访问
+
+-   访问局部变量成员函数的扩展方法时，没有正确捕获这个成员
+    var a=10;
+    a.toString();
+    如果a被释放，则会出错
+    function f(){
+        var i=6;
+        return i.toString;
+    }
+    f().toString();
+-   不止是扩展方法，访问值类型的成员也是一样的，应该这样做，只要返回局部变量的成员函数时，通通装箱，如果返回普通成员则不装箱()
+    不是返回，而是只要使用了值类型的成员，一律装箱
+    function f(para:int){
+        var i=5;
+        var j=6;
+        var f1=i.toString;
+        var f2=j.toString;
+        if(para>5)
+            return f1;
+        else
+            return f2;
+    }
+    这种情况下根本无法追踪
+
++   创建构造函数是需要指定inContructor
