@@ -2,7 +2,6 @@
  * 本文件存放一些全局使用的对象和变量
  */
 
-import { TypeUsedSign } from "./lib.js";
 import { Program } from "./program.js";
 
 export let irAbsoluteAddressRelocationTable: { sym: string, ir: IR }[] = [];//指令地址重定位表
@@ -112,6 +111,7 @@ export enum OPCODE {
     '__exit',//退出
     'alloc',//申请局部变量空间
     'access_array_length',//读取数组的length
+    'box',//读取右值的地址
     'native_call',//调用native函数
 };
 export let nowIRContainer: IRContainer;
