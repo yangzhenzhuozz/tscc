@@ -4,7 +4,7 @@
   "description": "从0开始自制编程语言",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node.exe ./output/example/toy-language/main.js && D:/Users/john/Desktop/vm/build/Debug/vm.exe"
   },
   "repository": {
     "type": "git",
