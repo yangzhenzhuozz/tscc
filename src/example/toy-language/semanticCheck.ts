@@ -235,7 +235,10 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
                     }
                 }
                 if (accessValueTypeFucntionMemberOrextensionMethod) {
-                    (scope as BlockScope).captured.add(node["accessField"].obj.load);//把这个变量捕获
+                    let socureScope=(scope as BlockScope).getProp(node["accessField"].obj.load).scope;//变量的来源scope
+                    if(socureScope instanceof BlockScope){//如果是来自于blockScope
+                        socureScope.captured.add(node["accessField"].obj.load);//把这个变量捕获
+                    }
                 }
             }
 

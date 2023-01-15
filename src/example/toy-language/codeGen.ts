@@ -880,7 +880,9 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
         }
         let breakIRs: IR[] = [];
         let continueIRs: IR[] = [];
-        assert(Array.isArray(option.label));
+        if (option.label == undefined) {
+            option.label = [];
+        }
         assert(typeof option.frameLevel == 'number');
         if (node['_for'].label) {
             option.label.push({ name: node['_for'].label, frameLevel: option.frameLevel, breakIRs, continueIRs });
@@ -907,13 +909,13 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
             jmpToFunctionEnd = nr.jmpToFunctionEnd ?? [];
         } else {
             let blockRet = BlockScan(new BlockScope(scope, undefined, node['_for'].stmt, { program }), {
-                label: undefined,
-                frameLevel: undefined,
+                label: option.label,
+                frameLevel: option.frameLevel + 1,
                 isGetAddress: undefined,
                 boolForward: undefined,
                 isAssignment: undefined,
                 singleLevelThis: option.singleLevelThis,
-                inContructorRet: undefined,
+                inContructorRet: option.inContructorRet,
                 functionWrapName: option.functionWrapName
             });
             if (!startIR) {
@@ -1435,7 +1437,7 @@ function putfield(type: TypeUsed, offset: number, truelist: IR[], falselist: IR[
 function BlockScan(blockScope: BlockScope,
     option: {
         label: undefined | { name: string, frameLevel: number, breakIRs: IR[], continueIRs: IR[] }[],//for while的label,jmpIRs:break或者continue的列表，需要向下传递
-        frameLevel: undefined | number,//给ret、break、continue提供popup_stackFrame参数，需要向下传递,并且遇到新block的时候要+1
+        frameLevel: number,//给ret、break、continue提供popup_stackFrame参数，需要向下传递,并且遇到新block的时候要+1
         isGetAddress: undefined | boolean,//是否读取地址,比如 int a; a.toString(); 这里的load a就是读取a的地址而不是值，只有accessField和callEXM的子节点取true，影响accessField和load节点
         /**
          * 因为机器码的if指令如果命中则跳转，不命中则执行下一条指令，所以要想实现分支就要利用这个特性，bool反向的时候，jmp目标是falseIR，所以下一条应该是trueIR，不反向的时候，目标是trueIR，所以下一条指令是falseIR
@@ -1456,10 +1458,17 @@ function BlockScan(blockScope: BlockScope,
         functionWrapName: string,//函数包裹类的名字，给loadFunctionWrap节点提取函数包裹类名字，从functionObjGen向下传递
     }
 ): { startIR: IR, endIR: IR, jmpToFunctionEnd: IR[], stackFrame: { name: string, type: TypeUsed }[] } {
+
+    assert(typeof option.frameLevel == 'number');
+    assert(typeof option.singleLevelThis == 'boolean');
+    assert(typeof option.inContructorRet == 'boolean');
+    assert(typeof option.functionWrapName == 'string');
+
+
     let stackFrameMapIndex = globalVariable.stackFrameMapIndex++;
     let startIR: IR = new IR('push_stack_map', undefined, undefined, undefined);
     stackFrameRelocationTable.push({ sym: `@StackFrame_${stackFrameMapIndex}`, ir: startIR });
-    assert(typeof option.frameLevel == 'number');
+
     if (option.frameLevel == 1) {//处于函数scope中
         //任何函数(除了扩展函数)都需要这个变量，这个变量保存着this指针或者包裹类指针的值
         new IR('alloc', globalVariable.pointSize);//给包裹类或者this指针分配位置
@@ -1522,7 +1531,6 @@ function BlockScan(blockScope: BlockScope,
      * 否则弹出一个帧(因为每个block结束只需要弹出自己的帧,ret节点改变了处理流程，所以自己控制弹出帧的数量)
      */
     if (!(lastNode?.desc == 'ASTNode' && (lastNode as ASTNode).ret != undefined)) {
-        assert(typeof option.inContructorRet == 'boolean')
         if (option.frameLevel == 1 && option.inContructorRet) {//是最外层的block，且在构造函数中
             new IR('p_load', 0);//读取this指针到计算栈
         }
