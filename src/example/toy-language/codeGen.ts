@@ -506,6 +506,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
             functionWrapName: option.functionWrapName
         });
         if (left.falselist.length == 0 && left.truelist.length == 0) {//如果没有回填，则为其创建回填指令
+            //因为||的左子节点要取boolFward，所以用if_true
             let ir = new IR('i8_if_true');
             left.truelist.push(ir);
             left.endIR = ir;
@@ -1556,6 +1557,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
             functionWrapName: option.functionWrapName
         });
         if (conditionRet.truelist.length == 0 && conditionRet.falselist.length == 0) {//如果bool值不是通过布尔运算得到的，则为其插入一个判断指令
+            //和||的左子节点一样，因为要用boolFard，所以取if_true
             let ir = new IR('i8_if_true');
             conditionRet.truelist.push(ir);
             conditionRet.endIR = ir;
