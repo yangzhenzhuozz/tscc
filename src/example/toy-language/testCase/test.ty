@@ -1,15 +1,10 @@
 function main(){
-    a:for(var i=0;i<10;i++){
-        for(var j=0;j<10;j++){
-            i.bar();
-            j.bar();
-            if(i==5){
-                break;
-            }else if(i==7){
-                break a;
-            }
-        }
+    a:do{
+        printI32(10);
+        break;
     }
+    while(false)
+    printI32(11);
 };
 
 extension function bar(this int v){

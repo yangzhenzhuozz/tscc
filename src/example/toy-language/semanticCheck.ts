@@ -230,13 +230,13 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
                 if (definedType.modifier == 'valuetype') {
                     if (definedType.property[accessName] != undefined && definedType.property[accessName].type?.FunctionType != undefined) {
                         accessValueTypeFucntionMemberOrextensionMethod = true;//访问了成员函数
-                    } else if(program.extensionMethodsDef[className]?.[accessName] != undefined){
+                    } else if (program.extensionMethodsDef[className]?.[accessName] != undefined) {
                         accessValueTypeFucntionMemberOrextensionMethod = true;//访问了扩展方法
                     }
                 }
                 if (accessValueTypeFucntionMemberOrextensionMethod) {
-                    let socureScope=(scope as BlockScope).getProp(node["accessField"].obj.load).scope;//变量的来源scope
-                    if(socureScope instanceof BlockScope){//如果是来自于blockScope
+                    let socureScope = (scope as BlockScope).getProp(node["accessField"].obj.load).scope;//变量的来源scope
+                    if (socureScope instanceof BlockScope) {//如果是来自于blockScope
                         socureScope.captured.add(node["accessField"].obj.load);//把这个变量捕获
                     }
                 }
@@ -321,10 +321,12 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
     }
     else if (node["immediate"] != undefined) {
         if (node["immediate"].primiviteValue != undefined) {
-            if (isNaN(Number(node["immediate"].primiviteValue))) {
-                result = { type: { PlainType: { name: 'string' } }, hasRet: false };
-            } else {
+            if (typeof node["immediate"].primiviteValue == 'number') {
                 result = { type: { PlainType: { name: 'int' } }, hasRet: false };
+            } else if (typeof node["immediate"].primiviteValue == 'boolean') {
+                result = { type: { PlainType: { name: 'bool' } }, hasRet: false };
+            } else {
+                result = { type: { PlainType: { name: 'string' } }, hasRet: false };
             }
         } else {//是一个函数体
             functionScan(new BlockScope(scope, node["immediate"].functionValue!, node["immediate"].functionValue!.body!, {}), node["immediate"].functionValue!);

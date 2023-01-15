@@ -1463,7 +1463,7 @@ import { Program } from "./program.js";
             }
         },//if else语句
         {
-            "statement:label_def do statement while ( object ) ;": {
+            "statement:label_def do statement while ( object )": {
                 action: function ($, s): ASTNode {
                     let label_def = $[0] as string | undefined;
                     let stmt = $[2] as Block | ASTNode;

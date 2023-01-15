@@ -47,4 +47,6 @@
     }
     这种情况下根本无法追踪
 
-+   创建构造函数是需要指定inContructor
++   创建构造函数时需要指定inContructor
++   如果break不在bock中，能否正确跳出
++   (1+2).toString是否正确装箱

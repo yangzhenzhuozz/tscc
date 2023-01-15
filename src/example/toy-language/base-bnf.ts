@@ -187,7 +187,7 @@ let grammar: Grammar = {
          * 定义两个优先级规则low_priority_for_if_stmt和else,使else的优先级高于low_priority_for_if_stmt,在产生冲突时选择移入
          */
         { "statement:if ( object ) statement else statement": {} },//if else语句
-        { "statement:label_def do statement while ( object ) ;": {} },//do-while语句，其实我是想删除while语句的，我觉得for_loop可以完全替代while,一句话,为了看起来没这么怪
+        { "statement:label_def do statement while ( object )": {} },//do-while语句，其实我是想删除while语句的，我觉得for_loop可以完全替代while,一句话,为了看起来没这么怪
         { "statement:label_def while ( object ) statement": {} },//while语句
         { "statement:label_def for ( for_init ; for_condition ; for_step ) statement": {} },//for_loop
         { "statement:block": { action: ($, s) => $[0] } },//代码块

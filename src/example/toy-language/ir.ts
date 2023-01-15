@@ -56,7 +56,7 @@ export function typeTableToBin(): ArrayBuffer {
 }
 export enum OPCODE {
     '_new' = 0,//创建一个普通对象
-    'newFunc',//创建一个函数对象
+    'newFunc',//创建一个函数对象,op1是text,op2是函数类型名字，op3是函数包裹类名字
     'newArray',//操作数是基本类型，长度和是否仍然是一个数组从栈中取
     'program_load',//将program指针压入表达式栈
     'program_store',//将program从栈存入program指针

@@ -61,16 +61,28 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
     frameLevel: undefined | number,//给ret、break、continue提供popup_stackFrame参数，需要向下传递,并且遇到新block的时候要+1
     isGetAddress: undefined | boolean,//是否读取地址,比如 int a; a.toString(); 这里的load a就是读取a的地址而不是值，只有accessField和callEXM的子节点取true，影响accessField和load节点
     /**
-     * 因为机器码的if指令如果命中则跳转，不命中则执行下一条指令，所以要想实现分支就要利用这个特性，bool反向的时候，jmp目标是falseIR，所以下一条应该是trueIR，不反向的时候，目标是trueIR，所以下一条指令是falseIR
+     * 因为机器码的if指令如果命中则跳转，不命中则执行下一条指令，所以要想实现分支就要利用这个特性,
+     * bool反向的时候，jmp目标是falseIR，所以下一条应该是trueIR，不反向的时候，目标是trueIR，所以下一条指令是falseIR
      * 因为&&指令流如下:
      *      trueIR
      *      jmp
      *      false
+     * 
      * ||指令流如下:
      *      false
      *      jmp
      *      true
-     * 所以只有||的直接左子节点条件跳转指令是正常生成的true，其他都是false
+     * 
+     * do_while指令流如下:
+     * loop_body_start
+     * xxxx
+     * loop_body_end
+     * if_指令为真 loop_body_start
+     * other_ir
+     * 
+     * 所以目前只有下面两种情况取true
+     * 1.||的直接左子节点条件跳转指令是正常生成的true，其他都是false
+     * 2.do_while的condition指令
      */
     boolForward: undefined | boolean,
     isAssignment: undefined | boolean,//是否是对某个成员或者局部变量赋值，在处理=的时候有用到,如果是左值节点，则load、getField、[]不生成真实指令，默认false，只有=左子节点取true
@@ -223,11 +235,22 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
             }
             return { startIR: startIR, endIR: endIR ?? startIR, truelist: [], falselist: [], isRightVaiable: true };
         } else {
-            if (isNaN(Number(node["immediate"]!.primiviteValue))) {
-                throw `暂时不支持非数字的initAST`;//就剩下字符串类型了
-            } else {
+            if (typeof node["immediate"]!.primiviteValue == 'number') {
                 let ir = new IR('const_i32_load', Number(node["immediate"]!.primiviteValue));
                 return { startIR: ir, endIR: ir, truelist: [], falselist: [], isRightVaiable: true };
+            } else if (typeof node["immediate"]!.primiviteValue == 'boolean') {
+                let ir: IR;
+                if (node["immediate"]!.primiviteValue) {
+                    ir = new IR('const_i8_load', 1);
+                } else {
+                    ir = new IR('const_i8_load', 0);
+                }
+                return { startIR: ir, endIR: ir, truelist: [], falselist: [], isRightVaiable: true };
+            } else {
+                //构造一个String,返回指针(要不要做一个字符串常量池，如果我的意见是不做，因为String是可变类型，不像java)
+                //或者返回一个字符串数组
+                //如果以后支持数组初始化，也是在heap构造一个数组，然后返回指针就行
+                throw `暂时不支持非数字的initAST`;//就剩下字符串类型了
             }
         }
     }
@@ -871,6 +894,11 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
                 inContructorRet: undefined,
                 functionWrapName: option.functionWrapName
             });
+            if (conditionRet.truelist.length == 0 && conditionRet.falselist.length == 0) {//如果bool值不是通过布尔运算得到的，则为其插入一个判断指令
+                let ir = new IR('i_if_eq');//这里取反向bool，见boolForward的说明
+                conditionRet.falselist.push(ir);
+                conditionRet.endIR = ir;
+            }
             trueList = conditionRet.truelist;
             falseList = conditionRet.falselist;
             conditionStartIR = conditionRet.startIR;
@@ -924,8 +952,8 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
             forLoopBodyStratIR = blockRet.startIR;
             jmpToFunctionEnd = blockRet.jmpToFunctionEnd;
         }
-        assert(Array.isArray(option.label));
-        option.label.pop();
+        option.label.pop();//清理刚刚新增的label
+
         if (node['_for'].step) {
             nodeRecursion(scope, node['_for'].step, {
                 label: undefined,
@@ -1081,13 +1109,16 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
         let nrRet = nodeRecursion(scope, node['callEXM'].obj, {
             label: undefined,
             frameLevel: undefined,
-            isGetAddress: undefined,
+            isGetAddress: true,
             boolForward: undefined,
             isAssignment: undefined,
             singleLevelThis: option.singleLevelThis,
             inContructorRet: undefined,
             functionWrapName: option.functionWrapName
         });
+        /**
+         * 见accessField节点对装箱的解释
+         */
         //访问一个值类型右值的扩展函数时
         if (!isPointType(node['callEXM'].obj.type!) && nrRet.isRightVaiable) {
             let box = new IR('box');
@@ -1370,6 +1401,132 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
         }
         return { startIR: left.startIR, endIR: opIR, truelist: tureList, falselist: falseList, isRightVaiable: true };
     }
+    else if (node['_while'] != undefined) {
+        let startIR: IR | undefined;
+        let conditionStartIR: IR;
+        let trueList: IR[] = [];
+        let falseList: IR[] = [];
+        let breakIRs: IR[] = [];
+        let continueIRs: IR[] = [];
+        let jmpToFunctionEnd: IR[] = [];
+
+        if (option.label == undefined) {
+            option.label = [];
+        }
+        assert(typeof option.frameLevel == 'number');
+        if (node['_while'].label) {
+            option.label.push({ name: node['_while'].label, frameLevel: option.frameLevel, breakIRs, continueIRs });
+        } else {
+            option.label.push({ name: '', frameLevel: option.frameLevel, breakIRs, continueIRs });
+        }
+
+
+        let conditionRet = nodeRecursion(scope, node['_while'].condition, {
+            label: undefined,
+            frameLevel: undefined,
+            isGetAddress: undefined,
+            boolForward: undefined,
+            isAssignment: undefined,
+            singleLevelThis: option.singleLevelThis,
+            inContructorRet: undefined,
+            functionWrapName: option.functionWrapName
+        });
+        if (conditionRet.truelist.length == 0 && conditionRet.falselist.length == 0) {//如果bool值不是通过布尔运算得到的，则为其插入一个判断指令
+            let ir = new IR('i_if_eq');//这里取反向bool，见boolForward的说明
+            conditionRet.falselist.push(ir);
+            conditionRet.endIR = ir;
+        }
+        trueList = conditionRet.truelist;
+        falseList = conditionRet.falselist;
+        conditionStartIR = conditionRet.startIR;
+        startIR = conditionRet.startIR;
+
+        let loopBody = BlockScan(new BlockScope(scope, undefined, node['_while'].stmt, { program }), {
+            label: option.label,
+            frameLevel: option.frameLevel + 1,
+            isGetAddress: undefined,
+            boolForward: undefined,
+            isAssignment: undefined,
+            singleLevelThis: option.singleLevelThis,
+            inContructorRet: option.inContructorRet,
+            functionWrapName: option.functionWrapName
+        });
+        jmpToFunctionEnd = loopBody.jmpToFunctionEnd;
+        option.label.pop();//清理刚刚新增的label
+
+        let loop = new IR('jmp');
+        loop.operand1 = startIR.index - loop.index;
+
+        backPatch(breakIRs, loop.index + 1);
+        backPatch(continueIRs, conditionStartIR.index);
+        backPatch(trueList, loopBody.startIR.index);
+        backPatch(falseList, loop.index + 1);//for语句后面一定会有指令(至少一定会有一条ret或者pop_stackFrame指令,因为for一定是定义在functio或者block中的)
+
+        return { startIR: startIR, endIR: loop, truelist: [], falselist: [], jmpToFunctionEnd };
+
+    }
+    else if (node['do_while'] != undefined) {
+        let startIR: IR | undefined;
+        let conditionStartIR: IR;
+        let trueList: IR[] = [];
+        let falseList: IR[] = [];
+        let breakIRs: IR[] = [];
+        let continueIRs: IR[] = [];
+        let jmpToFunctionEnd: IR[] = [];
+
+        if (option.label == undefined) {
+            option.label = [];
+        }
+        assert(typeof option.frameLevel == 'number');
+        if (node['do_while'].label) {
+            option.label.push({ name: node['do_while'].label, frameLevel: option.frameLevel, breakIRs, continueIRs });
+        } else {
+            option.label.push({ name: '', frameLevel: option.frameLevel, breakIRs, continueIRs });
+        }
+
+        let loopBody = BlockScan(new BlockScope(scope, undefined, node['do_while'].stmt, { program }), {
+            label: option.label,
+            frameLevel: option.frameLevel + 1,
+            isGetAddress: undefined,
+            boolForward: undefined,
+            isAssignment: undefined,
+            singleLevelThis: option.singleLevelThis,
+            inContructorRet: option.inContructorRet,
+            functionWrapName: option.functionWrapName
+        });
+        startIR = loopBody.startIR;
+        option.label.pop();//清理刚刚新增的label
+
+        let conditionRet = nodeRecursion(scope, node['do_while'].condition, {
+            label: undefined,
+            frameLevel: undefined,
+            isGetAddress: undefined,
+            boolForward: true,
+            isAssignment: undefined,
+            singleLevelThis: option.singleLevelThis,
+            inContructorRet: undefined,
+            functionWrapName: option.functionWrapName
+        });
+        if (conditionRet.truelist.length == 0 && conditionRet.falselist.length == 0) {//如果bool值不是通过布尔运算得到的，则为其插入一个判断指令
+            let ir = new IR('i_if_ne');//这里取正向bool，见boolForward的说明
+            conditionRet.truelist.push(ir);
+            conditionRet.endIR = ir;
+        }
+        trueList = conditionRet.truelist;
+        falseList = conditionRet.falselist;
+
+        backPatch(breakIRs, conditionRet.endIR.index + 1);
+        backPatch(continueIRs, startIR.index);
+        backPatch(trueList, startIR.index);
+        backPatch(falseList, conditionRet.endIR.index + 1);//语句后面一定会有指令(至少一定会有一条ret或者pop_stackFrame指令,因为for一定是定义在functio或者block中的)
+
+        return { startIR: startIR, endIR: conditionRet.endIR, truelist: [], falselist: [], jmpToFunctionEnd };
+
+
+
+
+        throw `unimplement`;
+    }
     else if (node['_switch'] != undefined) {
         throw `unimplement`;
     }
@@ -1383,12 +1540,6 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
         throw `unimplement`;
     }
     else if (node['throwStmt'] != undefined) {
-        throw `unimplement`;
-    }
-    else if (node['do_while'] != undefined) {
-        throw `unimplement`;
-    }
-    else if (node['_while'] != undefined) {
         throw `unimplement`;
     }
     else if (node['_instanceof'] != undefined) {
@@ -1525,17 +1676,26 @@ function BlockScan(blockScope: BlockScope,
             }
         }
     }
+
+
+
     let lastNode = blockScope.block!.body[blockScope.block!.body.length - 1];
-    /**
-     * 如果block的最后一个AST是ret节点,则pop_stack_map已经由这个AST生成了
-     * 否则弹出一个帧(因为每个block结束只需要弹出自己的帧,ret节点改变了处理流程，所以自己控制弹出帧的数量)
-     */
-    if (!(lastNode?.desc == 'ASTNode' && (lastNode as ASTNode).ret != undefined)) {
-        if (option.frameLevel == 1 && option.inContructorRet) {//是最外层的block，且在构造函数中
+    let needPopupStackFrame = true;//本block最后一条指令是否需要弹出stackFrame
+    //最后一个节点是AST而不是block
+    if (lastNode?.desc == 'ASTNode') {
+        let lastASTNode: ASTNode = lastNode as ASTNode;
+        if (lastASTNode.ret != undefined || lastASTNode._continue != undefined || lastASTNode._break != undefined) {
+            needPopupStackFrame = false;
+        }
+    }
+    if (needPopupStackFrame) {
+        if (option.frameLevel == 1 && option.inContructorRet) {//当前Block是函数最外层block，且在构造函数中
             new IR('p_load', 0);//读取this指针到计算栈
         }
         endIR = new IR('pop_stack_map', 1);
     }
+
+
     //到这里scope的所有def已经解析完毕，可以保存了
     let stackFrame: { name: string, type: TypeUsed }[] = [];
     stackFrame.push({ name: '@this_or_funOjb', type: { PlainType: { name: '@point' } } });

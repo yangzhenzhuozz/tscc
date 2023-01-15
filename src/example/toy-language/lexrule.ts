@@ -75,5 +75,6 @@ lexer.addRule(['catch', (arg) => { arg.value = arg.yytext; return `catch`; }]);
 lexer.addRule(['throw', (arg) => { arg.value = arg.yytext; return `throw`; }]);
 lexer.addRule(['super', (arg) => { arg.value = arg.yytext; return `super`; }]);
 lexer.addRule(['instanceof', (arg) => { arg.value = arg.yytext; return `instanceof`; }]);
+lexer.addRule(['(true)|(false)', (arg) => { arg.value = arg.yytext == 'true'; return "immediate_val"; }]);
 export { userTypeDictionary };
 export default lexer;
