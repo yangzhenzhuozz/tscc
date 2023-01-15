@@ -109,8 +109,12 @@ export enum OPCODE {
     'i_if_le',//小于等于则跳转
     'i_if_cmp_eq',//相等则跳转
     'i_if_cmp_ne',//不相等则跳转
-    'i_if_eq',//等于0则跳转
-    'i_if_ne',//不等于0则跳转
+
+    'i8_if_cmp_eq',//相等则跳转
+    'i8_if_cmp_ne',//不相等则跳转
+
+    'i8_if_true',//等于0则跳转
+    'i8_if_false',//等于1则跳转
 
 
     'jmp',//相对跳转
