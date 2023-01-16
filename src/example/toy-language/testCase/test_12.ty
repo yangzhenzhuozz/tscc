@@ -1,21 +1,19 @@
-valuetype class MyClass{
-    var v=10;
-    function a(){
-        return b;
-    };
-    function b(){
-        return c;
-    };
-    function c(){
-        printI32(v);
-    };
-}
-function gen(){
-    var obj:MyClass;
-    return obj;
-};
 function main(){
-    gen().a()()();
+    do
+        printI8(1<2==true);
+    while(1<2==false)
+
+    while(1<2==false)
+        printI8(1<2==true);
+
+    for(;1<2==false;){
+
+    }
+
+    if(1<2==false)
+        printI32(11);
+    else
+        printI32(22);
 };
 
 extension function bar(this int v){

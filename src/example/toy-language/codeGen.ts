@@ -117,19 +117,32 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
         //访问一个值类型右值的成员时
         if (!isPointType(node['accessField'].obj.type!) && irs.isRightVaiable) {
             /**
-             * 为什么一定要装箱？
+             * 为什么要装箱？
              * valueType class MyClass{
-             *    function foo(){
-             *         printf('haha');
+             *    var i=10;
+             *    function a(){
+             *         return b;
              *    };
+             *    function b(){
+             *         if(xxx)
+             *              return c;
+             *         else
+             *              return 其他非成员函数
+             *    }
+             *    function c(){
+             *        printI32(i);
+             *    }
              * }
              * function gen(){
              *    var ret:MyClass;
              *    return ;
              * }
-             * var f=gen().foo;
-             * f();
-             * 如果不装箱的话，无法提取出这个右值的成员变量foo
+             * gen().a()()();
+             * 如果不装箱的话，需要在栈中取地址,还要分析这个右值什么时候被使用完毕
+             * 因为成员函数持有自己这个对象，也就是经过一系列的分析，可以在某种情况下避免装箱
+             * (成员函数没有逃逸出去，比如上面的代码经过静态检查，在调用b时不可能命中xxx，则整个右值对象的持有就结束了，但是这个是我这种水平该考虑的事??)
+             * 需要从栈中取地址，实现起来更麻烦
+             * 
              */
             let box = new IR('box');
             //装箱的情况下，一定是一个PlainType
