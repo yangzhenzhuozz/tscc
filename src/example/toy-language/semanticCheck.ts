@@ -321,12 +321,21 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
     }
     else if (node["immediate"] != undefined) {
         if (node["immediate"].primiviteValue != undefined) {
-            if (typeof node["immediate"].primiviteValue == 'number') {
-                result = { type: { PlainType: { name: 'int' } }, hasRet: false };
-            } else if (typeof node["immediate"].primiviteValue == 'boolean') {
+            let immediate_val = node["immediate"].primiviteValue;
+            if (/^(true)|(false)$/.test(immediate_val)) {
                 result = { type: { PlainType: { name: 'bool' } }, hasRet: false };
+            } else if (/^[0-9]+b$/.test(immediate_val)) {
+                result = { type: { PlainType: { name: 'byte' } }, hasRet: false };
+            } else if (/^[0-9]+s$/.test(immediate_val)) {
+                result = { type: { PlainType: { name: 'short' } }, hasRet: false };
+            } else if (/^[0-9]+$/.test(immediate_val)) {
+                result = { type: { PlainType: { name: 'int' } }, hasRet: false };
+            } else if (/^[0-9]+l$/.test(immediate_val)) {
+                result = { type: { PlainType: { name: 'long' } }, hasRet: false };
+            } else if (/^[0-9]+\.[0-9]+$/.test(immediate_val)) {
+                result = { type: { PlainType: { name: 'double' } }, hasRet: false };
             } else {
-                result = { type: { PlainType: { name: 'string' } }, hasRet: false };
+                throw `还未支持的immediate类型${node["immediate"].primiviteValue}`
             }
         } else {//是一个函数体
             functionScan(new BlockScope(scope, node["immediate"].functionValue!, node["immediate"].functionValue!.body!, {}), node["immediate"].functionValue!);
@@ -998,10 +1007,12 @@ function sizeof(typeName: string): number {
     let ret = 0;
     switch (typeName) {
         case 'void': throw `void无法计算大小,任何成员都不能是void类型`;
-        case 'int': ret = 4; break;
-        case 'double': ret = 8; break;
         case 'bool': ret = 1; break;
         case 'byte': ret = 1; break;
+        case 'short': ret = 2; break;
+        case 'int': ret = 4; break;
+        case 'long': ret = 4; break;
+        case 'double': ret = 8; break;
         case '@point': ret = 8; break;
         default:
             for (let fieldName in program.getDefinedType(typeName).property) {

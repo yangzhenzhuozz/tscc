@@ -248,23 +248,32 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
             }
             return { startIR: startIR, endIR: endIR ?? startIR, truelist: [], falselist: [], isRightVaiable: true };
         } else {
-            if (typeof node["immediate"]!.primiviteValue == 'number') {
-                let ir = new IR('const_i32_load', Number(node["immediate"]!.primiviteValue));
-                return { startIR: ir, endIR: ir, truelist: [], falselist: [], isRightVaiable: true };
-            } else if (typeof node["immediate"]!.primiviteValue == 'boolean') {
-                let ir: IR;
-                if (node["immediate"]!.primiviteValue) {
+            assert(node["immediate"].primiviteValue != undefined);
+            let immediate_val = node["immediate"].primiviteValue;
+            let ir: IR;
+            if (/^(true)|(false)$/.test(immediate_val)) {
+                if (immediate_val == 'true') {
                     ir = new IR('const_i8_load', 1);
                 } else {
                     ir = new IR('const_i8_load', 0);
                 }
-                return { startIR: ir, endIR: ir, truelist: [], falselist: [], isRightVaiable: true };
+            } else if (/^[0-9]+b$/.test(immediate_val)) {
+                ir = new IR('const_i8_load', Number(immediate_val.substring(0, immediate_val.length - 1)));
+            } else if (/^[0-9]+s$/.test(immediate_val)) {
+                ir = new IR('const_i16_load', Number(immediate_val.substring(0, immediate_val.length - 1)));
+            } else if (/^[0-9]+$/.test(immediate_val)) {
+                ir = new IR('const_i32_load', Number(immediate_val));
+            } else if (/^[0-9]+l$/.test(immediate_val)) {
+                ir = new IR('const_i64_load', Number(immediate_val.substring(0, immediate_val.length - 1)));
+            } else if (/^[0-9]+\.[0-9]+$/.test(immediate_val)) {
+                let buffer = new ArrayBuffer(8);
+                let dv = new DataView(buffer);
+                dv.setFloat64(0, Number(immediate_val), true);
+                ir = new IR('const_double_load', Number(dv.getBigInt64(0, true)));
             } else {
-                //构造一个String,返回指针(要不要做一个字符串常量池，如果我的意见是不做，因为String是可变类型，不像java)
-                //或者返回一个字符串数组
-                //如果以后支持数组初始化，也是在heap构造一个数组，然后返回指针就行
-                throw `暂时不支持非数字的initAST`;//就剩下字符串类型了
+                throw `还未支持的immediate类型${node["immediate"].primiviteValue}`
             }
+            return { startIR: ir, endIR: ir, truelist: [], falselist: [], isRightVaiable: true };
         }
     }
     else if (node['+'] != undefined) {
@@ -289,8 +298,20 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
             functionWrapName: option.functionWrapName
         });
         let opIR: IR;
-        if (node['+'].leftChild.type?.PlainType?.name == 'int' && node['+'].rightChild.type?.PlainType?.name == 'int') {
+        if (node['+'].leftChild.type?.PlainType?.name == 'byte' && node['+'].rightChild.type?.PlainType?.name == 'byte') {
+            opIR = new IR('i8_add');
+        }
+        else if (node['+'].leftChild.type?.PlainType?.name == 'short' && node['+'].rightChild.type?.PlainType?.name == 'short') {
+            opIR = new IR('i16_add');
+        }
+        else if (node['+'].leftChild.type?.PlainType?.name == 'int' && node['+'].rightChild.type?.PlainType?.name == 'int') {
             opIR = new IR('i32_add');
+        }
+        else if (node['+'].leftChild.type?.PlainType?.name == 'long' && node['+'].rightChild.type?.PlainType?.name == 'long') {
+            opIR = new IR('i64_add');
+        }
+        else if (node['+'].leftChild.type?.PlainType?.name == 'double' && node['+'].rightChild.type?.PlainType?.name == 'double') {
+            opIR = new IR('double_add');
         } else {
             throw `vm 暂未支持${TypeUsedSign(node['+'].leftChild.type!)}的+操作`;
         }
@@ -860,13 +881,24 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
             functionWrapName: option.functionWrapName
         });
         let endIR: IR;
-        let virtualIR = left.virtualIR!;
-        if (node['++'].type!.PlainType?.name == 'int') {
+        assert(left.virtualIR != undefined);
+        let virtualIR = left.virtualIR;
+
+        if (node['++'].type!.PlainType?.name == 'byte') {
+            new IR('i8_inc');
+        } else if (node['++'].type!.PlainType?.name == 'short') {
+            new IR('i16_inc');
+        } else if (node['++'].type!.PlainType?.name == 'innt') {
             new IR('i32_inc');
-            endIR = new IR(virtualIR.opCode, virtualIR.operand1, virtualIR.operand2, virtualIR.operand3);
+        } else if (node['++'].type!.PlainType?.name == 'long') {
+            new IR('i64_inc');
+        } else if (node['++'].type!.PlainType?.name == 'double') {
+            new IR('double_inc');
         } else {
             throw `暂时不支持类型:${node['++'].type!.PlainType?.name}的++`;
         }
+
+        endIR = new IR(virtualIR.opCode, virtualIR.operand1, virtualIR.operand2, virtualIR.operand3);
         return { startIR: left.startIR, endIR: endIR, truelist: [], falselist: [], jmpToFunctionEnd: [], isRightVaiable: true };
     }
     else if (node['--'] != undefined) {
@@ -891,13 +923,25 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
             functionWrapName: option.functionWrapName
         });
         let endIR: IR;
-        let virtualIR = left.virtualIR!;
-        if (node['--'].type!.PlainType?.name == 'int') {
+        assert(left.virtualIR != undefined);
+        let virtualIR = left.virtualIR;
+
+
+        if (node['--'].type!.PlainType?.name == 'byte') {
+            new IR('i8_dec');
+        } else if (node['--'].type!.PlainType?.name == 'short') {
+            new IR('i16_dec');
+        } else if (node['--'].type!.PlainType?.name == 'innt') {
             new IR('i32_dec');
-            endIR = new IR(virtualIR.opCode, virtualIR.operand1, virtualIR.operand2, virtualIR.operand3);
+        } else if (node['--'].type!.PlainType?.name == 'long') {
+            new IR('i64_dec');
+        } else if (node['--'].type!.PlainType?.name == 'double') {
+            new IR('double_dec');
         } else {
-            throw `暂时不支持类型:${node['--'].type!.PlainType?.name}的++`;
+            throw `暂时不支持类型:${node['--'].type!.PlainType?.name}的--`;
         }
+
+        endIR = new IR(virtualIR.opCode, virtualIR.operand1, virtualIR.operand2, virtualIR.operand3);
         return { startIR: left.startIR, endIR: endIR, truelist: [], falselist: [], jmpToFunctionEnd: [], isRightVaiable: true };
     }
     else if (node['_for'] != undefined) {
@@ -1186,11 +1230,25 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
             functionWrapName: option.functionWrapName
         });
         let opIR: IR;
-        if (node['-'].leftChild.type?.PlainType?.name == 'int' && node['-'].rightChild.type?.PlainType?.name == 'int') {
+
+        if (node['-'].leftChild.type?.PlainType?.name == 'byte' && node['-'].rightChild.type?.PlainType?.name == 'byte') {
+            opIR = new IR('i8_sub');
+        }
+        else if (node['-'].leftChild.type?.PlainType?.name == 'short' && node['-'].rightChild.type?.PlainType?.name == 'short') {
+            opIR = new IR('i16_sub');
+        }
+        else if (node['-'].leftChild.type?.PlainType?.name == 'int' && node['-'].rightChild.type?.PlainType?.name == 'int') {
             opIR = new IR('i32_sub');
+        }
+        else if (node['-'].leftChild.type?.PlainType?.name == 'long' && node['-'].rightChild.type?.PlainType?.name == 'long') {
+            opIR = new IR('i64_sub');
+        }
+        else if (node['-'].leftChild.type?.PlainType?.name == 'double' && node['-'].rightChild.type?.PlainType?.name == 'double') {
+            opIR = new IR('double_sub');
         } else {
             throw `vm 暂未支持${TypeUsedSign(node['-'].leftChild.type!)}的-操作`;
         }
+
         return { startIR: left.startIR, endIR: opIR, truelist: [], falselist: [], isRightVaiable: true };
     }
     else if (node['*'] != undefined) {
@@ -1215,11 +1273,27 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
             functionWrapName: option.functionWrapName
         });
         let opIR: IR;
-        if (node['*'].leftChild.type?.PlainType?.name == 'int' && node['*'].rightChild.type?.PlainType?.name == 'int') {
+
+
+        if (node['*'].leftChild.type?.PlainType?.name == 'byte' && node['*'].rightChild.type?.PlainType?.name == 'byte') {
+            opIR = new IR('i8_mul');
+        }
+        else if (node['*'].leftChild.type?.PlainType?.name == 'short' && node['*'].rightChild.type?.PlainType?.name == 'short') {
+            opIR = new IR('i16_mul');
+        }
+        else if (node['*'].leftChild.type?.PlainType?.name == 'int' && node['*'].rightChild.type?.PlainType?.name == 'int') {
             opIR = new IR('i32_mul');
+        }
+        else if (node['*'].leftChild.type?.PlainType?.name == 'long' && node['*'].rightChild.type?.PlainType?.name == 'long') {
+            opIR = new IR('i64_mul');
+        }
+        else if (node['*'].leftChild.type?.PlainType?.name == 'double' && node['*'].rightChild.type?.PlainType?.name == 'double') {
+            opIR = new IR('double_mul');
         } else {
             throw `vm 暂未支持${TypeUsedSign(node['*'].leftChild.type!)}的*操作`;
         }
+
+
         return { startIR: left.startIR, endIR: opIR, truelist: [], falselist: [], isRightVaiable: true };
     }
     else if (node['/'] != undefined) {
@@ -1244,11 +1318,25 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
             functionWrapName: option.functionWrapName
         });
         let opIR: IR;
-        if (node['/'].leftChild.type?.PlainType?.name == 'int' && node['/'].rightChild.type?.PlainType?.name == 'int') {
+
+        if (node['/'].leftChild.type?.PlainType?.name == 'byte' && node['/'].rightChild.type?.PlainType?.name == 'byte') {
+            opIR = new IR('i8_div');
+        }
+        else if (node['/'].leftChild.type?.PlainType?.name == 'short' && node['/'].rightChild.type?.PlainType?.name == 'short') {
+            opIR = new IR('i16_div');
+        }
+        else if (node['/'].leftChild.type?.PlainType?.name == 'int' && node['/'].rightChild.type?.PlainType?.name == 'int') {
             opIR = new IR('i32_div');
+        }
+        else if (node['/'].leftChild.type?.PlainType?.name == 'long' && node['/'].rightChild.type?.PlainType?.name == 'long') {
+            opIR = new IR('i64_div');
+        }
+        else if (node['/'].leftChild.type?.PlainType?.name == 'double' && node['/'].rightChild.type?.PlainType?.name == 'double') {
+            opIR = new IR('double_div');
         } else {
             throw `vm 暂未支持${TypeUsedSign(node['/'].leftChild.type!)}的/操作`;
         }
+
         return { startIR: left.startIR, endIR: opIR, truelist: [], falselist: [], isRightVaiable: true };
     }
     else if (node['<'] != undefined) {
@@ -1275,12 +1363,45 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
         let opIR: IR;
         let tureList: IR[] = [];
         let falseList: IR[] = [];
-        if (node['<'].leftChild.type?.PlainType?.name == 'int' && node['<'].rightChild.type?.PlainType?.name == 'int') {
+        if (node['<'].leftChild.type?.PlainType?.name == 'byte' && node['<'].rightChild.type?.PlainType?.name == 'byte') {
             if (option.boolForward) {
-                opIR = new IR('i_if_lt');
+                opIR = new IR('i8_if_lt');
                 tureList.push(opIR)
             } else {
-                opIR = new IR('i_if_ge');
+                opIR = new IR('i8_if_ge');
+                falseList.push(opIR)
+            }
+        }
+        else if (node['<'].leftChild.type?.PlainType?.name == 'short' && node['<'].rightChild.type?.PlainType?.name == 'short') {
+            if (option.boolForward) {
+                opIR = new IR('i16_if_lt');
+                tureList.push(opIR)
+            } else {
+                opIR = new IR('i16_if_ge');
+                falseList.push(opIR)
+            }
+        } else if (node['<'].leftChild.type?.PlainType?.name == 'int' && node['<'].rightChild.type?.PlainType?.name == 'int') {
+            if (option.boolForward) {
+                opIR = new IR('i32_if_lt');
+                tureList.push(opIR)
+            } else {
+                opIR = new IR('i32_if_ge');
+                falseList.push(opIR)
+            }
+        } else if (node['<'].leftChild.type?.PlainType?.name == 'long' && node['<'].rightChild.type?.PlainType?.name == 'long') {
+            if (option.boolForward) {
+                opIR = new IR('i64_if_lt');
+                tureList.push(opIR)
+            } else {
+                opIR = new IR('i64_if_ge');
+                falseList.push(opIR)
+            }
+        } else if (node['<'].leftChild.type?.PlainType?.name == 'double' && node['<'].rightChild.type?.PlainType?.name == 'double') {
+            if (option.boolForward) {
+                opIR = new IR('double_if_lt');
+                tureList.push(opIR)
+            } else {
+                opIR = new IR('double_if_ge');
                 falseList.push(opIR)
             }
         } else {
@@ -1312,12 +1433,46 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
         let opIR: IR;
         let tureList: IR[] = [];
         let falseList: IR[] = [];
-        if (node['<='].leftChild.type?.PlainType?.name == 'int' && node['<='].rightChild.type?.PlainType?.name == 'int') {
+        if (node['<='].leftChild.type?.PlainType?.name == 'byte' && node['<='].rightChild.type?.PlainType?.name == 'byte') {
             if (option.boolForward) {
-                opIR = new IR('i_if_le');
+                opIR = new IR('i8_if_le');
                 tureList.push(opIR)
             } else {
-                opIR = new IR('i_if_gt');
+                opIR = new IR('i8_if_gt');
+                falseList.push(opIR)
+            }
+        }
+        else if (node['<='].leftChild.type?.PlainType?.name == 'short' && node['<='].rightChild.type?.PlainType?.name == 'short') {
+            if (option.boolForward) {
+                opIR = new IR('i16_if_le');
+                tureList.push(opIR)
+            } else {
+                opIR = new IR('i16_if_gt');
+                falseList.push(opIR)
+            }
+        }
+        else if (node['<='].leftChild.type?.PlainType?.name == 'int' && node['<='].rightChild.type?.PlainType?.name == 'int') {
+            if (option.boolForward) {
+                opIR = new IR('i32_if_le');
+                tureList.push(opIR)
+            } else {
+                opIR = new IR('i32_if_gt');
+                falseList.push(opIR)
+            }
+        } else if (node['<='].leftChild.type?.PlainType?.name == 'long' && node['<='].rightChild.type?.PlainType?.name == 'long') {
+            if (option.boolForward) {
+                opIR = new IR('i64_if_le');
+                tureList.push(opIR)
+            } else {
+                opIR = new IR('i64_if_gt');
+                falseList.push(opIR)
+            }
+        } else if (node['<='].leftChild.type?.PlainType?.name == 'double' && node['<='].rightChild.type?.PlainType?.name == 'double') {
+            if (option.boolForward) {
+                opIR = new IR('double_if_le');
+                tureList.push(opIR)
+            } else {
+                opIR = new IR('double_if_gt');
                 falseList.push(opIR)
             }
         } else {
@@ -1349,12 +1504,44 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
         let opIR: IR;
         let tureList: IR[] = [];
         let falseList: IR[] = [];
-        if (node['>'].leftChild.type?.PlainType?.name == 'int' && node['>'].rightChild.type?.PlainType?.name == 'int') {
+        if (node['>'].leftChild.type?.PlainType?.name == 'byte' && node['>'].rightChild.type?.PlainType?.name == 'byte') {
             if (option.boolForward) {
-                opIR = new IR('i_if_gt');
+                opIR = new IR('i8_if_gt');
                 tureList.push(opIR)
             } else {
-                opIR = new IR('i_if_le');
+                opIR = new IR('i8_if_le');
+                falseList.push(opIR)
+            }
+        } else if (node['>'].leftChild.type?.PlainType?.name == 'short' && node['>'].rightChild.type?.PlainType?.name == 'short') {
+            if (option.boolForward) {
+                opIR = new IR('i16_if_gt');
+                tureList.push(opIR)
+            } else {
+                opIR = new IR('i16_if_le');
+                falseList.push(opIR)
+            }
+        } else if (node['>'].leftChild.type?.PlainType?.name == 'int' && node['>'].rightChild.type?.PlainType?.name == 'int') {
+            if (option.boolForward) {
+                opIR = new IR('i32_if_gt');
+                tureList.push(opIR)
+            } else {
+                opIR = new IR('i32_if_le');
+                falseList.push(opIR)
+            }
+        } else if (node['>'].leftChild.type?.PlainType?.name == 'long' && node['>'].rightChild.type?.PlainType?.name == 'long') {
+            if (option.boolForward) {
+                opIR = new IR('i64_if_gt');
+                tureList.push(opIR)
+            } else {
+                opIR = new IR('i64_if_le');
+                falseList.push(opIR)
+            }
+        } else if (node['>'].leftChild.type?.PlainType?.name == 'double' && node['>'].rightChild.type?.PlainType?.name == 'double') {
+            if (option.boolForward) {
+                opIR = new IR('double_if_gt');
+                tureList.push(opIR)
+            } else {
+                opIR = new IR('double_if_le');
                 falseList.push(opIR)
             }
         } else {
@@ -1386,12 +1573,44 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
         let opIR: IR;
         let tureList: IR[] = [];
         let falseList: IR[] = [];
-        if (node['>='].leftChild.type?.PlainType?.name == 'int' && node['>='].rightChild.type?.PlainType?.name == 'int') {
+        if (node['>='].leftChild.type?.PlainType?.name == 'byte' && node['>='].rightChild.type?.PlainType?.name == 'byte') {
             if (option.boolForward) {
-                opIR = new IR('i_if_ge');
+                opIR = new IR('i8_if_ge');
                 tureList.push(opIR)
             } else {
-                opIR = new IR('i_if_lt');
+                opIR = new IR('i8_if_lt');
+                falseList.push(opIR)
+            }
+        } else if (node['>='].leftChild.type?.PlainType?.name == 'short' && node['>='].rightChild.type?.PlainType?.name == 'short') {
+            if (option.boolForward) {
+                opIR = new IR('i16_if_ge');
+                tureList.push(opIR)
+            } else {
+                opIR = new IR('i16_if_lt');
+                falseList.push(opIR)
+            }
+        } else if (node['>='].leftChild.type?.PlainType?.name == 'int' && node['>='].rightChild.type?.PlainType?.name == 'int') {
+            if (option.boolForward) {
+                opIR = new IR('i32_if_ge');
+                tureList.push(opIR)
+            } else {
+                opIR = new IR('i32_if_lt');
+                falseList.push(opIR)
+            }
+        } else if (node['>='].leftChild.type?.PlainType?.name == 'long' && node['>='].rightChild.type?.PlainType?.name == 'long') {
+            if (option.boolForward) {
+                opIR = new IR('i64_if_ge');
+                tureList.push(opIR)
+            } else {
+                opIR = new IR('i64_if_lt');
+                falseList.push(opIR)
+            }
+        } else if (node['>='].leftChild.type?.PlainType?.name == 'double' && node['>='].rightChild.type?.PlainType?.name == 'double') {
+            if (option.boolForward) {
+                opIR = new IR('double_if_ge');
+                tureList.push(opIR)
+            } else {
+                opIR = new IR('double_if_lt');
                 falseList.push(opIR)
             }
         } else {
@@ -1442,20 +1661,53 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
         let opIR: IR;
         let tureList: IR[] = [];
         let falseList: IR[] = [];
-        if (node['=='].leftChild.type?.PlainType?.name == 'int' && node['=='].rightChild.type?.PlainType?.name == 'int') {
-            if (option.boolForward) {
-                opIR = new IR('i_if_cmp_eq');
-                tureList.push(opIR)
-            } else {
-                opIR = new IR('i_if_cmp_ne');
-                falseList.push(opIR)
-            }
-        } else if (node['=='].leftChild.type?.PlainType?.name == 'bool' && node['=='].rightChild.type?.PlainType?.name == 'bool') {
+        if (node['=='].leftChild.type?.PlainType?.name == 'bool' && node['=='].rightChild.type?.PlainType?.name == 'bool') {
             if (option.boolForward) {
                 opIR = new IR('i8_if_cmp_eq');
                 tureList.push(opIR)
             } else {
                 opIR = new IR('i8_if_cmp_ne');
+                falseList.push(opIR)
+            }
+        }
+        else if (node['=='].leftChild.type?.PlainType?.name == 'byte' && node['=='].rightChild.type?.PlainType?.name == 'byte') {
+            if (option.boolForward) {
+                opIR = new IR('i8_if_cmp_eq');
+                tureList.push(opIR)
+            } else {
+                opIR = new IR('i8_if_cmp_ne');
+                falseList.push(opIR)
+            }
+        } else if (node['=='].leftChild.type?.PlainType?.name == 'short' && node['=='].rightChild.type?.PlainType?.name == 'short') {
+            if (option.boolForward) {
+                opIR = new IR('i16_if_cmp_eq');
+                tureList.push(opIR)
+            } else {
+                opIR = new IR('i16_if_cmp_ne');
+                falseList.push(opIR)
+            }
+        } else if (node['=='].leftChild.type?.PlainType?.name == 'int' && node['=='].rightChild.type?.PlainType?.name == 'int') {
+            if (option.boolForward) {
+                opIR = new IR('i32_if_cmp_eq');
+                tureList.push(opIR)
+            } else {
+                opIR = new IR('i32_if_cmp_ne');
+                falseList.push(opIR)
+            }
+        } else if (node['=='].leftChild.type?.PlainType?.name == 'long' && node['=='].rightChild.type?.PlainType?.name == 'long') {
+            if (option.boolForward) {
+                opIR = new IR('i64_if_cmp_eq');
+                tureList.push(opIR)
+            } else {
+                opIR = new IR('i64_if_cmp_ne');
+                falseList.push(opIR)
+            }
+        } else if (node['=='].leftChild.type?.PlainType?.name == 'double' && node['=='].rightChild.type?.PlainType?.name == 'double') {
+            if (option.boolForward) {
+                opIR = new IR('double_if_cmp_eq');
+                tureList.push(opIR)
+            } else {
+                opIR = new IR('double_if_cmp_ne');
                 falseList.push(opIR)
             }
         } else {

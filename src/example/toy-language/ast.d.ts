@@ -95,7 +95,7 @@ interface ASTNode {
     _super?: "";
     _this?: string;//this对象的类型名称
     _program?: "";//访问program对象
-    immediate?: { functionValue?: FunctionType; primiviteValue?: string | number | boolean; };//immediate只可以是数字、字符串、函数,对应了 1、"string"、()=>{console.log("aaa")}这几种情况
+    immediate?: { functionValue?: FunctionType; primiviteValue?: string; };//immediate只可以是数字、字符串、函数,对应了 1、"string"、()=>{console.log("aaa")}这几种情况
     trycatch?: { tryBlock: Block, catch_list: { catchVariable: string, catchType: TypeUsed, catchBlock: Block }[] };
     throwStmt?: ASTNode;
     ret?: ASTNode | "";

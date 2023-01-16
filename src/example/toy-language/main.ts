@@ -14,11 +14,8 @@ function basic_typeScan(source: string) {
     }
 }
 function main() {
-    //注册系统类型
-    userTypeDictionary.add('int');
-    userTypeDictionary.add('double');
-    userTypeDictionary.add('bool');
     userTypeDictionary.add('void');
+    //注册系统类型
     let source = fs.readFileSync("./src/example/toy-language/testCase/test.ty", 'utf-8').toString();
     lexer.setSource(source);
     try {
