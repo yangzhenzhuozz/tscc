@@ -21,7 +21,7 @@ let programScope: ProgramScope;
  * @param target 
  * @param offset 补偿，默认为0
  */
-function backPatch(list: IR[], targetIndex: number) {
+function backPatch(list: IR[], targetIndex: bigint) {
     for (let ir of list) {
         ir.operand1 = targetIndex - ir.index;
     }
@@ -269,7 +269,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
                 let buffer = new ArrayBuffer(8);
                 let dv = new DataView(buffer);
                 dv.setFloat64(0, Number(immediate_val), true);
-                ir = new IR('const_double_load', Number(dv.getBigInt64(0, true)));
+                ir = new IR('const_double_load', dv.getBigInt64(0, true));
             } else {
                 throw `还未支持的immediate类型${node["immediate"].primiviteValue}`
             }
@@ -688,7 +688,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
             functionWrapName: option.functionWrapName
         });
         backPatch(condition.truelist, blockRet.startIR.index);
-        backPatch(condition.falselist, blockRet.endIR.index + 1);
+        backPatch(condition.falselist, blockRet.endIR.index + 1n);
         return { startIR: condition.startIR, endIR: blockRet.endIR, truelist: [], falselist: [], jmpToFunctionEnd: blockRet.jmpToFunctionEnd };
     }
     else if (node['ret'] != undefined) {
@@ -1046,11 +1046,11 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
             });
         }
         let loop = new IR('jmp');
-        backPatch(breakIRs, loop.index + 1);
+        backPatch(breakIRs, loop.index + 1n);
         if (conditionStartIR) {
             loop.operand1 = conditionStartIR.index - loop.index;
             if (trueList.length > 0 || falseList.length > 0) {
-                backPatch(falseList, loop.index + 1);//for语句后面一定会有指令(至少一定会有一条ret或者pop_stackFrame指令,因为for一定是定义在functio或者block中的)
+                backPatch(falseList, loop.index + 1n);//for语句后面一定会有指令(至少一定会有一条ret或者pop_stackFrame指令,因为for一定是定义在functio或者block中的)
                 backPatch(trueList, forLoopBodyStratIR.index);
             }
             backPatch(continueIRs, conditionStartIR.index);
@@ -1633,7 +1633,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
             let trueIR = new IR('const_i8_load', 1);
             let jmp = new IR('jmp');
             let falseIR = new IR('const_i8_load', 0);
-            jmp.operand1 = falseIR.index - jmp.index + falseIR.length
+            jmp.operand1 = BigInt(falseIR.index - jmp.index + falseIR.length);
             backPatch(left.truelist, trueIR.index);//回填true
             backPatch(left.falselist, falseIR.index);//回填false
         }
@@ -1771,10 +1771,10 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
         let loop = new IR('jmp');
         loop.operand1 = startIR.index - loop.index;
 
-        backPatch(breakIRs, loop.index + 1);
+        backPatch(breakIRs, loop.index + 1n);
         backPatch(continueIRs, conditionStartIR.index);
         backPatch(trueList, loopBody.startIR.index);
-        backPatch(falseList, loop.index + 1);//for语句后面一定会有指令(至少一定会有一条ret或者pop_stackFrame指令,因为for一定是定义在functio或者block中的)
+        backPatch(falseList, loop.index + 1n);//for语句后面一定会有指令(至少一定会有一条ret或者pop_stackFrame指令,因为for一定是定义在functio或者block中的)
 
         return { startIR: startIR, endIR: loop, truelist: [], falselist: [], jmpToFunctionEnd };
 
@@ -1831,13 +1831,33 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
         trueList = conditionRet.truelist;
         falseList = conditionRet.falselist;
 
-        backPatch(breakIRs, conditionRet.endIR.index + 1);
+        backPatch(breakIRs, conditionRet.endIR.index + 1n);
         backPatch(continueIRs, startIR.index);
         backPatch(trueList, startIR.index);
-        backPatch(falseList, conditionRet.endIR.index + 1);//语句后面一定会有指令(至少一定会有一条ret或者pop_stackFrame指令,因为for一定是定义在functio或者block中的)
+        backPatch(falseList, conditionRet.endIR.index + 1n);//语句后面一定会有指令(至少一定会有一条ret或者pop_stackFrame指令,因为for一定是定义在functio或者block中的)
 
         return { startIR: startIR, endIR: conditionRet.endIR, truelist: [], falselist: [], jmpToFunctionEnd };
     }
+    else if (node['castRefToObj'] != undefined) {
+        //不需要生成任何代码
+        throw `unimplement`;
+    }
+    else if (node['castObjToRef'] != undefined) {
+        //需要检查是否允许转换
+        throw `unimplement`;
+    }
+    else if (node['castValueType'] != undefined) {
+        //检查是否为内置类型，否则不准转换
+        throw `unimplement`;
+    }
+    else if (node['box'] != undefined) {
+        throw `unimplement`;
+    }
+    else if (node['unbox'] != undefined) {
+        throw `unimplement`;
+    }
+    
+
     else if (node['_switch'] != undefined) {
         throw `unimplement`;
     }
@@ -1857,15 +1877,6 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
         throw `unimplement`;
     }
     else if (node['not'] != undefined) {
-        throw `unimplement`;
-    }
-    else if (node['cast'] != undefined) {
-        throw `unimplement`;
-    }
-    else if (node['box'] != undefined) {
-        throw `unimplement`;
-    }
-    else if (node['unbox'] != undefined) {
         throw `unimplement`;
     }
     else { throw `还没支持的AST类型` };

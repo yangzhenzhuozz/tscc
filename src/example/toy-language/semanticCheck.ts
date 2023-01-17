@@ -584,28 +584,58 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
         result = { type: t1, hasRet: false };
     }
     else if (node["cast"] != undefined) {
+        /**
+         * 一共有9种情况
+         * 
+         * ref->obj  允许  + 无需生成指令
+         * ref->val  禁止  
+         * ref->ref  禁止
+         * 
+         * obj->obj  禁止  + 无需生成指令
+         * obj->ref  允许  +
+         * obj->val  允许  +
+         * 
+         * val->obj  允许  +
+         * val->ref  禁止
+         * val->val  允许
+         */
         let srcType = nodeRecursion(scope, node["cast"].obj, label, declareRetType).type;
         let targetType = node['cast'].type;
-        if (targetType.PlainType?.name == 'object') {
-            //任何对象都可以转换为object
-            if (srcType.PlainType != undefined) {
-                if (program.getDefinedType(srcType.PlainType.name).modifier == 'valuetype') {
-                    node['box'] = node["cast"];//装箱
-                    delete node["cast"];
-                }
+        if (isPointType(srcType)) {//对应ref->xx的三种情况
+            if (targetType.PlainType?.name == "object") {
+                node['castRefToObj'] = node["cast"];
+                delete node["cast"];
+            } else {
+                throw `引用类型只能转换成object`;
             }
         } else {
-            if (srcType.PlainType?.name == 'object') {
-                if (targetType.PlainType != undefined) {
-                    if (program.getDefinedType(targetType.PlainType.name).modifier == 'valuetype') {
+            if (srcType.PlainType?.name == 'object') {//对应obj->xx的三种情况
+                if (isPointType(targetType)) {
+                    node['castObjToRef'] = node["cast"];
+                    delete node["cast"];
+                } else {
+                    if (targetType.PlainType?.name != 'object') {
                         node['unbox'] = node["cast"];//拆箱
+                        delete node["cast"];
+                    } else {
+                        throw `不必要的类型转换:object->object`;
+                    }
+                }
+            } else {//对应val->xx的三种情况
+                if (isPointType(targetType)) {
+                    throw `值类型不能转换为引用类型`;
+                } else {
+                    if (targetType.PlainType?.name == 'object') {
+                        node['box'] = node["cast"];//装箱
+                        delete node["cast"];
+                    } else {
+                        node['castValueType'] = node["cast"];//装箱
                         delete node["cast"];
                     }
                 }
-            } else {
-                throw `只有object类型对象才能转换为其他类型`;
             }
         }
+
         result = { type: targetType, hasRet: false };
     }
     else if (node["_new"] != undefined) {
@@ -1013,7 +1043,8 @@ function sizeof(typeName: string): number {
         case 'int': ret = 4; break;
         case 'long': ret = 4; break;
         case 'double': ret = 8; break;
-        case '@point': ret = 8; break;
+        case 'object': ret = globalVariable.pointSize; break;
+        case '@point': ret = globalVariable.pointSize; break;
         default:
             for (let fieldName in program.getDefinedType(typeName).property) {
                 let field = program.getDefinedType(typeName).property[fieldName];

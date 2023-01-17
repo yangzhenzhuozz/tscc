@@ -1,6 +1,8 @@
+class MyClass{
+    MyClass(){}
+}
 function main(){
-    var a=1.1;
-    printDouble(a);
+    var v=(object)1;
 };
 
 
@@ -89,3 +91,5 @@ valuetype class double{
     operator >= ( v : double ) : bool { native } ;
     operator == ( v : double ) : bool { native } ;
 }
+
+valuetype class object{}

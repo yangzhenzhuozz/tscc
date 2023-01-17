@@ -2,6 +2,8 @@ import { IR, IRContainer, OPCODE, stackFrameRelocationTable, irAbsoluteAddressRe
 import { TypeUsedSign } from "./lib.js";
 import { ProgramScope } from "./scope.js";
 
+(BigInt as any).prototype.toJSON = function () { return this.toString(); }//序列化钩子
+
 class Buffer {
     private buffer: number[] = [];
     public writeInt8(n: number): number {
@@ -122,9 +124,9 @@ class ClassTable {
 }
 class StackFrameTable {
     private items: { baseOffset: number, props: { name: number, type: number }[] }[] = [];
-    public nameMap: Map<string, number> = new Map();
+    public nameMap: Map<string, bigint> = new Map();
     public push(item: { baseOffset: number, props: { name: number, type: number }[] }, name: string) {
-        this.nameMap.set(name, this.items.length);
+        this.nameMap.set(name, BigInt(this.items.length));
         this.items.push(item);
     }
     public getItems() {
@@ -197,16 +199,16 @@ export function link(programScope: ProgramScope) {
     new IR('__exit');
 
 
-    let irTable: Map<string, number> = new Map();//用于调试的符号表
+    let irTable: Map<string, bigint> = new Map();//用于调试的符号表
     let debugIRS: IR[] = [];//用于调试的ir列条
-    let irIndex = 0;
+    let irIndex = 0n;
     //重新计算符号表
     for (let ircontainer of irContainerList) {
         if (irTable.has(ircontainer.name)) {
             throw `符号:${ircontainer.name}重复`;
         }
         irTable.set(ircontainer.name, irIndex);
-        irIndex += ircontainer.irs.length;
+        irIndex += BigInt(ircontainer.irs.length);
     }
     //push_stack_map重定位
     for (let item of stackFrameRelocationTable) {
@@ -221,15 +223,15 @@ export function link(programScope: ProgramScope) {
     //类型重定位
     for (let item of typeRelocationTable) {
         if (item.t1) {
-            item.ir.operand1 = irTypeTable[item.t1].index;
+            item.ir.operand1 = BigInt(irTypeTable[item.t1].index);
             assertion(item.ir.operand1, item.t1);
         }
         if (item.t2) {
-            item.ir.operand2 = irTypeTable[item.t2].index;
+            item.ir.operand2 = BigInt(irTypeTable[item.t2].index);
             assertion(item.ir.operand2, item.t2);
         }
         if (item.t3) {
-            item.ir.operand3 = irTypeTable[item.t3].index;
+            item.ir.operand3 = BigInt(irTypeTable[item.t3].index);
             assertion(item.ir.operand3, item.t3);
         }
     }

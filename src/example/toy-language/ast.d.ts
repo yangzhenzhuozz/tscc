@@ -111,9 +111,6 @@ interface ASTNode {
     '++'?: ASTNode;
     '--'?: ASTNode;
     ternary?: { condition: ASTNode, obj1: ASTNode, obj2: ASTNode };
-    cast?: { obj: ASTNode, type: TypeUsed };
-    box?: { obj: ASTNode, type: TypeUsed };//装箱
-    unbox?: { obj: ASTNode, type: TypeUsed };//拆箱
     _new?: { type: { PlainType: PlainType; }, _arguments: ASTNode[] };
     _newArray?: { type: { PlainType?: PlainType; FunctionType?: FunctionType; }, initList: ASTNode[], placeholder: number };
     '[]'?: { rightChild: ASTNode, leftChild: ASTNode };
@@ -131,4 +128,14 @@ interface ASTNode {
     "&&"?: { rightChild: ASTNode; leftChild: ASTNode; };
     //在源码扫描阶段，会生成matchObj,代码检查阶段会生成condition，并删除matchObj
     _switch?: { pattern: ASTNode, defalutStmt?: Block, matchList: { matchObj?: ASTNode, condition?: ASTNode, stmt: Block }[] };//default没有matchObj
+
+
+
+    cast?: { obj: ASTNode, type: TypeUsed };//在阶段二被删除
+
+    castRefToObj?: { obj: ASTNode, type: TypeUsed };//引用对象转换到object
+    castObjToRef?: { obj: ASTNode, type: TypeUsed };//object转换到引用对象
+    castValueType?: { obj: ASTNode, type: TypeUsed };//值类型转换
+    box?: { obj: ASTNode, type: TypeUsed };//装箱
+    unbox?: { obj: ASTNode, type: TypeUsed };//拆箱
 }

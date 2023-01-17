@@ -216,18 +216,18 @@ export class IRContainer {
     }
 }
 export class IR {
-    public index: number = nowIRContainer.irs.length;
+    public index: bigint = BigInt(nowIRContainer.irs.length);
     public opCode: keyof typeof OPCODE;
-    public operand1?: number;
-    public operand2?: number;
-    public operand3?: number;
-    public length: number;
-    constructor(opCode: keyof typeof OPCODE, operand1?: number, operand2?: number, operand3?: number/*, tag1?: string, tag2?: string, tag3?: string*/) {
+    public operand1?: bigint;
+    public operand2?: bigint;
+    public operand3?: bigint;
+    public length: bigint;
+    constructor(opCode: keyof typeof OPCODE, operand1?: number | bigint, operand2?: number | bigint, operand3?: number | bigint/*, tag1?: string, tag2?: string, tag3?: string*/) {
         this.opCode = opCode;
-        this.operand1 = operand1;
-        this.operand2 = operand2;
-        this.operand3 = operand3;
-        this.length = 1;
+        this.operand1 = operand1 != undefined ? BigInt(operand1) : 0n;
+        this.operand2 = operand2 != undefined ? BigInt(operand2) : 0n;
+        this.operand3 = operand3 != undefined ? BigInt(operand3) : 0n;
+        this.length = 1n;
         nowIRContainer.irs.push(this);
     }
 }
