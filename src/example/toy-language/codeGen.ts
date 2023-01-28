@@ -1856,8 +1856,6 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
     else if (node['unbox'] != undefined) {
         throw `unimplement`;
     }
-    
-
     else if (node['_switch'] != undefined) {
         throw `unimplement`;
     }
@@ -1879,7 +1877,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
     else if (node['not'] != undefined) {
         throw `unimplement`;
     }
-    else { throw `还没支持的AST类型` };
+    else { throw `未支持的AST类型` };
 }
 function putfield(type: TypeUsed, offset: number, truelist: IR[], falselist: IR[]): IR {
     if (truelist.length > 0 || falselist.length > 0) {
