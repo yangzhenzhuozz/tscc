@@ -629,8 +629,12 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
                         node['box'] = node["cast"];//装箱
                         delete node["cast"];
                     } else {
-                        node['castValueType'] = node["cast"];//装箱
-                        delete node["cast"];
+                        if(TypeUsedSign(targetType)==TypeUsedSign(srcType)){
+                            throw `不必要的类型转换${TypeUsedSign(targetType)}<-->${TypeUsedSign(targetType)}`;
+                        }else{
+                            node['castValueType'] = node["cast"];
+                            delete node["cast"];
+                        }
                     }
                 }
             }

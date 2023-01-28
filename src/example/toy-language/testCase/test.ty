@@ -2,7 +2,7 @@ class MyClass{
     MyClass(){}
 }
 function main(){
-    var v=(object)1;
+    var v=(int)1;
 };
 
 
