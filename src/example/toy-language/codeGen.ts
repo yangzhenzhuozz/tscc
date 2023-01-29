@@ -329,7 +329,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
             inContructorRet: undefined,
             functionWrapName: option.functionWrapName
         });
-        if (a.truelist.length == 0 && a.falselist.length == 0) {//如果bool值不是通过布尔运算得到的，则必须为其插入一个判断指令
+        if (a.truelist.length == 0 && a.falselist.length == 0) {//如果bool值不是通过布尔运算得到的，则为其插入一个判断指令
             let ir = new IR('i8_if_false');
             a.falselist.push(ir);
             a.endIR = ir;
@@ -528,6 +528,25 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
         irAbsoluteAddressRelocationTable.push({ sym: sign, ir: constructorCall });
         return { startIR: ir, endIR: constructorCall, truelist: [], falselist: [] };
     }
+    else if (node['not'] != undefined) {
+        let nrRet = nodeRecursion(scope, node['not'], {
+            label: undefined,
+            frameLevel: undefined,
+            isGetAddress: undefined,
+            boolForward: true,
+            isAssignment: undefined,
+            singleLevelThis: option.singleLevelThis,
+            inContructorRet: undefined,
+            functionWrapName: option.functionWrapName
+        });
+        if (nrRet.truelist.length == 0 && nrRet.falselist.length == 0) {//如果bool值不是通过布尔运算得到的，则为其插入一个判断指令
+            let ir = new IR('i8_if_true');
+            nrRet.endIR = ir;
+            return { startIR: nrRet.startIR, endIR: ir, truelist: [], falselist: [ir] };
+        } else {
+            return { startIR: nrRet.startIR, endIR: nrRet.endIR, truelist: nrRet.falselist, falselist: nrRet.truelist };//交换trueList和falseList
+        }
+    }
     else if (node['||'] != undefined) {
         let left = nodeRecursion(scope, node['||'].leftChild, {
             label: undefined,
@@ -628,7 +647,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
             inContructorRet: undefined,
             functionWrapName: option.functionWrapName
         });
-        if (condition.truelist.length == 0 && condition.falselist.length == 0) {//如果bool值不是通过布尔运算得到的，则必须为其插入一个判断指令
+        if (condition.truelist.length == 0 && condition.falselist.length == 0) {//如果bool值不是通过布尔运算得到的，则为其插入一个判断指令
             let ir = new IR('i8_if_false');
             condition.falselist.push(ir);
             condition.endIR = ir;
@@ -671,7 +690,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
             inContructorRet: undefined,
             functionWrapName: option.functionWrapName
         });
-        if (condition.truelist.length == 0 && condition.falselist.length == 0) {//如果bool值不是通过布尔运算得到的，则必须为其插入一个判断指令
+        if (condition.truelist.length == 0 && condition.falselist.length == 0) {//如果bool值不是通过布尔运算得到的，则为其插入一个判断指令
             let ir = new IR('i8_if_false');
             condition.falselist.push(ir);
             condition.endIR = ir;
@@ -2129,9 +2148,6 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
         throw `unimplement`;
     }
     else if (node['loadOperatorOverload'] != undefined) {
-        throw `unimplement`;
-    }
-    else if (node['not'] != undefined) {
         throw `unimplement`;
     }
     else { throw `未支持的AST类型` };
