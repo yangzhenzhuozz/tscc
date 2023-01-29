@@ -5,12 +5,12 @@
 
 待完成:
 -   闭包目前有问题
--   对于this的读取又问题，测试一下构造函数和普通成员函数
+-   对于this的读取有问题，测试一下构造函数和普通成员函数
 -   跨越多层的闭包捕获,要让每一层都捕获
 -   函数参数顺序不对
 
 -   test_4.ty 没有正确生成<判断指令
--   应该在nodeRecursion的出口检测是有trueList或者falseList，不能在使用的时候检测，否则总有遗漏的时候
+-   应该在nodeRecursion的出口检测是有trueList或者falseList，不能在使用的时候检测，否则总有遗漏的时候  //从实现上来说，必须要在使用的时候才能检查trueList和falseList
 -   <的判断好像没问题
 -   仔细检测 ||、&&、ternary 对boolNot的处理
 
@@ -49,7 +49,9 @@
 
 -   如果break不在bock中，能否正确跳出
 -   (1+2).toString是否正确装箱
+-   创建构造函数时需要指定inContructor        //我忘了这是啥，为什么要记这一行,很早之前生成构造函数代码已经指定了
 
-+   创建构造函数时需要指定inContructor        //我忘了这是啥，为什么要记这一行,很早之前生成构造函数代码已经指定了
+-   确认嵌套在block中的break、continue、ret是否弹出数量正确的frame
++   unwinding目前设计的不够好，需要在pop_stack_frame的时候由vm搜索，改为每次alloc的时候自动判断是否需要往frameStack压unwinded函数(处理一下def节点即可)
 +   对每个block（即StackFrame）记录autounwinding,每次popup_frame的时候检查是否有需要自动释放的对象
 +   抛出异常的时候需要执行stack unwinding

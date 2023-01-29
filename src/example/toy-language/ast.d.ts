@@ -81,7 +81,7 @@ interface ASTNode {
     desc: 'ASTNode';
     type?: TypeUsed;//表达式的类型
 
-
+    autounwinding?: { unwinded: number, stmt: Block };//栈自动展开
     callEXM?: { obj: ASTNode, extendFuntionRealname: string };//调用扩展函数
     getFunctionWrapName?: '',//获取函数包裹类名称
     loadOperatorOverload?: [string, string];//读取重载操作符函数

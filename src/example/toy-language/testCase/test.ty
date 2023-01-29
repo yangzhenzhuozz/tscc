@@ -1,12 +1,15 @@
 class MyClass{
     MyClass(){}
+    var unwinded=()=>{};
 }
-class MyClass2{
+valuetype class MyClass2{
     MyClass2(){}
+    var unwinded=()=>{};
 }
 function main(){
-    var a=5;
-    a=6;
+    autounwinding(var a=new MyClass();var b:MyClass2;var c=new MyClass()){
+
+    }
 };
 
 

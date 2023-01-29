@@ -151,9 +151,9 @@ let grammar: Grammar = {
         { "statement:throw object ;": {} },//抛异常语句
         { "statement:return object ;": {} },//带返回值的返回语句
         { "statement:return ;": {} },//不带返回值的语句
-        { "statement:autounwinding ( initDeclares ) { statement }": {} },//自动回收，类似于c#的using
-        { "initDeclares:initDeclare": {} },//配合上面的autounwinding使用
-        { "initDeclares:initDeclares ; initDeclare": {} },
+        { "statement:autounwinding ( declares ) { statements }": {} },//自动回收，类似于c#的using
+        { "declares:declare": {} },//配合上面的autounwinding使用
+        { "declares:declares ; declare": {} },
         { "statement:if ( object ) statement": { priority: "low_priority_for_if_stmt" } },//if语句
         /**
          * 本规则会导致如下二义性:

@@ -1395,9 +1395,34 @@ import { Program } from "./program.js";
                 }
             }
         },//不带返回值的语句
-        { "statement:autounwinding ( initDeclares ) { statement }": {} },//自动回收，类似于c#的using
-        { "initDeclares:initDeclare": {} },//配合上面的autounwinding使用
-        { "initDeclares:initDeclares ; initDeclare": {} },
+        {
+            "statement:autounwinding ( declares ) { statements }": {
+                action: function ($, s): ASTNode {
+                    let initDeclares = $[2] as VariableDescriptor[];
+                    let statements = $[5] as Block;
+                    for (let i = initDeclares.length - 1; i >= 0; i--) {
+                        statements.body.unshift({ desc: "ASTNode", def: initDeclares[i] });
+                    }
+                    return { desc: "ASTNode", autounwinding: { unwinded: initDeclares.length, stmt: statements } };
+                }
+            }
+        },//自动回收，类似于c#的using
+        {
+            "declares:declare": {
+                action: function ($, s): VariableDescriptor[] {
+                    return [$[0] as VariableDescriptor];
+                }
+            }
+        },//配合上面的autounwinding使用
+        {
+            "declares:declares ; declare": {
+                action: function ($, s): VariableDescriptor[] {
+                    let initDeclares = $[0] as VariableDescriptor[];
+                    initDeclares.push($[2] as VariableDescriptor);
+                    return initDeclares;
+                }
+            }
+        },
         {
             "statement:if ( object ) statement": {
                 priority: "low_priority_for_if_stmt",

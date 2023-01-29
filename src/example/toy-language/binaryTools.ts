@@ -6,17 +6,17 @@ import { ProgramScope } from "./scope.js";
 
 class Buffer {
     private buffer: number[] = [];
-    public writeInt8(n: number): number {
+    public appendInt8(n: number): number {
         let ret = this.buffer.length;
         this.buffer.push(n);
         return ret;
     }
-    public writeUInt8(n: number): number {
+    public appendUInt8(n: number): number {
         let ret = this.buffer.length;
         this.buffer.push(n & 0xff);
         return ret;
     }
-    public writeInt64(n: bigint): number {
+    public appendInt64(n: bigint): number {
         let ret = this.buffer.length;
         this.buffer.push(Number((n >> 0n) & 0xffn));
         this.buffer.push(Number((n >> 8n) & 0xffn));
@@ -28,7 +28,7 @@ class Buffer {
         this.buffer.push(Number((n >> 56n) & 0xffn));
         return ret;
     }
-    public writeStringUTF8(str: string): number {
+    public appendStringUTF8(str: string): number {
         let ret = this.buffer.length;
         let encoder = new TextEncoder();
         let bytes = encoder.encode(str);
@@ -68,12 +68,12 @@ class StringPool {
     }
     public toBinary() {
         let buffer: Buffer = new Buffer();
-        buffer.writeInt64(BigInt(this.pool.size));//写入长度
+        buffer.appendInt64(BigInt(this.pool.size));//写入长度
         for (let i = 0; i < this.pool.size; i++) {
-            buffer.writeInt64(0n);//指针暂时置0
+            buffer.appendInt64(0n);//指针暂时置0
         }
         for (let i = 0; i < this.items.length; i++) {
-            let stringOffset = buffer.writeStringUTF8(this.items[i]);
+            let stringOffset = buffer.appendStringUTF8(this.items[i]);
             buffer.setInt64(BigInt(stringOffset), (i + 1) * 8);
         }
         return buffer.toBinary();
@@ -94,38 +94,38 @@ class ClassTable {
     }
     public toBinary() {
         let buffer = new Buffer();
-        buffer.writeInt64(BigInt(this.items.length));//写ClassTable.length
+        buffer.appendInt64(BigInt(this.items.length));//写ClassTable.length
         //预留ClassTable.items
         for (let i = 0; i < this.items.length; i++) {
-            buffer.writeInt64(0n);//指针暂时置0
+            buffer.appendInt64(0n);//指针暂时置0
         }
         for (let i = 0; i < this.items.length; i++) {
             let classDesc = this.items[i];
-            let classOffset = buffer.writeInt64(BigInt(classDesc.size));//写PropertyDesc的属性
+            let classOffset = buffer.appendInt64(BigInt(classDesc.size));//写PropertyDesc的属性
             buffer.setInt64(BigInt(classOffset), (i + 1) * 8);
-            buffer.writeInt64(BigInt(classDesc.name));
-            buffer.writeInt64(BigInt(classDesc.isValueType));
-            buffer.writeInt64(BigInt(classDesc.props.length));
+            buffer.appendInt64(BigInt(classDesc.name));
+            buffer.appendInt64(BigInt(classDesc.isValueType));
+            buffer.appendInt64(BigInt(classDesc.props.length));
             let propLocs = [] as number[];
             //预留PropertyDesc.items
             for (let j = 0; j < classDesc.props.length; j++) {
-                let propLoc = buffer.writeInt64(0n);//指针暂时置0
+                let propLoc = buffer.appendInt64(0n);//指针暂时置0
                 propLocs.push(propLoc);
             }
             for (let j = 0; j < classDesc.props.length; j++) {
                 let prop = classDesc.props[j];
-                let propOffset = buffer.writeInt64(BigInt(prop.name));
+                let propOffset = buffer.appendInt64(BigInt(prop.name));
                 buffer.setInt64(BigInt(propOffset), propLocs[j]);
-                buffer.writeInt64(BigInt(prop.type));
+                buffer.appendInt64(BigInt(prop.type));
             }
         }
         return buffer.toBinary();
     }
 }
 class StackFrameTable {
-    private items: { baseOffset: number, props: { name: number, type: number }[] }[] = [];
+    private items: { baseOffset: number, autoUnwinding: number, props: { name: number, type: number }[] }[] = [];
     public nameMap: Map<string, bigint> = new Map();
-    public push(item: { baseOffset: number, props: { name: number, type: number }[] }, name: string) {
+    public push(item: { baseOffset: number, autoUnwinding: number, props: { name: number, type: number }[] }, name: string) {
         this.nameMap.set(name, BigInt(this.items.length));
         this.items.push(item);
     }
@@ -134,27 +134,28 @@ class StackFrameTable {
     }
     public toBinary() {
         let buffer = new Buffer();
-        buffer.writeInt64(BigInt(this.items.length));//写length
+        buffer.appendInt64(BigInt(this.items.length));//写length
         //预留StackFrameTable.items
         for (let i = 0; i < this.items.length; i++) {
-            buffer.writeInt64(0n);//指针暂时置0
+            buffer.appendInt64(0n);//指针暂时置0
         }
         for (let i = 0; i < this.items.length; i++) {
             let item = this.items[i];
-            let itemOffset = buffer.writeInt64(BigInt(item.baseOffset));//写StackFrameItem.baseOffset(写item的第一个属性的时候，这个偏移也是item的起始偏移)
-            buffer.setInt64(BigInt(itemOffset), (i + 1) * 8);
-            buffer.writeInt64(BigInt(item.props.length));//写写StackFrameItem.length
+            let itemOffset = buffer.appendInt64(BigInt(item.baseOffset));//写StackFrameItem.baseOffset(写item的第一个属性的时候，这个偏移也是item的起始偏移)
+            buffer.setInt64(BigInt(itemOffset), (i + 1) * 8);//写baseOffset
+            buffer.appendInt64(BigInt(item.autoUnwinding));//写autoUnwinding
+            buffer.appendInt64(BigInt(item.props.length));//写StackFrameItem.length
             let propItemLocs = [] as number[];
             //预留StackFrameItem.items
             for (let j = 0; j < item.props.length; j++) {
-                let propLoc = buffer.writeInt64(0n);//指针暂时置0
+                let propLoc = buffer.appendInt64(0n);//指针暂时置0
                 propItemLocs.push(propLoc);
             }
             for (let j = 0; j < item.props.length; j++) {
                 let prop = item.props[j];
-                let propOffset = buffer.writeInt64(BigInt(prop.name));
+                let propOffset = buffer.appendInt64(BigInt(prop.name));
                 buffer.setInt64(BigInt(propOffset), propItemLocs[j]);
-                buffer.writeInt64(BigInt(prop.type));
+                buffer.appendInt64(BigInt(prop.type));
             }
         }
         return buffer.toBinary();
@@ -169,9 +170,9 @@ class TypeTable {
     public toBinary() {
         let buffer = new Buffer();
         for (let item of this.items) {
-            buffer.writeInt64(BigInt(item.desc));
-            buffer.writeInt64(BigInt(item.innerType));
-            buffer.writeInt64(BigInt(item.name));
+            buffer.appendInt64(BigInt(item.desc));
+            buffer.appendInt64(BigInt(item.innerType));
+            buffer.appendInt64(BigInt(item.name));
         }
         return buffer.toBinary();
     }
@@ -240,17 +241,17 @@ export function link(programScope: ProgramScope) {
     for (let ircontainer of irContainerList) {
         for (let ir of ircontainer.irs) {
             debugIRS.push(ir);
-            irBuffer.writeInt64(BigInt(OPCODE[ir.opCode]));
-            irBuffer.writeInt64(BigInt(ir.operand1 ?? 0));
-            irBuffer.writeInt64(BigInt(ir.operand2 ?? 0));
-            irBuffer.writeInt64(BigInt(ir.operand3 ?? 0));
+            irBuffer.appendInt64(BigInt(OPCODE[ir.opCode]));
+            irBuffer.appendInt64(BigInt(ir.operand1 ?? 0));
+            irBuffer.appendInt64(BigInt(ir.operand2 ?? 0));
+            irBuffer.appendInt64(BigInt(ir.operand3 ?? 0));
         }
     }
     //指令参照表
     let irTableBuffer = new Buffer();
     for (let item of irTable) {
-        irTableBuffer.writeInt64(BigInt(stringPool.register(item[0])));
-        irTableBuffer.writeInt64(BigInt(item[1]));
+        irTableBuffer.appendInt64(BigInt(stringPool.register(item[0])));
+        irTableBuffer.appendInt64(BigInt(item[1]));
     }
     return { text: irBuffer.toBinary(), irTableBuffer: irTableBuffer.toBinary(), irTable, debugIRS };
 }

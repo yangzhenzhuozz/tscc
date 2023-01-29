@@ -629,9 +629,9 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
                         node['box'] = node["cast"];//装箱
                         delete node["cast"];
                     } else {
-                        if(TypeUsedSign(targetType)==TypeUsedSign(srcType)){
+                        if (TypeUsedSign(targetType) == TypeUsedSign(srcType)) {
                             throw `不必要的类型转换${TypeUsedSign(targetType)}<-->${TypeUsedSign(targetType)}`;
-                        }else{
+                        } else {
                             node['castValueType'] = node["cast"];
                             delete node["cast"];
                         }
@@ -737,7 +737,33 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
         }
         delete node.specializationObj;//把specializationObj改为program
         node.accessField = { obj: { desc: 'ASTNode', _program: '' }, field: realObjName };//load阶段还不知道是不是property,由access节点处理进行判断
-        return nodeRecursion(scope, node, label, declareRetType, assignmentObj);//处理access节点需要附带这个参数
+        result = nodeRecursion(scope, node, label, declareRetType, assignmentObj);//处理access节点需要附带这个参数
+    }
+    else if (node["autounwinding"] != undefined) {
+        //检查这些类型是否都实现了unwinded接口
+        for (let i = 0; i < node["autounwinding"].unwinded; i++) {
+            let defType = nodeRecursion(scope, node["autounwinding"].stmt.body[i] as ASTNode, label, declareRetType).type;
+            if (defType.PlainType == undefined) {
+                throw `autounwinding只支持PlainType类型，不支持数组和函数`;
+            }
+            let className = defType.PlainType.name;
+            let unwinded = program.getDefinedType(className).property['unwinded'];
+            if (unwinded == undefined) {
+                throw `类型${className}没有实现unwinded函数`;
+            }
+            //经过上面的推导，accessedType已经可以确认里面的类型了,所以可以对prop.type下非空断言
+            if (TypeUsedSign(unwinded.type!) != `args:() retType:void`) {
+                throw `类型${className}没有正确实现unwinded函数,需要的函数签名为"args:() retType:void",已经实现的函数签名为:${TypeUsedSign(unwinded.type!)}`;
+            }
+            if (isPointType(defType)) {
+                let defName = Object.keys((node["autounwinding"].stmt.body[i] as ASTNode).def!)[0];
+                if ((node["autounwinding"].stmt.body[i] as ASTNode).def![defName].initAST == undefined) {
+                    throw `引用类型的autoUnwinding必须在声明的时候初始化:${defName}`;
+                }
+            }
+        }6
+        let blockRet = BlockScan(new BlockScope(scope, undefined, node["autounwinding"].stmt, {}), label, declareRetType);
+        result = { hasRet: blockRet.hasRet, retType: blockRet.retType, type: { PlainType: { name: 'void' } } };
     }
     else {
         throw new Error(`未知节点`);
@@ -751,6 +777,16 @@ let captureWrapIndex = 0;
  * 返回值表示是否为一个ret block
  * declareRetType 声明的返回值
  * 为了能够修改入参的retType，所以传入了一个对象
+ * @returns hasRet  这个block是否为一个必定有return的block，如:
+ *                  {
+    *                  if(a)
+    *                      return 1;
+    *                  else
+    *                      return 0;
+ *                  }
+ *                  xxxxx
+ * 
+ *                  这个block就是必定返回的block，后面的语句将没有意义，检查时会进行提示
  */
 function BlockScan(blockScope: BlockScope, label: string[], declareRetType: { retType?: TypeUsed }): { hasRet: boolean, retType?: TypeUsed } {
     let ret: { hasRet: boolean, retType?: TypeUsed } | undefined = undefined;
