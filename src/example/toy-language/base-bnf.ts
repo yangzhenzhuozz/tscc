@@ -1,7 +1,7 @@
 import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
 let grammar: Grammar = {
-    tokens: ['extension', 'native', 'var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'throw', 'super', 'basic_type', 'instanceof'],
+    tokens: ['extension', 'native', 'var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'throw', 'super', 'basic_type', 'instanceof', 'autounwinding'],
     association: [
         { 'right': ['='] },
         { 'right': ['?'] },
@@ -39,12 +39,12 @@ let grammar: Grammar = {
          * var和val的区别就是一个可修改，一个不可修改,val类似于其他语言的const
          */
         { "declare:var id : type": {} },//声明语句_1，声明一个变量id，其类型为type
-        { "declare:var id : type = object": {} },//声明语句_2，声明一个变量id，并且将object设置为id的初始值，object的类型要和声明的类型一致
-        { "declare:var id = object": {} },//声明语句_3，声明一个变量id，并且将object设置为id的初始值，类型自动推导
-        { "declare:val id : type": {} },//声明语句_4，声明一个变量id，其类型为type
-        { "declare:val id : type = object": {} },//声明语句_5，声明一个变量id，并且将object设置为id的初始值，object的类型要和声明的类型一致
-        { "declare:val id = object": {} },//声明语句_6，声明一个变量id，并且将object设置为id的初始值，类型自动推导
-        { "declare:function_definition": {} },//声明语句_7，可以是一个函数定义语句
+        { "declare:initDeclare": {} },//有初始化语句的声明
+        { "initDeclare:var id : type = object": {} },//声明语句_2，声明一个变量id，并且将object设置为id的初始值，object的类型要和声明的类型一致
+        { "initDeclare:var id = object": {} },//声明语句_3，声明一个变量id，并且将object设置为id的初始值，类型自动推导
+        { "initDeclare:val id : type = object": {} },//声明语句_4，声明一个变量id，并且将object设置为id的初始值，object的类型要和声明的类型一致
+        { "initDeclare:val id = object": {} },//声明语句_5，声明一个变量id，并且将object设置为id的初始值，类型自动推导
+        { "declare:function_definition": {} },//声明语句_6，可以是一个函数定义语句
         { "class_definition:modifier class basic_type template_declare extends_declare { class_units }": {} },//class定义语句由修饰符等组成(太长了我就不一一列举)
         { "extends_declare:": {} },//继承可以为空
         { "extends_declare:extends type": {} },//继承,虽然文法是允许继承任意类型,但是在语义分析的时候再具体决定该class能不能被继承
@@ -151,6 +151,9 @@ let grammar: Grammar = {
         { "statement:throw object ;": {} },//抛异常语句
         { "statement:return object ;": {} },//带返回值的返回语句
         { "statement:return ;": {} },//不带返回值的语句
+        { "statement:autounwinding ( initDeclares ) { statement }": {} },//自动回收，类似于c#的using
+        { "initDeclares:initDeclare": {} },//配合上面的autounwinding使用
+        { "initDeclares:initDeclares ; initDeclare": {} },
         { "statement:if ( object ) statement": { priority: "low_priority_for_if_stmt" } },//if语句
         /**
          * 本规则会导致如下二义性:

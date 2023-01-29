@@ -5,12 +5,8 @@ class MyClass2{
     MyClass2(){}
 }
 function main(){
-    var v=(object)6;
-    if(!true){
-        printDouble(1.1);
-    }else{
-        printDouble(0.1);
-    }
+    var a=5;
+    a=6;
 };
 
 

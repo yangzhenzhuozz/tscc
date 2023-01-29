@@ -47,6 +47,9 @@
     }
     这种情况下根本无法追踪
 
-+   创建构造函数时需要指定inContructor
-+   如果break不在bock中，能否正确跳出
-+   (1+2).toString是否正确装箱
+-   如果break不在bock中，能否正确跳出
+-   (1+2).toString是否正确装箱
+
++   创建构造函数时需要指定inContructor        //我忘了这是啥，为什么要记这一行,很早之前生成构造函数代码已经指定了
++   对每个block（即StackFrame）记录autounwinding,每次popup_frame的时候检查是否有需要自动释放的对象
++   抛出异常的时候需要执行stack unwinding

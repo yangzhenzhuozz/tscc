@@ -10,7 +10,7 @@ import { userTypeDictionary } from './lexrule.js';
 import { FunctionSign, FunctionSignWithoutRetType, TypeUsedSign } from "./lib.js"
 import { Program } from "./program.js";
     `,
-    tokens: ['extension', 'native', 'var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'throw', 'super', 'basic_type', 'instanceof'],
+    tokens: ['extension', 'native', 'var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'throw', 'super', 'basic_type', 'instanceof', 'autounwinding'],
     association: [
         { 'right': ['='] },
         { 'right': ['?'] },
@@ -133,7 +133,14 @@ import { Program } from "./program.js";
             }
         },//声明语句_1，声明一个变量id，其类型为type
         {
-            "declare:var id : type = object": {
+            "declare:initDeclare": {
+                action: function ($, s): VariableDescriptor {
+                    return $[0] as VariableDescriptor;
+                }
+            }
+        },//有初始化语句的声明
+        {
+            "initDeclare:var id : type = object": {
                 action: function ($, s): VariableDescriptor {
                     let id = $[1] as string;
                     let type = $[3] as TypeUsed;
@@ -145,7 +152,7 @@ import { Program } from "./program.js";
             }
         },//声明语句_2，声明一个变量id，并且将object设置为id的初始值，object的类型要和声明的类型一致
         {
-            "declare:var id = object": {
+            "initDeclare:var id = object": {
                 action: function ($, s): VariableDescriptor {
                     let id = $[1] as string;
                     let obj = $[3] as ASTNode;
@@ -156,18 +163,7 @@ import { Program } from "./program.js";
             }
         },//声明语句_3，声明一个变量id，并且将object设置为id的初始值，类型自动推导
         {
-            "declare:val id : type": {
-                action: function ($, s): VariableDescriptor {
-                    let id = $[1] as string;
-                    let type = $[3] as TypeUsed;
-                    let ret = JSON.parse("{}") as VariableDescriptor;//为了生成的解析器不报红
-                    ret[id] = { variable: 'val', type: type };
-                    return ret;
-                }
-            }
-        },//声明语句_4，声明一个变量id，其类型为type
-        {
-            "declare:val id : type = object": {
+            "initDeclare:val id : type = object": {
                 action: function ($, s): VariableDescriptor {
                     let id = $[1] as string;
                     let type = $[3] as TypeUsed;
@@ -177,9 +173,9 @@ import { Program } from "./program.js";
                     return ret;
                 }
             }
-        },//声明语句_5，声明一个变量id，并且将object设置为id的初始值，object的类型要和声明的类型一致
+        },//声明语句_4，声明一个变量id，并且将object设置为id的初始值，object的类型要和声明的类型一致
         {
-            "declare:val id = object": {
+            "initDeclare:val id = object": {
                 action: function ($, s): VariableDescriptor {
                     let id = $[1] as string;
                     let type = $[3] as TypeUsed;
@@ -189,14 +185,14 @@ import { Program } from "./program.js";
                     return ret;
                 }
             }
-        },//声明语句_6，声明一个变量id，并且将object设置为id的初始值，类型自动推导
+        },//声明语句_5，声明一个变量id，并且将object设置为id的初始值，类型自动推导
         {
             "declare:function_definition": {
                 action: function ($, s): VariableDescriptor {
                     return $[0] as VariableDescriptor;
                 }
             }
-        },//声明语句_7，可以是一个函数定义语句
+        },//声明语句_6，可以是一个函数定义语句
         {
             "class_definition:modifier class basic_type template_declare extends_declare { class_units }": {
                 action: function ($, _s): { [key: string]: TypeDef } {
@@ -1399,6 +1395,9 @@ import { Program } from "./program.js";
                 }
             }
         },//不带返回值的语句
+        { "statement:autounwinding ( initDeclares ) { statement }": {} },//自动回收，类似于c#的using
+        { "initDeclares:initDeclare": {} },//配合上面的autounwinding使用
+        { "initDeclares:initDeclares ; initDeclare": {} },
         {
             "statement:if ( object ) statement": {
                 priority: "low_priority_for_if_stmt",
