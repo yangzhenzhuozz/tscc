@@ -553,7 +553,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
         registerType(node["_instanceof"].type);//这里需要额外注册一下，这个类型不会被nodeRecursion推导，如:obj instanceof ()=>int; obj会被nodeRecursion注册，但是()=>int就不会被注册
         let objType = nodeRecursion(scope, node["_instanceof"].obj, label, declareRetType).type;
         if (objType.PlainType?.name != 'object') {
-            throw `只有object类型才可以instanceof`;
+            throw `只有object类型可以用instanceof`;
         }
         result = { hasRet: false, type: { PlainType: { name: 'bool' } } };
     }

@@ -6,7 +6,7 @@ class MyClass2{
 }
 function main(){
     var v=(object)6;
-    if(!(v instanceof bool)){
+    if(v instanceof bool){
         printDouble(1.1);
     }else{
         printDouble(0.1);

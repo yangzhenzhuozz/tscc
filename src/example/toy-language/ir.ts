@@ -171,6 +171,44 @@ export enum OPCODE {
     i8_if_true,//为true则跳转
     i8_if_false,//为false则跳转
 
+    castCheck,//类型转换检查,如果非法则抛出异常
+
+    /**
+     * b byte
+     * s short
+     * i int
+     * l long
+     * d double
+     */
+    b2s,//byte to short
+    b2i,
+    b2l,
+    b2d,
+
+    s2b,
+    s2i,
+    s2l,
+    s2d,
+
+    i2b,
+    i2s,
+    i2l,
+    i2d,
+
+    l2b,
+    l2s,
+    l2i,
+    l2d,
+
+    d2b,
+    d2s,
+    d2i,
+    d2l,
+
+    box,//装箱
+    unbox,//拆箱
+
+    instanceof,
 
     jmp,//相对跳转
     p_dup,//栈复制
@@ -182,7 +220,6 @@ export enum OPCODE {
     __exit,//退出
     alloc,//申请局部变量空间
     access_array_length,//读取数组的length
-    box,//读取右值的地址
     native_call,//调用native函数
 };
 export let nowIRContainer: IRContainer;

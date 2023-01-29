@@ -1839,28 +1839,285 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
         return { startIR: startIR, endIR: conditionRet.endIR, truelist: [], falselist: [], jmpToFunctionEnd };
     }
     else if (node['castRefToObj'] != undefined) {
-        //不需要生成任何代码
-        throw `unimplement`;
+        let nrRet = nodeRecursion(scope, node['castRefToObj'].obj, {
+            label: undefined,
+            frameLevel: undefined,
+            isGetAddress: undefined,
+            boolForward: undefined,
+            isAssignment: undefined,
+            singleLevelThis: option.singleLevelThis,
+            inContructorRet: undefined,
+            functionWrapName: option.functionWrapName
+        });
+        return { startIR: nrRet.startIR, endIR: nrRet.endIR, truelist: [], falselist: [], jmpToFunctionEnd: [] };
     }
     else if (node['castObjToRef'] != undefined) {
-        //需要检查是否允许转换
-        throw `unimplement`;
+        let nrRet = nodeRecursion(scope, node['castObjToRef'].obj, {
+            label: undefined,
+            frameLevel: undefined,
+            isGetAddress: undefined,
+            boolForward: undefined,
+            isAssignment: undefined,
+            singleLevelThis: option.singleLevelThis,
+            inContructorRet: undefined,
+            functionWrapName: option.functionWrapName
+        });
+        let typeCheck = new IR('castCheck');
+        typeRelocationTable.push({ t1: TypeUsedSign(node['castObjToRef'].type), ir: typeCheck });
+        return { startIR: nrRet.startIR, endIR: typeCheck, truelist: [], falselist: [], jmpToFunctionEnd: [] };
     }
     else if (node['castValueType'] != undefined) {
+        let builtinValueType = ['byte', 'short', 'int', 'long', 'double'];//内置值类型
+        let srcType = TypeUsedSign(node['castValueType'].obj.type!);
+        let targetType = TypeUsedSign(node['castValueType'].type);
         //检查是否为内置类型，否则不准转换
-        throw `unimplement`;
+        if (builtinValueType.indexOf(srcType) != -1 && builtinValueType.indexOf(targetType) != -1) {
+            let nrRet = nodeRecursion(scope, node['castValueType'].obj, {
+                label: undefined,
+                frameLevel: undefined,
+                isGetAddress: undefined,
+                boolForward: undefined,
+                isAssignment: undefined,
+                singleLevelThis: option.singleLevelThis,
+                inContructorRet: undefined,
+                functionWrapName: option.functionWrapName
+            });
+            let castIR: IR;
+            switch (srcType) {
+                case 'byte':
+                    {
+                        switch (targetType) {
+                            case 'short':
+                                castIR = new IR('b2s');
+                                break;
+                            case 'int':
+                                castIR = new IR('b2i');
+                                break;
+                            case 'long':
+                                castIR = new IR('b2l');
+                                break;
+                            case 'double':
+                                castIR = new IR('b2d');
+                                break;
+                        }
+                    }
+                    break;
+                case 'short':
+                    {
+                        switch (targetType) {
+                            case 'byte':
+                                castIR = new IR('s2b');
+                                break;
+                            case 'int':
+                                castIR = new IR('s2i');
+                                break;
+                            case 'long':
+                                castIR = new IR('s2l');
+                                break;
+                            case 'double':
+                                castIR = new IR('s2d');
+                                break;
+                        }
+                    }
+                    break;
+                case 'int':
+                    {
+                        switch (targetType) {
+                            case 'byte':
+                                castIR = new IR('i2b');
+                                break;
+                            case 'short':
+                                castIR = new IR('i2s');
+                                break;
+                            case 'long':
+                                castIR = new IR('i2l');
+                                break;
+                            case 'double':
+                                castIR = new IR('i2d');
+                                break;
+                        }
+                    }
+                    break;
+                case 'long':
+                    {
+                        switch (targetType) {
+                            case 'byte':
+                                castIR = new IR('l2b');
+                                break;
+                            case 'short':
+                                castIR = new IR('l2s');
+                                break;
+                            case 'int':
+                                castIR = new IR('l2i');
+                                break;
+                            case 'double':
+                                castIR = new IR('l2d');
+                                break;
+                        }
+                    }
+                    break;
+                case 'double':
+                    {
+                        switch (targetType) {
+                            case 'byte':
+                                castIR = new IR('d2b');
+                                break;
+                            case 'short':
+                                castIR = new IR('d2s');
+                                break;
+                            case 'int':
+                                castIR = new IR('d2i');
+                                break;
+                            case 'long':
+                                castIR = new IR('d2l');
+                                break;
+                        }
+                    }
+                    break;
+            }
+            return { startIR: nrRet.startIR, endIR: castIR!, truelist: [], falselist: [], jmpToFunctionEnd: [] };
+        } else {
+            throw `非法的类型转换${srcType}-->${targetType}`;
+        }
     }
     else if (node['box'] != undefined) {
-        throw `unimplement`;
+        let nrRet = nodeRecursion(scope, node['box'].obj, {
+            label: undefined,
+            frameLevel: undefined,
+            isGetAddress: undefined,
+            boolForward: undefined,
+            isAssignment: undefined,
+            singleLevelThis: option.singleLevelThis,
+            inContructorRet: undefined,
+            functionWrapName: option.functionWrapName
+        });
+        let box = new IR('box');
+        typeRelocationTable.push({ t1: node['box'].obj.type!.PlainType!.name, ir: box });
+        return { startIR: nrRet.startIR, endIR: box, truelist: [], falselist: [], jmpToFunctionEnd: [] };
     }
     else if (node['unbox'] != undefined) {
-        throw `unimplement`;
+        let nrRet = nodeRecursion(scope, node['unbox'].obj, {
+            label: undefined,
+            frameLevel: undefined,
+            isGetAddress: undefined,
+            boolForward: undefined,
+            isAssignment: undefined,
+            singleLevelThis: option.singleLevelThis,
+            inContructorRet: undefined,
+            functionWrapName: option.functionWrapName
+        });
+        let unbox = new IR('unbox');
+        typeRelocationTable.push({ t1: node['unbox'].type.PlainType!.name, ir: unbox });
+        return { startIR: nrRet.startIR, endIR: unbox, truelist: [], falselist: [], jmpToFunctionEnd: [] };
     }
     else if (node['_switch'] != undefined) {
-        throw `unimplement`;
+        if (node['_switch'].defalutStmt == undefined && node['_switch'].matchList.length == 0) {
+            //没有default和case分支的时候，不生成任何代码
+            return { startIR: nowIRContainer.irs[nowIRContainer.irs.length - 1], endIR: nowIRContainer.irs[nowIRContainer.irs.length - 1], truelist: [], falselist: [], jmpToFunctionEnd: [] };
+        }
+        let startIR: IR | undefined;
+        let endIR: IR | undefined;
+        let lastFalseList: IR[] = [];
+        let jumpToswitchEndIRs: IR[] = [];//任何一个分支执行完毕后都需要跳出switch
+
+        assert(option.frameLevel != undefined);
+
+        //处理matchList
+        for (let matchItem of node['_switch'].matchList) {
+            let conditon = nodeRecursion(scope, matchItem.condition!, {
+                label: undefined,
+                frameLevel: undefined,
+                isGetAddress: undefined,
+                boolForward: undefined,
+                isAssignment: undefined,
+                singleLevelThis: option.singleLevelThis,
+                inContructorRet: undefined,
+                functionWrapName: option.functionWrapName
+            });
+            if (startIR == undefined) {
+                startIR = conditon.startIR;
+            }
+
+
+            //如果当前不是第一个分支，则将上一个分支的falselist指向本分支的条件判断语句
+            if (lastFalseList.length != 0) {
+                backPatch(lastFalseList, conditon.startIR.index);
+            }
+            lastFalseList = conditon.falselist;
+
+            let caseBody = BlockScan(new BlockScope(scope, undefined, matchItem.stmt, { program }), {
+                label: option.label,
+                frameLevel: option.frameLevel + 1,
+                isGetAddress: undefined,
+                boolForward: undefined,
+                isAssignment: undefined,
+                singleLevelThis: option.singleLevelThis,
+                inContructorRet: option.inContructorRet,
+                functionWrapName: option.functionWrapName
+            });
+
+            let jumpToswitchEnd = new IR('jmp');
+            jumpToswitchEndIRs.push(jumpToswitchEnd);
+
+            endIR = jumpToswitchEnd;
+
+            if (conditon.truelist.length != 0) {
+                backPatch(conditon.truelist, caseBody.startIR.index);
+            }
+        }
+        if (node['_switch'].defalutStmt != undefined) {
+            let defaultBody = BlockScan(new BlockScope(scope, undefined, node['_switch'].defalutStmt, { program }), {
+                label: option.label,
+                frameLevel: option.frameLevel + 1,
+                isGetAddress: undefined,
+                boolForward: undefined,
+                isAssignment: undefined,
+                singleLevelThis: option.singleLevelThis,
+                inContructorRet: option.inContructorRet,
+                functionWrapName: option.functionWrapName
+            });
+
+            //如果default之前有分支，则回填falseList之后清空
+            if (lastFalseList.length != 0) {
+                backPatch(lastFalseList, defaultBody.startIR.index);
+            }
+            lastFalseList = [];
+
+            if (startIR == undefined) {
+                startIR = defaultBody.startIR;
+            }
+
+            let jumpToswitchEnd = new IR('jmp');
+            jumpToswitchEndIRs.push(jumpToswitchEnd);
+            endIR = jumpToswitchEnd;
+        }
+
+        assert(startIR != undefined);
+        assert(endIR != undefined);
+
+        //如果最后一个分支的falseList没有被回填(即没有被default处理掉)
+        if (lastFalseList.length != 0) {
+            backPatch(lastFalseList, endIR.index + 1n);
+        }
+
+        backPatch(jumpToswitchEndIRs, endIR.index + 1n);
+
+        return { startIR: startIR, endIR: endIR, truelist: [], falselist: [], jmpToFunctionEnd: [] };
     }
-    else if (node['loadOperatorOverload'] != undefined) {
-        throw `unimplement`;
+    else if (node['_instanceof'] != undefined) {
+        let nrRet = nodeRecursion(scope, node['_instanceof'].obj, {
+            label: undefined,
+            frameLevel: undefined,
+            isGetAddress: undefined,
+            boolForward: undefined,
+            isAssignment: undefined,
+            singleLevelThis: option.singleLevelThis,
+            inContructorRet: undefined,
+            functionWrapName: option.functionWrapName
+        });
+        let _instanceof = new IR('instanceof');
+        typeRelocationTable.push({ t1: TypeUsedSign(node['_instanceof'].type), ir: _instanceof });
+        return { startIR: nrRet.startIR, endIR: _instanceof, truelist: [], falselist: [], jmpToFunctionEnd: [] };
     }
     else if (node['trycatch'] != undefined) {
         throw `unimplement`;
@@ -1871,7 +2128,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
     else if (node['throwStmt'] != undefined) {
         throw `unimplement`;
     }
-    else if (node['_instanceof'] != undefined) {
+    else if (node['loadOperatorOverload'] != undefined) {
         throw `unimplement`;
     }
     else if (node['not'] != undefined) {
