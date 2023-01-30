@@ -8,7 +8,7 @@ valuetype class MyClass2{
 }
 function main(){
     autounwinding(var a=new MyClass();var b:MyClass2;var c=new MyClass()){
-
+        var d=new MyClass();
     }
 };
 

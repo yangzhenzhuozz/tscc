@@ -219,6 +219,9 @@ export enum OPCODE {
     p_pop,//从计算栈中弹出指针
     __exit,//退出
     alloc,//申请局部变量空间
+    alloc_null,//生成null局部变量
+    push_ref_unwind,//压入unwind变量(引用类型)
+    push_value_unwind,//压入unwind变量(值类型)
     access_array_length,//读取数组的length
     native_call,//调用native函数
 };
