@@ -210,6 +210,8 @@ export enum OPCODE {
 
     instanceof,
 
+    push_unwind,//压入unwind函数
+
     jmp,//相对跳转
     p_dup,//栈复制
     call,//以栈顶为目标，进行调用，这里不会消费计算栈
@@ -220,8 +222,6 @@ export enum OPCODE {
     __exit,//退出
     alloc,//申请局部变量空间
     alloc_null,//生成null局部变量
-    push_ref_unwind,//压入unwind变量(引用类型)
-    push_value_unwind,//压入unwind变量(值类型)
     access_array_length,//读取数组的length
     native_call,//调用native函数
 };

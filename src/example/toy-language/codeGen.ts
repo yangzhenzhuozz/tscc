@@ -460,7 +460,15 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
              * 在alloc之前执行
              * 不需要额外指令了 push_ref_unwind push_value_unwind
              */
-            console.error(`需要执行 load unwind push unwind`);
+            if (!isPointType(node['def'][name].type!)) {
+                new IR('load_address', varOffset);
+            } else {
+                new IR('p_load', varOffset);
+            }
+            let baseScope = programScope.getClassScope(node['def'][name].type!.PlainType!.name);
+            let offset = baseScope.getPropOffset('unwinded');
+            new IR('getfield_address', offset);//读取成员地址
+            new IR('push_unwind');
         }
         if (alloc_null) {
             endIR = new IR('alloc_null', propSize(node['def'][name].type!)); 1
@@ -2315,7 +2323,7 @@ function BlockScan(blockScope: BlockScope,
     }
     let endIR: IR;
     let jmpToFunctionEnd: IR[] = [];//记录所有返回指令;
-    let autoUnwinding = option.autoUnwinding ?? 0;
+    let unwind = option.autoUnwinding ?? 0;//
     for (let i = 0; i < blockScope.block!.body.length; i++) {
         let nodeOrBlock = blockScope.block!.body[i];
         if (nodeOrBlock.desc == 'ASTNode') {
@@ -2327,7 +2335,7 @@ function BlockScan(blockScope: BlockScope,
                 isAssignment: undefined,
                 singleLevelThis: option.singleLevelThis,
                 inContructorRet: option.inContructorRet,
-                unwind: autoUnwinding > 0,
+                unwind: unwind > 0,
                 functionWrapName: option.functionWrapName
             });
             endIR = nodeRet.endIR;
@@ -2366,7 +2374,7 @@ function BlockScan(blockScope: BlockScope,
                 jmpToFunctionEnd.push(ir);
             }
         }
-        autoUnwinding--;
+        unwind--;
     }
 
 
@@ -2396,7 +2404,7 @@ function BlockScan(blockScope: BlockScope,
     for (let k in blockScope.property) {
         stackFrame.push({ name: k, type: blockScope.getProp(k).prop.type! });
     }
-    stackFrameTable[`@StackFrame_${stackFrameMapIndex}`] = { baseOffset: blockScope.baseOffset, autoUnwinding, frame: stackFrame };
+    stackFrameTable[`@StackFrame_${stackFrameMapIndex}`] = { baseOffset: blockScope.baseOffset, autoUnwinding: option.autoUnwinding ?? 0, frame: stackFrame };
     return { startIR: startIR, endIR: endIR!, jmpToFunctionEnd: jmpToFunctionEnd, stackFrame };
 }
 function propSize(type: TypeUsed): number {
