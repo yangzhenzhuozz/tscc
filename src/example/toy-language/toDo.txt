@@ -52,8 +52,11 @@
 -   创建构造函数时需要指定inContructor        //我忘了这是啥，为什么要记这一行,很早之前生成构造函数代码已经指定了
 
 -   确认嵌套在block中的break、continue、ret是否弹出数量正确的frame
-+   unwinding目前设计的不够好，需要在pop_stack_frame的时候由vm搜索，改为每次alloc的时候自动判断是否需要往frameStack压unwinded函数(处理一下def节点即可)
-+   对每个block（即StackFrame）记录autounwinding,每次popup_frame的时候检查是否有需要自动释放的对象
+-   unwind的顺序反了
+-   unwinding目前设计的不够好，需要在pop_stack_frame的时候由vm搜索，改为每次alloc的时候自动判断是否需要往frameStack压unwinded函数(处理一下def节点即可)
+-   对每个block（即StackFrame）记录autounwinding,每次popup_frame的时候检查是否有需要自动释放的对象 //由 pop_stack_map实现了
+
++   测试抛出异常时unwind是否正确(即声明了三个，实际上只初始化了两个的情况)
 +   抛出异常的时候需要执行stack unwinding
 +   嵌套unwind（即close函数内部还有unwind）
 +   null==obj

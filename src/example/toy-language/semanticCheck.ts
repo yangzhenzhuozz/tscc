@@ -741,7 +741,8 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
     }
     else if (node["autounwinding"] != undefined) {
         //检查这些类型是否都实现了unwinded接口
-        for (let i = 0; i < node["autounwinding"].unwinded; i++) {
+        //循环步长为2，因为一个def节点，一个pushUnwindHandler节点
+        for (let i = 0; i < node["autounwinding"].unwinded; i += 2) {
             let defType = nodeRecursion(scope, node["autounwinding"].stmt.body[i] as ASTNode, label, declareRetType).type;
             if (defType.PlainType == undefined) {
                 throw `autounwinding只支持PlainType类型，不支持数组和函数`;
@@ -761,9 +762,14 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
                     throw `引用类型的autoUnwinding必须在声明的时候初始化:${defName}`;
                 }
             }
-        }6
+            nodeRecursion(scope, node["autounwinding"].stmt.body[i + 1] as ASTNode, label, declareRetType).type;
+        }
         let blockRet = BlockScan(new BlockScope(scope, undefined, node["autounwinding"].stmt, {}), label, declareRetType);
         result = { hasRet: blockRet.hasRet, retType: blockRet.retType, type: { PlainType: { name: 'void' } } };
+    }
+    else if (node['pushUnwindHandler'] != undefined) {
+        nodeRecursion(scope, node["pushUnwindHandler"], label, declareRetType).type;
+        result = { hasRet: false, retType: undefined, type: { PlainType: { name: 'void' } } };
     }
     else {
         throw new Error(`未知节点`);
@@ -895,7 +901,7 @@ function BlockScan(blockScope: BlockScope, label: string[], declareRetType: { re
                             body: []//函数体是空白的
                         }
                     };
-                    blockScope.defNodes[k].defNode!.def![k].initAST = { desc: 'ASTNode', _new: { type: wrapTypeUsed, _arguments: [] } };
+                    blockScope.defNodes[k].defNode!.def![k].initAST = { desc: 'ASTNode', type: wrapTypeUsed, _new: { type: wrapTypeUsed, _arguments: [] } };
                 }
                 else {
                     /**

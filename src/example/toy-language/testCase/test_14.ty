@@ -20,11 +20,6 @@ class MyClass3{
 }
 function main(){
     autounwinding(var a=new MyClass();var b:MyClass2;var c=new MyClass3()){
-        {
-            {
-                return;
-            }
-        }
     }
 };
 

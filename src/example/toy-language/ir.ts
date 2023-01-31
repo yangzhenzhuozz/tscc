@@ -82,7 +82,7 @@ export enum OPCODE {
     /**
      * 只有读取需要用到address，设置不需要
      */
-    getfield_address,//从计算栈弹出一个指针，加上偏移压入计算栈
+    getfield_address,//从计算栈弹出一个指针，加上偏移压入计算栈(获取成员的地址(不是获取成员的值))
     load_address,//读取局部变量区域的基础地址(bp指针),然后加上偏移压入计算栈
     valueType_load,//从局部变量加载一个value到计算栈
     valueType_store,//从计算栈存储到局部变量,op1是offset,op2是size

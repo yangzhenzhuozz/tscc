@@ -1401,6 +1401,18 @@ import { Program } from "./program.js";
                     let initDeclares = $[2] as VariableDescriptor[];
                     let statements = $[5] as Block;
                     for (let i = initDeclares.length - 1; i >= 0; i--) {
+                        statements.body.unshift({
+                            desc: "ASTNode", pushUnwindHandler: {
+                                desc: 'ASTNode',
+                                accessField: {
+                                    obj: {
+                                        desc: 'ASTNode',
+                                        load: Object.keys(initDeclares[i])[0]
+                                    },
+                                    field: 'unwinded'
+                                }
+                            }
+                        });//逆序压入读取unwinded的指令、def指令
                         statements.body.unshift({ desc: "ASTNode", def: initDeclares[i] });
                     }
                     return { desc: "ASTNode", autounwinding: { unwinded: initDeclares.length, stmt: statements } };
