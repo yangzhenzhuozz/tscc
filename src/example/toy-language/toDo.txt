@@ -55,3 +55,4 @@
 +   unwinding目前设计的不够好，需要在pop_stack_frame的时候由vm搜索，改为每次alloc的时候自动判断是否需要往frameStack压unwinded函数(处理一下def节点即可)
 +   对每个block（即StackFrame）记录autounwinding,每次popup_frame的时候检查是否有需要自动释放的对象
 +   抛出异常的时候需要执行stack unwinding
++   嵌套unwind（即close函数内部还有unwind）

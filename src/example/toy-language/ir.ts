@@ -211,6 +211,8 @@ export enum OPCODE {
     instanceof,
 
     push_unwind,//压入unwind函数
+    pop_unwind,//弹出unwind函数到计算栈
+    if_unneed_unwind,//是否还需要unwind
 
     jmp,//相对跳转
     p_dup,//栈复制

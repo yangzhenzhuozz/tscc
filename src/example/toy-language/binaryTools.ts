@@ -187,6 +187,17 @@ export function link(programScope: ProgramScope) {
     if (main == undefined || Object.keys(main._arguments).length != 0 || TypeUsedSign(main.retType!) != 'void') {
         throw `必须在program域定义一个函数main,类型为: ()=>void (无参,无返回值),后续再考虑有参数和返回值的情况`;
     }
+
+    let unwind = new IRContainer('@unwind', 'begin');//在代码的最前面生成@start
+    IRContainer.setContainer(unwind);
+    let unwind_start = new IR('if_unneed_unwind');
+    new IR('pop_unwind');
+    new IR('call');
+    let unwind_loop = new IR('jmp');
+    unwind_loop.operand1 = unwind_start.index - unwind_loop.index;
+    let unwind_ret = new IR('ret');
+    unwind_start.operand1 = unwind_ret.index - unwind_start.index;
+
     let start = new IRContainer('@start', 'begin');//在代码的最前面生成@start
     IRContainer.setContainer(start);
     let new_p = new IR('_new', undefined, undefined, undefined);
@@ -238,6 +249,9 @@ export function link(programScope: ProgramScope) {
     }
     //将ir变成二进制
     let irBuffer = new Buffer();
+    irBuffer.appendInt64(1021n);//magic number
+    irBuffer.appendInt64(irTable.get('@start')!);
+    irBuffer.appendInt64(irTable.get('@unwind')!);
     for (let ircontainer of irContainerList) {
         for (let ir of ircontainer.irs) {
             debugIRS.push(ir);
