@@ -6,7 +6,7 @@ import { FunctionSign, FunctionSignWithArgumentAndRetType, TypeUsedSign } from '
 import { classTable, stringPool, typeItemDesc, typeTable as binTypeTable, stackFrameTable as binStackFrameTable, link } from './binaryTools.js'
 import { registerType } from './semanticCheck.js';
 
-function assert(condition: any): asserts condition {
+export function assert(condition: any): asserts condition {
     if (!condition) {
         throw `断言失败`;
     }
@@ -667,6 +667,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
             singleLevelThis: option.singleLevelThis,
             inContructorRet: option.inContructorRet,
             autoUnwinding: undefined,
+            isTryBlock: undefined,
             functionWrapName: option.functionWrapName
         });
         let jmp = new IR('jmp');
@@ -679,6 +680,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
             singleLevelThis: option.singleLevelThis,
             inContructorRet: option.inContructorRet,
             autoUnwinding: undefined,
+            isTryBlock: undefined,
             functionWrapName: option.functionWrapName
         });
         jmp.operand1 = block2Ret.endIR.index - jmp.index + block2Ret.endIR.length;
@@ -712,6 +714,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
             singleLevelThis: option.singleLevelThis,
             inContructorRet: option.inContructorRet,
             autoUnwinding: undefined,
+            isTryBlock: undefined,
             functionWrapName: option.functionWrapName
         });
         backPatch(condition.truelist, blockRet.startIR.index);
@@ -1051,6 +1054,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
                 singleLevelThis: option.singleLevelThis,
                 inContructorRet: option.inContructorRet,
                 autoUnwinding: undefined,
+                isTryBlock: undefined,
                 functionWrapName: option.functionWrapName
             });
             if (!startIR) {
@@ -1786,6 +1790,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
             singleLevelThis: option.singleLevelThis,
             inContructorRet: option.inContructorRet,
             autoUnwinding: undefined,
+            isTryBlock: undefined,
             functionWrapName: option.functionWrapName
         });
         jmpToFunctionEnd = loopBody.jmpToFunctionEnd;
@@ -1830,6 +1835,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
             singleLevelThis: option.singleLevelThis,
             inContructorRet: option.inContructorRet,
             autoUnwinding: undefined,
+            isTryBlock: undefined,
             functionWrapName: option.functionWrapName
         });
         startIR = loopBody.startIR;
@@ -2080,6 +2086,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
                 singleLevelThis: option.singleLevelThis,
                 inContructorRet: option.inContructorRet,
                 autoUnwinding: undefined,
+                isTryBlock: undefined,
                 functionWrapName: option.functionWrapName
             });
             jmpToFunctionEnd = jmpToFunctionEnd.concat(caseBody.jmpToFunctionEnd);
@@ -2103,6 +2110,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
                 singleLevelThis: option.singleLevelThis,
                 inContructorRet: option.inContructorRet,
                 autoUnwinding: undefined,
+                isTryBlock: undefined,
                 functionWrapName: option.functionWrapName
             });
 
@@ -2161,6 +2169,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
             singleLevelThis: option.singleLevelThis,
             inContructorRet: option.inContructorRet,
             autoUnwinding: node['autounwinding'].unwinded,
+            isTryBlock: undefined,
             functionWrapName: option.functionWrapName
         });
         return { startIR: autounwindingBody.startIR, endIR: autounwindingBody.endIR, truelist: [], falselist: [], jmpToFunctionEnd: autounwindingBody.jmpToFunctionEnd };
@@ -2180,13 +2189,101 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
         return { startIR: nrRet.startIR, endIR, truelist: [], falselist: [], jmpToFunctionEnd: [] };
     }
     else if (node['trycatch'] != undefined) {
-        throw `unimplement`;
+        let jmpToTryCatchEnds: IR[] = [];
+        let push_catch_blocks: IR[] = [];
+        let jmpToFunctionEnd: IR[] = [];
+        let endIR: IR | undefined;
+        assert(option.frameLevel != undefined);
+        let startIR: IR | undefined;
+        //逆序压入catch，保证前面的catch块在栈的前面
+        for (let i = node['trycatch'].catch_list.length - 1; i >= 0; i--) {
+            let item = node['trycatch'].catch_list[i];
+            let ir = new IR('push_catch_block');
+            typeRelocationTable.push({ t2: TypeUsedSign(item.catchType), ir });
+            push_catch_blocks.push(ir);
+            if (startIR == undefined) {
+                startIR = ir;
+            }
+        }
+        new IR('save_catch_point', node['trycatch'].catch_list.length);
+        let tryBlockRet = BlockScan(new BlockScope(scope, undefined, node['trycatch'].tryBlock, { program }), {
+            label: option.label,
+            frameLevel: option.frameLevel + 1,
+            isGetAddress: undefined,
+            boolForward: undefined,
+            isAssignment: undefined,
+            singleLevelThis: option.singleLevelThis,
+            inContructorRet: option.inContructorRet,
+            autoUnwinding: undefined,
+            isTryBlock: true,
+            functionWrapName: option.functionWrapName
+        });
+        jmpToFunctionEnd = jmpToFunctionEnd.concat(tryBlockRet.jmpToFunctionEnd);
+
+        let jmpToTryCatchEnd = new IR('jmp');
+        jmpToTryCatchEnds.push(jmpToTryCatchEnd);
+
+        //顺序处理
+        for (let i = 0; i < node['trycatch'].catch_list.length; i++) {
+            let item = node['trycatch'].catch_list[i];
+            let catchBlockRet = BlockScan(new BlockScope(scope, undefined, item.catchBlock, { program }), {
+                label: option.label,
+                frameLevel: option.frameLevel + 1,
+                isGetAddress: undefined,
+                boolForward: undefined,
+                isAssignment: undefined,
+                singleLevelThis: option.singleLevelThis,
+                inContructorRet: option.inContructorRet,
+                autoUnwinding: undefined,
+                isTryBlock: undefined,
+                functionWrapName: option.functionWrapName
+            });
+            push_catch_blocks[push_catch_blocks.length - 1 - i].operand1 = catchBlockRet.startIR.index;
+            jmpToFunctionEnd = jmpToFunctionEnd.concat(catchBlockRet.jmpToFunctionEnd);
+            //最后一个不需要jmp
+            if (i != node['trycatch'].catch_list.length - 1) {
+                let jmpToTryCatchEnd = new IR('jmp');
+                jmpToTryCatchEnds.push(jmpToTryCatchEnd);
+                endIR = jmpToTryCatchEnd;
+            } else {
+                endIR = catchBlockRet.endIR;
+            }
+        }
+        assert(startIR != undefined);
+        assert(endIR != undefined);
+        backPatch(jmpToTryCatchEnds, endIR.index + 1n);
+        return { startIR, endIR, truelist: [], falselist: [], jmpToFunctionEnd };
     }
     else if (node['loadException'] != undefined) {
-        throw `unimplement`;
+        if (!isPointType(node['loadException'])) {
+            let load_exception = new IR('load_exception');
+            let unbox = new IR('unbox');
+            typeRelocationTable.push({ t1: TypeUsedSign(node['loadException']), ir: unbox });
+            return { startIR: load_exception, endIR: unbox, truelist: [], falselist: [], jmpToFunctionEnd: [] };
+        } else {
+            let load_exception = new IR('load_exception');
+            return { startIR: load_exception, endIR: load_exception, truelist: [], falselist: [], jmpToFunctionEnd: [] };
+        }
     }
     else if (node['throwStmt'] != undefined) {
-        throw `unimplement`;
+        let throw_obj = nodeRecursion(scope, node['throwStmt'], {
+            label: undefined,
+            frameLevel: undefined,
+            isGetAddress: undefined,
+            boolForward: undefined,
+            isAssignment: undefined,
+            singleLevelThis: option.singleLevelThis,
+            inContructorRet: undefined,
+            functionWrapName: option.functionWrapName
+        });
+        assert(node['throwStmt'].type != undefined);
+        if (!isPointType(node['throwStmt'].type)) {
+            let box = new IR('box');
+            typeRelocationTable.push({ t1: TypeUsedSign(node['throwStmt'].type), ir: box });
+        }
+        let _throw = new IR('_throw');
+        typeRelocationTable.push({ t1: TypeUsedSign(node['throwStmt'].type), ir: _throw });
+        return { startIR: throw_obj.startIR, endIR: _throw, truelist: [], falselist: [], jmpToFunctionEnd: [] };
     }
     else if (node['loadOperatorOverload'] != undefined) {
         throw `unimplement`;
@@ -2241,6 +2338,7 @@ function BlockScan(blockScope: BlockScope,
         singleLevelThis: undefined | boolean, //是否为普通函数(影响block内部对this的取值方式)，需要向下传递,用于calss的init和construct
         inContructorRet: undefined | boolean,//是否处于构造函数中，影响Ret指令的生成
         autoUnwinding: undefined | number,//需要自动释放的变量数量,有且仅有autounwinding节点才用到
+        isTryBlock: undefined | boolean,//是否是tryCatch的Block
         functionWrapName: string,//函数包裹类的名字，给loadFunctionWrap节点提取函数包裹类名字，从functionObjGen向下传递
     }
 ): { startIR: IR, endIR: IR, jmpToFunctionEnd: IR[], stackFrame: { name: string, type: TypeUsed }[] } {
@@ -2252,7 +2350,7 @@ function BlockScan(blockScope: BlockScope,
 
 
     let stackFrameMapIndex = globalVariable.stackFrameMapIndex++;
-    let startIR: IR = new IR('push_stack_map', undefined, undefined, undefined);
+    let startIR: IR = new IR('push_stack_map', undefined, option.isTryBlock ? 1 : undefined, undefined);
     stackFrameRelocationTable.push({ sym: `@StackFrame_${stackFrameMapIndex}`, ir: startIR });
 
     if (option.frameLevel == 1) {//处于函数scope中
@@ -2304,6 +2402,7 @@ function BlockScan(blockScope: BlockScope,
                 singleLevelThis: option.singleLevelThis,
                 inContructorRet: option.inContructorRet,
                 autoUnwinding: undefined,
+                isTryBlock: undefined,
                 functionWrapName: option.functionWrapName
             });
             endIR = blockRet.endIR;
@@ -2401,6 +2500,7 @@ function functionObjGen(blockScope: BlockScope, fun: FunctionType, option?: { na
             singleLevelThis: false,
             inContructorRet: false,
             autoUnwinding: undefined,
+            isTryBlock: undefined,
             functionWrapName: functionWrapName
         });
         BlockScanRet.stackFrame.unshift({ name: '@wrap', type: { PlainType: { name: functionWrapName } } });//压入函数包裹类
@@ -2455,6 +2555,7 @@ function constructorFunctionGen(blockScope: BlockScope, fun: FunctionType, funct
         singleLevelThis: true,
         inContructorRet: true,
         autoUnwinding: undefined,
+        isTryBlock: undefined,
         functionWrapName: '@unknow'
     });
     let retIR = new IR('ret');

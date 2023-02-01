@@ -1,3 +1,4 @@
+import { assert } from "./codeGen.js";
 import { IR, IRContainer, OPCODE, stackFrameRelocationTable, irAbsoluteAddressRelocationTable, irContainerList, typeRelocationTable, typeTable as irTypeTable } from "./ir.js";
 import { TypeUsedSign } from "./lib.js";
 import { ProgramScope } from "./scope.js";
@@ -254,6 +255,12 @@ export function link(programScope: ProgramScope) {
     irBuffer.appendInt64(irTable.get('@unwind')!);
     for (let ircontainer of irContainerList) {
         for (let ir of ircontainer.irs) {
+            if (ir.opCode == 'push_catch_block') {
+                let symbolIndex = irTable.get(ircontainer.name);
+                assert(ir.operand1 != undefined);
+                assert(symbolIndex != undefined);
+                ir.operand1 = ir.operand1 + symbolIndex;
+            }
             debugIRS.push(ir);
             irBuffer.appendInt64(BigInt(OPCODE[ir.opCode]));
             irBuffer.appendInt64(BigInt(ir.operand1 ?? 0));

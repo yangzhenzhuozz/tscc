@@ -173,6 +173,11 @@ export enum OPCODE {
 
     castCheck,//类型转换检查,如果非法则抛出异常
 
+    push_catch_block,//在计算栈中压入异常处理模块,op1是代码地址,op2是类型
+    save_catch_point,//保存异常处理点
+    load_exception,//读取异常变量
+    _throw,//抛出异常
+
     /**
      * b byte
      * s short
