@@ -189,7 +189,23 @@ export function link(programScope: ProgramScope) {
         throw `必须在program域定义一个函数main,类型为: ()=>void (无参,无返回值),后续再考虑有参数和返回值的情况`;
     }
 
-    let unwind = new IRContainer('@unwind', 'begin');//在代码的最前面生成@start
+    /**
+     * VMExceptionGen的两行指令和VMThrow的一条指令操作码由VM运行时动态更改
+     */
+
+    let VMExceptionGen = new IRContainer('@VMExceptionGen', 'begin');//在代码的最前面生成@vmExceptionGen
+    IRContainer.setContainer(VMExceptionGen);
+    new IR('abs_call', undefined, undefined, undefined);
+    new IR('abs_call', undefined, undefined, undefined);
+    new IR('ret');
+
+    let vmThrow = new IRContainer('@VMThrow', 'begin');//在代码的最前面生成@VMThrow
+    IRContainer.setContainer(vmThrow);
+    new IR('clear_VM_Error_flag');
+    new IR('store_VM_Error');
+    new IR('_throw', undefined, undefined, undefined);
+
+    let unwind = new IRContainer('@unwind', 'begin');//在代码的最前面生成@unwind
     IRContainer.setContainer(unwind);
     let unwind_start = new IR('if_unneed_unwind');
     new IR('pop_unwind');
@@ -250,9 +266,15 @@ export function link(programScope: ProgramScope) {
     }
     //将ir变成二进制
     let irBuffer = new Buffer();
+
     irBuffer.appendInt64(1021n);//magic number
     irBuffer.appendInt64(irTable.get('@start')!);
     irBuffer.appendInt64(irTable.get('@unwind')!);
+    irBuffer.appendInt64(irTable.get('@VMThrow')!);
+    irBuffer.appendInt64(irTable.get('@VMExceptionGen')!);
+    irBuffer.appendInt64(irTable.get('NullPointException_init')!);
+    irBuffer.appendInt64(irTable.get(`@constructor:NullPointException args:() retType:void`)!);
+
     for (let ircontainer of irContainerList) {
         for (let ir of ircontainer.irs) {
             if (ir.opCode == 'push_catch_block') {

@@ -1296,6 +1296,19 @@ export default function semanticCheck() {
     programScope.registerClass('@null');//注册null类型
     registerType({ PlainType: { name: '@null' } });//在类型表中注册类型
 
+    if(program.getDefinedType('NullPointException')==undefined)
+    {
+        throw `VM运行必备类型NullPointException未定义`;
+    }else{
+        if(!isPointType({PlainType:{name:"NullPointException"}})){
+            throw `NullPointException必须是引用类型`;
+        }else{
+            if(program.getDefinedType('NullPointException')._constructor[`args:() retType:void`]==undefined){
+                throw `NullPointException必须有一个无参构造函数`;
+            }
+        }
+    }
+
     // 把所有的扩展函数挪到extensionMethodsImpl
     for (let extendTypeName in program.extensionMethodsDef) {
         for (let methodName in program.extensionMethodsDef[extendTypeName]) {

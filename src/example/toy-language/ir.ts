@@ -177,6 +177,8 @@ export enum OPCODE {
     save_catch_point,//保存异常处理点
     clear_calculate_stack,//清空计算栈
     _throw,//抛出异常
+    clear_VM_Error_flag,//清理VM自身的错误标记
+    store_VM_Error,//从计算栈中弹出一个指针(VM的所有异常都是引用类型)，然后清理栈，再把指针移入计算栈
 
     /**
      * b byte
