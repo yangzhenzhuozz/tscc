@@ -2255,18 +2255,11 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
         return { startIR, endIR, truelist: [], falselist: [], jmpToFunctionEnd };
     }
     else if (node['loadException'] != undefined) {
-        if (!isPointType(node['loadException'])) {
-            let load_exception = new IR('load_exception');
-            let unbox = new IR('unbox');
-            typeRelocationTable.push({ t1: TypeUsedSign(node['loadException']), ir: unbox });
-            return { startIR: load_exception, endIR: unbox, truelist: [], falselist: [], jmpToFunctionEnd: [] };
-        } else {
-            let load_exception = new IR('load_exception');
-            return { startIR: load_exception, endIR: load_exception, truelist: [], falselist: [], jmpToFunctionEnd: [] };
-        }
+        return { startIR: nowIRContainer.irs[nowIRContainer.irs.length - 1], endIR: nowIRContainer.irs[nowIRContainer.irs.length - 1], truelist: [], falselist: [], jmpToFunctionEnd: [] };
     }
     else if (node['throwStmt'] != undefined) {
-        let throw_obj = nodeRecursion(scope, node['throwStmt'], {
+        let startIR = new IR('clear_calculate_stack');
+        nodeRecursion(scope, node['throwStmt'], {
             label: undefined,
             frameLevel: undefined,
             isGetAddress: undefined,
@@ -2277,13 +2270,9 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
             functionWrapName: option.functionWrapName
         });
         assert(node['throwStmt'].type != undefined);
-        if (!isPointType(node['throwStmt'].type)) {
-            let box = new IR('box');
-            typeRelocationTable.push({ t1: TypeUsedSign(node['throwStmt'].type), ir: box });
-        }
         let _throw = new IR('_throw');
         typeRelocationTable.push({ t1: TypeUsedSign(node['throwStmt'].type), ir: _throw });
-        return { startIR: throw_obj.startIR, endIR: _throw, truelist: [], falselist: [], jmpToFunctionEnd: [] };
+        return { startIR, endIR: _throw, truelist: [], falselist: [], jmpToFunctionEnd: [] };
     }
     else if (node['loadOperatorOverload'] != undefined) {
         throw `unimplement`;

@@ -27,6 +27,8 @@ function main():void{
                 printI8(v);
             }
         }
+    }catch(v:double){
+        printDouble(v);
     }catch(v:int){
         printI32(v);
     }catch(v:byte){
