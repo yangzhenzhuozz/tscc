@@ -82,5 +82,6 @@ lexer.addRule(['super', (arg) => { arg.value = arg.yytext; return `super`; }]);
 lexer.addRule(['instanceof', (arg) => { arg.value = arg.yytext; return `instanceof`; }]);
 lexer.addRule(['autounwinding', (arg) => { arg.value = arg.yytext; return `autounwinding`; }]);
 lexer.addRule(['(true)|(false)', (arg) => { arg.value = 'true'; return "immediate_val"; }]);
+lexer.addRule(['null', (arg) => { arg.value = 'null'; return "immediate_val"; }]);
 export { userTypeDictionary };
 export default lexer;

@@ -1,5 +1,5 @@
 //预处理AST
-import { isPointType } from './codeGen.js';
+import { assert, isPointType } from './codeGen.js';
 import { program, globalVariable, typeTable } from './ir.js';
 import { FunctionSignWithArgumentAndRetType, TypeUsedSign, FunctionSignWithArgument } from './lib.js';
 import { Scope, BlockScope, ClassScope, ProgramScope } from './scope.js';
@@ -21,18 +21,27 @@ function OperatorOverLoad(scope: Scope, leftObj: ASTNode, rightObj: ASTNode | un
             return { type: leftType.ArrayType.innerType, location: 'array_element' };
         } else {
             if (leftType.PlainType) {
-                let sign = FunctionSignWithArgument([rightType]);
-                let opFunction = program.getDefinedType(leftType.PlainType!.name).operatorOverload[op as opType]?.[sign];
-                if (opFunction == undefined) {
-                    throw `类型${TypeUsedSign(leftType)}没有 ${op} (${TypeUsedSign(rightType)})的重载函数`;
-                } else if (opFunction.isNative == undefined || !opFunction.isNative) {
-                    delete originNode[op];//删除原来的操作符
-                    originNode.call = { functionObj: { desc: 'ASTNode', loadOperatorOverload: [op, sign] }, _arguments: [rightObj] };//改为函数调用
-                } else {
-                    //由vm实现
+                //null只可以赋值和做==比较
+                if (op == '==' && (TypeUsedSign(leftType) == '@null' || TypeUsedSign(rightType) == '@null')) {
+                    typeCheck(leftType, rightType, '');
+                    //由vm实现，不生成操作符重载代码
+                    return { type: { PlainType: { name: "bool" } } };
                 }
-                return { type: opFunction.retType! };
+                else {
+                    let sign = FunctionSignWithArgument([rightType]);
+                    let opFunction = program.getDefinedType(leftType.PlainType!.name).operatorOverload[op as opType]?.[sign];
+                    if (opFunction == undefined) {
+                        throw `类型${TypeUsedSign(leftType)}没有 ${op} (${TypeUsedSign(rightType)})的重载函数`;
+                    } else if (opFunction.isNative == undefined || !opFunction.isNative) {
+                        delete originNode[op];//删除原来的操作符
+                        originNode.call = { functionObj: { desc: 'ASTNode', loadOperatorOverload: [op, sign] }, _arguments: [rightObj] };//改为函数调用
+                    } else {
+                        //由vm实现，不生成操作符重载代码
+                    }
+                    return { type: opFunction.retType! };
+                }
             } else {
+                //是函数类型和数组类型
                 throw `类型${TypeUsedSign(leftType)}没有操作符${op}`;
             }
         }
@@ -63,10 +72,20 @@ function OperatorOverLoad(scope: Scope, leftObj: ASTNode, rightObj: ASTNode | un
 function typeCheck(a: TypeUsed, b: TypeUsed, msg: string): void {
     let ta = TypeUsedSign(a);
     let tb = TypeUsedSign(b);
-    if (ta == 'exception' || tb == 'exception') {//遇到exception不作判断，因为throw语句可以结束代码块
+    if (ta == '@exception' || tb == '@exception') {//遇到exception不作判断，因为throw语句可以结束代码块
         return;
     }
-    if (ta != tb) {
+    if (ta == '@null') {
+        if (!isPointType(b)) {
+            throw `只有引用类型才能和null运算`;
+        }
+    }
+    else if (tb == '@null') {
+        if (!isPointType(a)) {
+            throw `只有引用类型才能和null运算`;
+        }
+    }
+    else if (ta != tb) {
         throw `类型不匹配:${ta} - ${tb}:   ${msg}`;
     }
 }
@@ -93,6 +112,16 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
         }
         let prop = node['def'][name];
         if (prop.type == undefined) {//如果是需要进行类型推导，则推导类型
+            //prop.type为undefined的时候initType必定有值
+            assert(initType != undefined);
+            if (TypeUsedSign(initType) == '@null') {
+                /**
+                 * 如下代码会命中条件
+                 * var a=null;
+                 * 此时无法推导a的类型
+                 */
+                throw `无法推导类型`;
+            }
             prop.type = initType;
         } else {//否则检查initialization的类型和声明类型是否一致
             if (initType != undefined) {
@@ -334,6 +363,8 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
                 result = { type: { PlainType: { name: 'long' } }, hasRet: false };
             } else if (/^[0-9]+\.[0-9]+$/.test(immediate_val)) {
                 result = { type: { PlainType: { name: 'double' } }, hasRet: false };
+            } else if (immediate_val == 'null') {
+                result = { type: { PlainType: { name: '@null' } }, hasRet: false };
             } else {
                 throw `还未支持的immediate类型${node["immediate"].primiviteValue}`
             }
@@ -455,7 +486,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
     else if (node["throwStmt"] != undefined) {
         nodeRecursion(scope, node["throwStmt"], label, declareRetType);
         //throw不像ret那样修改retType，所以对于后续的分析无影响
-        result = { hasRet: true, type: { PlainType: { name: 'void' } }, retType: { PlainType: { name: 'exception' } } };//throw可以作为任意类型的返回值
+        result = { hasRet: true, type: { PlainType: { name: 'void' } }, retType: { PlainType: { name: '@exception' } } };//throw可以作为任意类型的返回值
     }
     else if (node["ret"] != undefined) {
         let type: TypeUsed;
@@ -1006,7 +1037,7 @@ function functionScan(blockScope: BlockScope, fun: FunctionType): TypeUsed {
     if (blockRet.retType == undefined) {//函数声明返回void，block没有返回语句，则设置block返回值为void
         blockRet.retType = { PlainType: { name: 'void' } };
     }
-    if (fun.retType == undefined && (blockRet.retType == undefined || blockRet.retType?.PlainType?.name == 'exception')) {
+    if (fun.retType == undefined && (blockRet.retType == undefined || blockRet.retType?.PlainType?.name == '@exception')) {
         throw `无法推导返回值`;
     } else {
         if (fun.retType != undefined) {
@@ -1023,9 +1054,17 @@ function ClassScan(classScope: ClassScope) {
         if (prop.getter == undefined && prop.setter == undefined) {//扫描field
             if (prop.initAST != undefined) {
                 let initType = nodeRecursion(classScope, prop.initAST, [], {}).type;
-                if (prop.type) {
+                if (prop.type != undefined) {
                     typeCheck(initType, prop.type, `属性${propName}声明类型和初始化类型不一致`);
                 } else {
+                    if (TypeUsedSign(initType) == '@null') {
+                        /**
+                         * 如下代码会命中条件
+                         * var a=null;
+                         * 此时无法推导a的类型
+                         */
+                        throw `无法推导类型`;
+                    }
                     prop.type = initType;//如果是需要推导的类型，进行填充
                 }
             } else if (prop.type?.FunctionType) {
@@ -1091,6 +1130,7 @@ function sizeof(typeName: string): number {
         case 'double': ret = 8; break;
         case 'object': ret = globalVariable.pointSize; break;
         case '@point': ret = globalVariable.pointSize; break;
+        case '@null': ret = globalVariable.pointSize; break;
         default:
             for (let fieldName in program.getDefinedType(typeName).property) {
                 let field = program.getDefinedType(typeName).property[fieldName];
@@ -1237,6 +1277,25 @@ function extensionMethodReplace(exm: ExtensionMethod) {
 }
 export default function semanticCheck() {
     programScope = new ProgramScope(program, {});
+
+    program.setDefinedType('@point', {
+        modifier: 'valuetype',
+        property: {},
+        operatorOverload: {},
+        _constructor: {}
+    });
+    programScope.registerClass('@point');//注册point类型
+    registerType({ PlainType: { name: '@point' } });//在类型表中注册类型
+
+    program.setDefinedType('@null', {
+        modifier: 'valuetype',
+        property: {},
+        operatorOverload: {},
+        _constructor: {}
+    });
+    programScope.registerClass('@null');//注册null类型
+    registerType({ PlainType: { name: '@null' } });//在类型表中注册类型
+
     // 把所有的扩展函数挪到extensionMethodsImpl
     for (let extendTypeName in program.extensionMethodsDef) {
         for (let methodName in program.extensionMethodsDef[extendTypeName]) {
@@ -1279,6 +1338,14 @@ export default function semanticCheck() {
             if (prop.type != undefined) {
                 typeCheck(prop.type, initType, `初始化的值类型和声明类型不一致:${variableName}`);
             } else {
+                if (TypeUsedSign(initType) == '@null') {
+                    /**
+                     * 如下代码会命中条件
+                     * var a=null;
+                     * 此时无法推导a的类型
+                     */
+                    throw `无法推导类型`;
+                }
                 prop.type = initType;
             }
         } if (prop.type?.FunctionType) {
@@ -1287,14 +1354,6 @@ export default function semanticCheck() {
         }
         registerType(prop.type!);//经过推导，类型已经确定了
     }
-    program.setDefinedType('@point', {
-        modifier: 'valuetype',
-        property: {},
-        operatorOverload: {},
-        _constructor: {}
-    });
-    programScope.registerClass('@point');//注册point类型
-    registerType({ PlainType: { name: '@point' } });//在类型表中注册类型
 
     //检查值类型是否递归包含
     for (let typeName of program.getDefinedTypeNames()) {

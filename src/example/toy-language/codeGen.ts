@@ -36,7 +36,9 @@ function merge(a: IR[], b: IR[]) {
  */
 export function isPointType(type: TypeUsed): boolean {
     if (type.PlainType?.name) {
-        if (program.getDefinedType(type.PlainType!.name).modifier == 'valuetype') {
+        if (type.PlainType!.name == '@null') {
+            return true;
+        } else if (program.getDefinedType(type.PlainType!.name).modifier == 'valuetype') {
             return false;
         } else {
             return true;
@@ -270,6 +272,8 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
                 let dv = new DataView(buffer);
                 dv.setFloat64(0, Number(immediate_val), true);
                 ir = new IR('const_double_load', dv.getBigInt64(0, true));
+            } else if (immediate_val == 'null') {
+                ir = new IR('const_i64_load', 0);
             } else {
                 throw `还未支持的immediate类型${node["immediate"].primiviteValue}`
             }
@@ -1736,7 +1740,18 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
                 opIR = new IR('double_if_cmp_ne');
                 falseList.push(opIR)
             }
-        } else {
+        }
+        //null判断被处理为i64
+        else if (node['=='].leftChild.type?.PlainType?.name == '@null' || node['=='].rightChild.type?.PlainType?.name == '@null') {
+            if (option.boolForward) {
+                opIR = new IR('i64_if_cmp_eq');
+                tureList.push(opIR)
+            } else {
+                opIR = new IR('i64_if_cmp_ne');
+                falseList.push(opIR)
+            }
+        }
+        else {
             throw `vm 暂未支持${TypeUsedSign(node['=='].leftChild.type!)}的==操作`;
         }
         return { startIR: left.startIR, endIR: opIR, truelist: tureList, falselist: falseList, isRightVaiable: true };
