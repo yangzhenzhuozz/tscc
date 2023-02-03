@@ -1,16 +1,22 @@
+var a=0.0;
 class MyClass{
-    MyClass(){}
+    MyClass(){
+        a++;
+        if(a==3.0){
+            throw a;
+        }
+    }
     var unwinded=()=>{
         printDouble(1.1);
     };
 }
 function main():void{
-    var a:MyClass=new MyClass();
-    a=null;
     try{
-        a.unwinded();
-    }catch(e:NullPointException){
-        printDouble(0.01);
+        autounwinding(var a=new MyClass();var b=new MyClass();var c=new MyClass()){
+
+        }
+    }catch(v:double){
+
     }
 };
 

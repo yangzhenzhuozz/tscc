@@ -8,7 +8,7 @@ export let irAbsoluteAddressRelocationTable: { sym: string, ir: IR }[] = [];//�
 export let typeRelocationTable: { t1?: string, t2?: string, t3?: string, ir: IR }[] = [];//type重定向表
 export let stackFrameRelocationTable: { sym: string, ir: IR }[] = [];//stackFrame重定向表
 export let irContainerList: IRContainer[] = [];//符号表
-export let stackFrameTable: { [key: string]: { baseOffset: number, autoUnwinding: number, frame: { name: string, type: TypeUsed }[] } } = {};//栈布局记录
+export let stackFrameTable: { [key: string]: { baseOffset: number, isTryBlock: boolean, autoUnwinding: number, frame: { name: string, type: TypeUsed }[] } } = {};//栈布局记录
 export let typeTable: { [key: string]: { index: number, type: TypeUsed } } = {};//类型表
 
 export const globalVariable = {

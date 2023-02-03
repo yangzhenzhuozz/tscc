@@ -2354,7 +2354,7 @@ function BlockScan(blockScope: BlockScope,
 
 
     let stackFrameMapIndex = globalVariable.stackFrameMapIndex++;
-    let startIR: IR = new IR('push_stack_map', undefined, option.isTryBlock ? 1 : undefined, undefined);
+    let startIR: IR = new IR('push_stack_map', undefined, undefined, undefined);
     stackFrameRelocationTable.push({ sym: `@StackFrame_${stackFrameMapIndex}`, ir: startIR });
 
     if (option.frameLevel == 1) {//处于函数scope中
@@ -2443,7 +2443,7 @@ function BlockScan(blockScope: BlockScope,
     for (let k in blockScope.property) {
         stackFrame.push({ name: k, type: blockScope.getProp(k).prop.type! });
     }
-    stackFrameTable[`@StackFrame_${stackFrameMapIndex}`] = { baseOffset: blockScope.baseOffset, autoUnwinding: option.autoUnwinding ?? 0, frame: stackFrame };
+    stackFrameTable[`@StackFrame_${stackFrameMapIndex}`] = { baseOffset: blockScope.baseOffset, isTryBlock: option.isTryBlock ?? false, autoUnwinding: option.autoUnwinding ?? 0, frame: stackFrame };
     return { startIR: startIR, endIR: endIR!, jmpToFunctionEnd: jmpToFunctionEnd, stackFrame };
 }
 function propSize(type: TypeUsed): number {
@@ -2640,7 +2640,7 @@ function extensionMethodWrapFunctionGen(blockScope: BlockScope, fun: FunctionTyp
     //都不加stackFrame_popup了,因为第二个AST就是ret语句，已经有了
     let stackFrame: { name: string, type: TypeUsed }[] = [];
     stackFrame.push({ name: '@this_or_funOjb', type: { PlainType: { name: '@point' } } });
-    stackFrameTable[`@StackFrame_${stackFrameMapIndex}`] = { baseOffset: blockScope.baseOffset, autoUnwinding: 0, frame: stackFrame };
+    stackFrameTable[`@StackFrame_${stackFrameMapIndex}`] = { baseOffset: blockScope.baseOffset, isTryBlock: false, autoUnwinding: 0, frame: stackFrame };
 
     IRContainer.setContainer(lastSymbol);//回退
     return { text: functionIRContainer.name, irContainer: functionIRContainer };
@@ -2747,9 +2747,10 @@ function TypeTableGen() {
 }
 function stackFrameTableGen() {
     for (let itemKey in stackFrameTable) {
-        let frame: { baseOffset: number, autoUnwinding: number, props: { name: number, type: number }[] } = {
+        let frame: { baseOffset: number, isTryBlock: boolean, autoUnwinding: number, props: { name: number, type: number }[] } = {
             baseOffset: stackFrameTable[itemKey].baseOffset,
             autoUnwinding: stackFrameTable[itemKey].autoUnwinding,
+            isTryBlock: stackFrameTable[itemKey].isTryBlock,
             props: []
         };
         for (let variable of stackFrameTable[itemKey].frame) {
@@ -2793,7 +2794,7 @@ function finallyOutput() {
 export default function programScan() {
     programScope = new ProgramScope(program, { program: program });
 
-    stackFrameTable[`@StackFrame_0`] = { baseOffset: 0, autoUnwinding: 0, frame: [{ name: '@this', type: { PlainType: { name: `@point` } } }] };//给class_init分配的frame
+    stackFrameTable[`@StackFrame_0`] = { baseOffset: 0, isTryBlock: false, autoUnwinding: 0, frame: [{ name: '@this', type: { PlainType: { name: `@point` } } }] };//给class_init分配的frame
 
     let symbol = new IRContainer('@program_init');
     IRContainer.setContainer(symbol);

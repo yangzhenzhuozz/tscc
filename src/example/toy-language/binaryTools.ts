@@ -124,9 +124,9 @@ class ClassTable {
     }
 }
 class StackFrameTable {
-    private items: { baseOffset: number, autoUnwinding: number, props: { name: number, type: number }[] }[] = [];
+    private items: { baseOffset: number, autoUnwinding: number, isTryBlock: boolean, props: { name: number, type: number }[] }[] = [];
     public nameMap: Map<string, bigint> = new Map();
-    public push(item: { baseOffset: number, autoUnwinding: number, props: { name: number, type: number }[] }, name: string) {
+    public push(item: { baseOffset: number, autoUnwinding: number, isTryBlock: boolean, props: { name: number, type: number }[] }, name: string) {
         this.nameMap.set(name, BigInt(this.items.length));
         this.items.push(item);
     }
@@ -145,6 +145,7 @@ class StackFrameTable {
             let itemOffset = buffer.appendInt64(BigInt(item.baseOffset));//写StackFrameItem.baseOffset(写item的第一个属性的时候，这个偏移也是item的起始偏移)
             buffer.setInt64(BigInt(itemOffset), (i + 1) * 8);//写baseOffset
             buffer.appendInt64(BigInt(item.autoUnwinding));//写autoUnwinding
+            buffer.appendInt64(item.isTryBlock ? 1n : 0n);//写StackFrameItem.length
             buffer.appendInt64(BigInt(item.props.length));//写StackFrameItem.length
             let propItemLocs = [] as number[];
             //预留StackFrameItem.items
