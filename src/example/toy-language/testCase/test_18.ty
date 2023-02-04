@@ -1,7 +1,40 @@
+var a=0.0;
+class MyClass{
+    MyClass(){
+        a++;
+        if(a==3.0){
+            var arr:int[]=new int[3];
+            var obj=(object)arr;
+            if(obj instanceof int[]){
+                printI32(3/((int[])obj)[2]);
+            }
+        }
+    }
+    var unwinded=()=>{
+        printDouble(1.1);
+    };
+}
 function main():void{
-    var arr=new object[3];
-    arr[0]=(object)5;
-    printI32((int)arr[0]);
+    try{
+        autounwinding(var a=new MyClass();var b=new MyClass();var c=new MyClass()){
+
+        }
+    }
+    catch(e:double){
+        printDouble(e);
+    }
+    catch(e:NullPointerException){
+        printDouble(5.1);
+    }
+    catch(e:ArithmeticException){
+        printDouble(6.1);
+    }
+    catch(e:CastException){
+        printDouble(7.1);
+    }
+    catch(e:ArrayIndexOutOfBoundsException){
+        printDouble(8.1);
+    }
 };
 
 

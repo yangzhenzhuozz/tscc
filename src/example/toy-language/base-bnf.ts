@@ -301,6 +301,7 @@ let grammar: Grammar = {
         { "object:object ? object : object": { priority: "?" } },//三目运算
         { "object:id": {} },//id是一个对象
         { "object:immediate_val": {} },//立即数是一个object
+        { "object:immediate_array": {} },//立即数是一个immediate_array
         { "object:super": {} },//super是一个对象
         { "object:this": {} },//this是一个object
         { "object:template_definition ( parameter_declare ) => { statements }": {} },//模板lambda
@@ -320,6 +321,20 @@ let grammar: Grammar = {
          * 为其指定优先级为cast_priority
          */
         { "object:( type ) object": { priority: "cast_priority" } },//强制转型
+        
+        /**
+         * 之所以不用 [1]声明数组，改用 { [1] }来声明一个数组原因如下：
+         * immediate_array:[ immediate_array_elements ] 导致的二义性
+         * (int)[]
+         * 1. (int)[] 声明一个int数组
+         * 2. 把零长数组[]转换为int类型
+         * 
+         * 到这里我根本不知道应该取情况1还是情况2，CFG的特性就是上下文无关，而这里要做出正确的选择就必须查看上下文，所以这种文法暂时被舍弃
+         */
+        { "immediate_array:{ [ immediate_array_elements ] }": {} },//立即数组
+        { "immediate_array_elements:immediate_array_elements , immediate_array_element": {} },//立即数组内容可以由多个immediate_array_element组成
+        { "immediate_array_elements:": {} },//立即数组内容可以为空
+        { "immediate_array_element:object": {} },//数组元素
         { "_new:new type  ( arguments )": {} },//创建对象
         /**
          * 针对产生式array_init_list:array_inits array_placeholder 会出现如下二义性
