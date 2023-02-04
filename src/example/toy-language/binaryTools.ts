@@ -273,8 +273,16 @@ export function link(programScope: ProgramScope) {
     irBuffer.appendInt64(irTable.get('@unwind')!);
     irBuffer.appendInt64(irTable.get('@VMThrow')!);
     irBuffer.appendInt64(irTable.get('@VMExceptionGen')!);
-    irBuffer.appendInt64(irTable.get('NullPointException_init')!);
-    irBuffer.appendInt64(irTable.get(`@constructor:NullPointException args:() retType:void`)!);
+
+    //vm必备异常
+    irBuffer.appendInt64(irTable.get('NullPointerException_init')!);
+    irBuffer.appendInt64(irTable.get(`@constructor:NullPointerException args:() retType:void`)!);
+    irBuffer.appendInt64(irTable.get('ArithmeticException_init')!);
+    irBuffer.appendInt64(irTable.get(`@constructor:ArithmeticException args:() retType:void`)!);
+    irBuffer.appendInt64(irTable.get('CastException_init')!);
+    irBuffer.appendInt64(irTable.get(`@constructor:CastException args:() retType:void`)!);
+    irBuffer.appendInt64(irTable.get('ArrayIndexOutOfBoundsException_init')!);
+    irBuffer.appendInt64(irTable.get(`@constructor:ArrayIndexOutOfBoundsException args:() retType:void`)!);
 
     for (let ircontainer of irContainerList) {
         for (let ir of ircontainer.irs) {

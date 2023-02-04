@@ -1296,18 +1296,56 @@ export default function semanticCheck() {
     programScope.registerClass('@null');//注册null类型
     registerType({ PlainType: { name: '@null' } });//在类型表中注册类型
 
-    if(program.getDefinedType('NullPointException')==undefined)
-    {
-        throw `VM运行必备类型NullPointException未定义`;
-    }else{
-        if(!isPointType({PlainType:{name:"NullPointException"}})){
-            throw `NullPointException必须是引用类型`;
-        }else{
-            if(program.getDefinedType('NullPointException')._constructor[`args:() retType:void`]==undefined){
-                throw `NullPointException必须有一个无参构造函数`;
+
+
+    if (program.getDefinedType('NullPointerException') == undefined) {
+        throw `VM运行必备类型NullPointerException未定义`;
+    } else {
+        if (!isPointType({ PlainType: { name: "NullPointerException" } })) {
+            throw `NullPointerException必须是引用类型`;
+        } else {
+            if (program.getDefinedType('NullPointerException')._constructor[`args:() retType:void`] == undefined) {
+                throw `NullPointerException必须有一个无参构造函数`;
             }
         }
     }
+
+    if (program.getDefinedType('ArithmeticException') == undefined) {
+        throw `VM运行必备类型ArithmeticException未定义`;
+    } else {
+        if (!isPointType({ PlainType: { name: "ArithmeticException" } })) {
+            throw `ArithmeticException必须是引用类型`;
+        } else {
+            if (program.getDefinedType('ArithmeticException')._constructor[`args:() retType:void`] == undefined) {
+                throw `ArithmeticException必须有一个无参构造函数`;
+            }
+        }
+    }
+
+    if (program.getDefinedType('CastException') == undefined) {
+        throw `VM运行必备类型CastException未定义`;
+    } else {
+        if (!isPointType({ PlainType: { name: "CastException" } })) {
+            throw `CastException必须是引用类型`;
+        } else {
+            if (program.getDefinedType('CastException')._constructor[`args:() retType:void`] == undefined) {
+                throw `CastException必须有一个无参构造函数`;
+            }
+        }
+    }
+
+    if (program.getDefinedType('ArrayIndexOutOfBoundsException') == undefined) {
+        throw `VM运行必备类型ArrayIndexOutOfBoundsException未定义`;
+    } else {
+        if (!isPointType({ PlainType: { name: "ArrayIndexOutOfBoundsException" } })) {
+            throw `ArrayIndexOutOfBoundsException必须是引用类型`;
+        } else {
+            if (program.getDefinedType('ArrayIndexOutOfBoundsException')._constructor[`args:() retType:void`] == undefined) {
+                throw `ArrayIndexOutOfBoundsException必须有一个无参构造函数`;
+            }
+        }
+    }
+
 
     // 把所有的扩展函数挪到extensionMethodsImpl
     for (let extendTypeName in program.extensionMethodsDef) {

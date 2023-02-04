@@ -3,7 +3,11 @@ class MyClass{
     MyClass(){
         a++;
         if(a==3.0){
-            throw a;
+            var arr:int[]=new int[3];
+            var obj=(object)arr;
+            if(obj instanceof int[]){
+                printI32(3/((int[])obj)[2]);
+            }
         }
     }
     var unwinded=()=>{
@@ -15,8 +19,21 @@ function main():void{
         autounwinding(var a=new MyClass();var b=new MyClass();var c=new MyClass()){
 
         }
-    }catch(v:double){
-        printDouble(v);
+    }
+    catch(e:double){
+        printDouble(e);
+    }
+    catch(e:NullPointerException){
+        printDouble(5.1);
+    }
+    catch(e:ArithmeticException){
+        printDouble(6.1);
+    }
+    catch(e:CastException){
+        printDouble(7.1);
+    }
+    catch(e:ArrayIndexOutOfBoundsException){
+        printDouble(8.1);
     }
 };
 
@@ -54,9 +71,20 @@ extension function toString(this int v):void{
 
 
 
-class NullPointException{
-    NullPointException(){}
+class NullPointerException{
+    NullPointerException(){}
 }
+class ArithmeticException{
+    ArithmeticException(){}
+}
+class CastException{
+    CastException(){}
+}
+class ArrayIndexOutOfBoundsException{
+    ArrayIndexOutOfBoundsException(){}
+}
+
+
 
 valuetype class bool{
      operator == ( v : bool ) : bool { native } ;
