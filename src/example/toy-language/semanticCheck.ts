@@ -106,11 +106,15 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
         let blockScope = (scope as BlockScope);//def节点是block专属
         let name = Object.keys(node['def'])[0];
         blockScope.setProp(name, node['def'][name], node);
+        let prop = node['def'][name];
         let initType: TypeUsed | undefined;
-        if (node['def'][name].initAST != undefined) {
+        if (prop.initAST != undefined) {
+            //使用了零长数组，则把已经声明类型向下传递
+            if (prop.initAST.immediateArray != undefined && prop.initAST.immediateArray.length == 0) {
+                prop.initAST.type = prop.type;
+            }
             initType = nodeRecursion(scope, node['def'][name].initAST!, label, declareRetType).type;
         }
-        let prop = node['def'][name];
         if (prop.type == undefined) {//如果是需要进行类型推导，则推导类型
             //prop.type为undefined的时候initType必定有值
             assert(initType != undefined);
@@ -802,6 +806,34 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
         nodeRecursion(scope, node["pushUnwindHandler"], label, declareRetType).type;
         result = { hasRet: false, retType: undefined, type: { PlainType: { name: 'void' } } };
     }
+    else if (node['immediateArray'] != undefined) {
+        if (node['immediateArray'].length > 0) {
+            let firstElementType = nodeRecursion(scope, node["immediateArray"][0], label, declareRetType).type;
+            for (let i = 1; i < node['immediateArray'].length; i++) {
+                let elementType = nodeRecursion(scope, node["immediateArray"][i], label, declareRetType).type;
+                typeCheck(firstElementType, elementType, '数组元素类型不一致');
+            }
+            result = { hasRet: false, retType: undefined, type: { ArrayType: { innerType: firstElementType } } };
+        } else {
+            if (node.type == undefined) {
+                /**
+                 * 只能在初始化语句中使用零长数组，且要求变量的类型已经定义，如下
+                 * var a:int[]={[]};
+                 * 而下面这种用法是非法的
+                 * 1.var a={[]};
+                 * 2.fun({[]});
+                 * 其实2这种情况是能做类型推导的，懒得做了
+                 */
+                throw `无法推导类型的零长数组`;
+            } else {
+                if (node.type.ArrayType == undefined) {
+                    throw `零长数组声明的类型必须是数组类型`;
+                } else {
+                    result = { hasRet: false, retType: undefined, type: node.type };
+                }
+            }
+        }
+    }
     else {
         throw new Error(`未知节点`);
     }
@@ -1053,6 +1085,12 @@ function ClassScan(classScope: ClassScope) {
         let prop = classScope.getProp(propName).prop;
         if (prop.getter == undefined && prop.setter == undefined) {//扫描field
             if (prop.initAST != undefined) {
+
+                //使用了零长数组，则把已经声明类型向下传递
+                if (prop.initAST.immediateArray != undefined && prop.initAST.immediateArray.length == 0) {
+                    prop.initAST.type = prop.type;
+                }
+
                 let initType = nodeRecursion(classScope, prop.initAST, [], {}).type;
                 if (prop.type != undefined) {
                     typeCheck(initType, prop.type, `属性${propName}声明类型和初始化类型不一致`);
@@ -1385,6 +1423,12 @@ export default function semanticCheck() {
     for (let variableName in program.property) {
         var prop = program.property[variableName];
         if (prop.initAST != undefined) {
+
+            //使用了零长数组，则把已经声明类型向下传递
+            if (prop.initAST.immediateArray != undefined && prop.initAST.immediateArray.length == 0) {
+                prop.initAST.type = prop.type;
+            }
+
             let initType = nodeRecursion(programScope, prop.initAST, [], {}).type;
             if (prop.type != undefined) {
                 typeCheck(prop.type, initType, `初始化的值类型和声明类型不一致:${variableName}`);

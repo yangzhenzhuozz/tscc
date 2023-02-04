@@ -922,7 +922,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
             new IR('i8_inc');
         } else if (node['++'].type!.PlainType?.name == 'short') {
             new IR('i16_inc');
-        } else if (node['++'].type!.PlainType?.name == 'innt') {
+        } else if (node['++'].type!.PlainType?.name == 'int') {
             new IR('i32_inc');
         } else if (node['++'].type!.PlainType?.name == 'long') {
             new IR('i64_inc');
@@ -965,7 +965,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
             new IR('i8_dec');
         } else if (node['--'].type!.PlainType?.name == 'short') {
             new IR('i16_dec');
-        } else if (node['--'].type!.PlainType?.name == 'innt') {
+        } else if (node['--'].type!.PlainType?.name == 'int') {
             new IR('i32_dec');
         } else if (node['--'].type!.PlainType?.name == 'long') {
             new IR('i64_dec');
@@ -1206,7 +1206,8 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
             }
             ir = right.endIR;
         }
-        return { startIR: left.startIR, endIR: ir, truelist: [], falselist: [], jmpToFunctionEnd: [], virtualIR, isRightVaiable: true };
+        //数组的元素不是右值,和局部变量一样，是有存访位置的，局部变量的容器是block，数组元素的容器就是这个数组
+        return { startIR: left.startIR, endIR: ir, truelist: [], falselist: [], jmpToFunctionEnd: [], virtualIR, isRightVaiable: false };
     }
     else if (node['getFunctionWrapName'] != undefined) {
         assert(typeof option.functionWrapName == 'string');
@@ -2289,6 +2290,35 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
         typeRelocationTable.push({ t1: TypeUsedSign(node['throwStmt'].type), ir: _throw });
         return { startIR, endIR: _throw, truelist: [], falselist: [], jmpToFunctionEnd: [] };
     }
+    else if (node['immediateArray'] != undefined) {
+        assert(node.type != undefined);
+        assert(node.type.ArrayType != undefined);
+        let arrayLength = new IR('const_i32_load', node['immediateArray'].length);
+        let endIR = new IR('newArray', undefined, 1, undefined);
+        typeRelocationTable.push({ t1: TypeUsedSign(node.type), ir: endIR });
+
+        for (let i = 0; i < node['immediateArray'].length; i++) {
+            new IR('p_dup');//复制数组
+            new IR('const_i32_load', i);//生成下标
+            //计算元素值
+            nodeRecursion(scope, node['immediateArray'][i], {
+                label: undefined,
+                frameLevel: undefined,
+                isGetAddress: undefined,
+                boolForward: undefined,
+                isAssignment: undefined,
+                singleLevelThis: option.singleLevelThis,
+                inContructorRet: undefined,
+                functionWrapName: option.functionWrapName
+            });
+            if (isPointType(node.type.ArrayType.innerType)) {
+                endIR = new IR('array_set_point');//设置值
+            } else {
+                endIR = new IR('array_set_valueType', propSize(node.type.ArrayType.innerType));//设置值
+            }
+        }
+        return { startIR: arrayLength, endIR, truelist: [], falselist: [], jmpToFunctionEnd: [] };
+    }
     else if (node['loadOperatorOverload'] != undefined) {
         throw `unimplement`;
     }
@@ -2440,10 +2470,16 @@ function BlockScan(blockScope: BlockScope,
     if (option.frameLevel == 1) {//处于函数scope中
         stackFrame.push({ name: '@this_or_funOjb', type: { PlainType: { name: '@point' } } });
     }
+
     for (let k in blockScope.property) {
         stackFrame.push({ name: k, type: blockScope.getProp(k).prop.type! });
     }
-    stackFrameTable[`@StackFrame_${stackFrameMapIndex}`] = { baseOffset: blockScope.baseOffset, isTryBlock: option.isTryBlock ?? false, autoUnwinding: option.autoUnwinding ?? 0, frame: stackFrame };
+
+    let frameSize = 0;
+    for (let frameItem of stackFrame) {
+        frameSize += propSize(frameItem.type);
+    }
+    stackFrameTable[`@StackFrame_${stackFrameMapIndex}`] = { baseOffset: blockScope.baseOffset, size: frameSize, isFunctionBlock: option.frameLevel == 1, isTryBlock: option.isTryBlock ?? false, autoUnwinding: option.autoUnwinding ?? 0, frame: stackFrame };
     return { startIR: startIR, endIR: endIR!, jmpToFunctionEnd: jmpToFunctionEnd, stackFrame };
 }
 function propSize(type: TypeUsed): number {
@@ -2640,7 +2676,13 @@ function extensionMethodWrapFunctionGen(blockScope: BlockScope, fun: FunctionTyp
     //都不加stackFrame_popup了,因为第二个AST就是ret语句，已经有了
     let stackFrame: { name: string, type: TypeUsed }[] = [];
     stackFrame.push({ name: '@this_or_funOjb', type: { PlainType: { name: '@point' } } });
-    stackFrameTable[`@StackFrame_${stackFrameMapIndex}`] = { baseOffset: blockScope.baseOffset, isTryBlock: false, autoUnwinding: 0, frame: stackFrame };
+
+    let frameSize = 0;
+    for (let frameItem of stackFrame) {
+        frameSize += propSize(frameItem.type);
+    }
+
+    stackFrameTable[`@StackFrame_${stackFrameMapIndex}`] = { baseOffset: blockScope.baseOffset, size: frameSize, isFunctionBlock: true, isTryBlock: false, autoUnwinding: 0, frame: stackFrame };
 
     IRContainer.setContainer(lastSymbol);//回退
     return { text: functionIRContainer.name, irContainer: functionIRContainer };
@@ -2747,10 +2789,12 @@ function TypeTableGen() {
 }
 function stackFrameTableGen() {
     for (let itemKey in stackFrameTable) {
-        let frame: { baseOffset: number, isTryBlock: boolean, autoUnwinding: number, props: { name: number, type: number }[] } = {
+        let frame: { baseOffset: number, isTryBlock: boolean, size: number, isFunctionBlock: boolean, autoUnwinding: number, props: { name: number, type: number }[] } = {
             baseOffset: stackFrameTable[itemKey].baseOffset,
             autoUnwinding: stackFrameTable[itemKey].autoUnwinding,
             isTryBlock: stackFrameTable[itemKey].isTryBlock,
+            isFunctionBlock: stackFrameTable[itemKey].isFunctionBlock,
+            size: stackFrameTable[itemKey].size,
             props: []
         };
         for (let variable of stackFrameTable[itemKey].frame) {
@@ -2794,10 +2838,19 @@ function finallyOutput() {
 export default function programScan() {
     programScope = new ProgramScope(program, { program: program });
 
-    stackFrameTable[`@StackFrame_0`] = { baseOffset: 0, isTryBlock: false, autoUnwinding: 0, frame: [{ name: '@this', type: { PlainType: { name: `@point` } } }] };//给class_init分配的frame
+    //给class_init分配的frame
+    let stackFrame = [{ name: '@this', type: { PlainType: { name: `@point` } } }];
+    let frameSize = 0;
+    for (let frameItem of stackFrame) {
+        frameSize += propSize(frameItem.type);
+    }
+
+    stackFrameTable[`@StackFrame_0`] = { baseOffset: 0, size: frameSize, isTryBlock: false, isFunctionBlock: true, autoUnwinding: 0, frame: stackFrame };
 
     let symbol = new IRContainer('@program_init');
     IRContainer.setContainer(symbol);
+    let startIR: IR = new IR('push_stack_map', undefined, undefined, undefined);
+    stackFrameRelocationTable.push({ sym: `@StackFrame_0`, ir: startIR });
 
     //扫描property
     for (let variableName in program.property) {
@@ -2834,6 +2887,7 @@ export default function programScan() {
             }
         }
     }
+    new IR('pop_stack_map', 1);
     new IR('ret');//programInit返回
     for (let typeName of program.getDefinedTypeNames()) {
         classScan(programScope.getClassScope(typeName));

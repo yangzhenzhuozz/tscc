@@ -332,9 +332,10 @@ let grammar: Grammar = {
          * 到这里我根本不知道应该取情况1还是情况2，CFG的特性就是上下文无关，而这里要做出正确的选择就必须查看上下文，所以这种文法暂时被舍弃
          */
         { "immediate_array:{ [ immediate_array_elements ] }": {} },//立即数组
-        { "immediate_array_elements:immediate_array_elements , immediate_array_element": {} },//立即数组内容可以由多个immediate_array_element组成
+        { "immediate_array_elements:immediate_array_element_list": {} },//立即数组内容可以由多个immediate_array_element组成
         { "immediate_array_elements:": {} },//立即数组内容可以为空
-        { "immediate_array_element:object": {} },//数组元素
+        { "immediate_array_element_list:immediate_array_element_list , object": {} },//列表
+        { "immediate_array_element_list:object": {} },//数组元素
         { "_new:new type  ( arguments )": {} },//创建对象
         /**
          * 针对产生式array_init_list:array_inits array_placeholder 会出现如下二义性

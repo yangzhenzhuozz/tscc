@@ -8,7 +8,7 @@ export let irAbsoluteAddressRelocationTable: { sym: string, ir: IR }[] = [];//�
 export let typeRelocationTable: { t1?: string, t2?: string, t3?: string, ir: IR }[] = [];//type重定向表
 export let stackFrameRelocationTable: { sym: string, ir: IR }[] = [];//stackFrame重定向表
 export let irContainerList: IRContainer[] = [];//符号表
-export let stackFrameTable: { [key: string]: { baseOffset: number, isTryBlock: boolean, autoUnwinding: number, frame: { name: string, type: TypeUsed }[] } } = {};//栈布局记录
+export let stackFrameTable: { [key: string]: { baseOffset: number, size: number, isTryBlock: boolean, isFunctionBlock: boolean, autoUnwinding: number, frame: { name: string, type: TypeUsed }[] } } = {};//栈布局记录
 export let typeTable: { [key: string]: { index: number, type: TypeUsed } } = {};//类型表
 
 export const globalVariable = {
@@ -57,7 +57,7 @@ export function typeTableToBin(): ArrayBuffer {
 export enum OPCODE {
     _new = 0,//创建一个普通对象
     newFunc,//创建一个函数对象,op1是text,op2是函数类型名字，op3是函数包裹类名字
-    newArray,//操作数是基本类型，长度和是否仍然是一个数组从栈中取
+    newArray,//op1 数组类型，op2 维度层级(从计算栈中取)
     program_load,//将program指针压入表达式栈
     program_store,//将program从栈存入program指针
     push_stack_map,//压入栈帧布局
@@ -70,14 +70,14 @@ export enum OPCODE {
     /**
      * array相关的,operand1是系数(即每个element的size)
      */
-    array_get_element_address,//先从计算栈弹出一个i32作为下标，再从计算栈弹出一个指针,以该指针为基础地址加上i32*element_size压入计算栈
+    array_get_element_address,//先从计算栈弹出一个i32作为下标，再从计算栈弹出一个指针,以该指针为基础地址加上i32*element_size压入计算栈,op1是size
     array_get_point,//先从计算栈弹出一个i32作为下标，再从计算栈弹出一个指针，以读取指针的方式读取元素值
-    array_get_valueType,//先从计算栈弹出一个i32作为下标，再从计算栈弹出一个指针，以读取valueType的方式读取元素值
+    array_get_valueType,//先从计算栈弹出一个i32作为下标，再从计算栈弹出一个指针，以读取valueType的方式读取元素值,op1是值类型的size
     /**
      * arr_set少一个address，见getfield_address和load_address的说明
      */
-    array_set_point,//先从计算栈弹出一个指针,再从计算栈弹出一个i32作为下标，再从计算栈弹出一个指针，以设置指针的方式设置元素值
-    array_set_valueType,//先从计算栈弹出一个value,再从计算栈弹出一个i32作为下标，再从计算栈弹出一个指针，以设置valueType的方式设置元素值
+    array_set_point,//先从计算栈弹出一个指针,再从计算栈弹出一个i32作为下标，再从计算栈弹出一个指针，以设置指针的方式设置元素值，3个操作数都没有意义
+    array_set_valueType,//先从计算栈弹出一个value,再从计算栈弹出一个i32作为下标，再从计算栈弹出一个指针，以设置valueType的方式设置元素值,op1是值类型的size
 
     /**
      * 只有读取需要用到address，设置不需要

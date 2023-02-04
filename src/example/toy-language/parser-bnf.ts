@@ -1977,6 +1977,13 @@ import { Program } from "./program.js";
             }
         },//立即数是一个object
         {
+            "object:immediate_array": {
+                action: function ($, s): ASTNode {
+                    return { desc: "ASTNode", immediateArray: $[0] as ASTNode[] };
+                }
+            }
+        },//立即数是一个immediate_array
+        {
             "object:super": {
                 action: function ($, s): ASTNode {
                     return { desc: "ASTNode", _super: "" };
@@ -2039,6 +2046,43 @@ import { Program } from "./program.js";
                 }
             }
         },//强制转型
+        {
+            "immediate_array:{ [ immediate_array_elements ] }": {
+                action: function ($, s): ASTNode[] {
+                    return $[2] as ASTNode[];
+                }
+            }
+        },//立即数组
+        {
+            "immediate_array_elements:immediate_array_element_list": {
+                action: function ($, s): ASTNode[] {
+                    return $[0] as ASTNode[];
+                }
+            }
+        },//立即数组内容可以由多个immediate_array_element组成
+        {
+            "immediate_array_elements:": {
+                action: function ($, s): ASTNode[] {
+                    return [];
+                }
+            }
+        },//立即数组内容可以为空
+        {
+            "immediate_array_element_list:immediate_array_element_list , object": {
+                action: function ($, s): ASTNode[] {
+                    let immediate_array_element_list = $[0] as ASTNode[];
+                    immediate_array_element_list.push($[2] as ASTNode);
+                    return immediate_array_element_list;
+                }
+            }
+        },//列表
+        {
+            "immediate_array_element_list:object": {
+                action: function ($, s): ASTNode[] {
+                    return [$[0] as ASTNode];
+                }
+            }
+        },//数组元素
         {
             "_new:new type  ( arguments )": {
                 action: function ($, s): ASTNode {
