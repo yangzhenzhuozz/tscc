@@ -1,41 +1,20 @@
 function main():void{
-    printString("abc");
+    var arr={[1,2,3,4]};
+    var v=5;
+    var ret=add(arr,v);
 };
-function printString(v:string){
-    printStringBuffer(v.buffer);
-};
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-function printDouble(v:double):void{
-    native
-};
-function printI32(v:int):void{
-    native
-};
-function printI8(v:byte):void{
+function add(arr:int[],num:int):int{
     native
 };
 
-extension function toString(this int v):void{
-    printI32(v);
+
+
+
+extension function toString(this int v):string{
+    return new string({[(byte)v]});
 }
-
-function printStringBuffer(v:byte[]):void{
-    native
-};
 
 
 

@@ -3,7 +3,7 @@ import { irAbsoluteAddressRelocationTable, stackFrameTable, stackFrameRelocation
 import { Scope, BlockScope, ClassScope, ProgramScope } from './scope.js';
 import { IR, IRContainer } from './ir.js'
 import { FunctionSign, FunctionSignWithArgumentAndRetType, TypeUsedSign } from './lib.js';
-import { classTable, stringPool, typeItemDesc, typeTable as binTypeTable, stackFrameTable as binStackFrameTable, link } from './binaryTools.js'
+import { classTable, stringPool, typeItemDesc, typeTable as binTypeTable, stackFrameTable as binStackFrameTable, link, nativeTable } from './binaryTools.js'
 import { registerType } from './semanticCheck.js';
 
 export function assert(condition: any): asserts condition {
@@ -2569,7 +2569,17 @@ function functionObjGen(blockScope: BlockScope, fun: FunctionType, option?: { na
              */
             throw `暂时只支持定义在program空间的native函数`;
         }
-        new IR('native_call', stringPool.register(option?.nativeName!));//调用native函数
+        let argSizeList: number[] = [];
+        let argNames = Object.keys(fun._arguments);
+        for (let arg of argNames) {
+            argSizeList.push(propSize(fun._arguments[arg].type!))
+        }
+        let retSize = 0;
+        if (fun.retType?.PlainType?.name != 'void') {
+            retSize = propSize(fun.retType!)
+        }
+        let index = nativeTable.push({ name: option?.nativeName!, argSizeList, retSize });
+        new IR('native_call', index);//调用native函数
         new IR('ret');
     }
     IRContainer.setContainer(lastSymbol);//回退
@@ -2832,6 +2842,9 @@ function finallyOutput() {
     fs.writeFileSync(`./src/example/toy-language/output/text.json`, JSON.stringify(linkRet.debugIRS));
     fs.writeFileSync(`./src/example/toy-language/output/irTable.bin`, Buffer.from(linkRet.irTableBuffer));
     fs.writeFileSync(`./src/example/toy-language/output/irTable.json`, JSON.stringify([...linkRet.irTable]));
+
+    fs.writeFileSync(`./src/example/toy-language/output/nativeTable.bin`, Buffer.from(nativeTable.toBinary()));
+    fs.writeFileSync(`./src/example/toy-language/output/nativeTable.json`, nativeTable.toString());
 
     fs.writeFileSync(`./src/example/toy-language/output/stringPool.bin`, Buffer.from(stringPool.toBinary()));//字符串池最后输出
     fs.writeFileSync(`./src/example/toy-language/output/stringPool.json`, JSON.stringify(stringPool.items, null, 4));

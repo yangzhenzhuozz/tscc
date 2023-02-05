@@ -171,7 +171,7 @@ class TypeTable {
      * innerType:对于array是数组元素类型在TypeTable中的位置，对于plainObj是classTable的类型，对于function则表示函数签名对应的类型(即在typeTable中的位置)
      */
     public items: { name: number, desc: typeItemDesc, innerType: number }[] = [];
-    public toBinary() {
+    public toBinary(): ArrayBuffer {
         let buffer = new Buffer();
         for (let item of this.items) {
             buffer.appendInt64(BigInt(item.desc));
@@ -181,6 +181,36 @@ class TypeTable {
         return buffer.toBinary();
     }
 }
+class NativeTalbe {
+    private items: { name: string, argSizeList: number[], retSize: number }[] = [];//argSizeList每一项是参数大小,retSize是返回值大小
+    private cache: Set<string> = new Set();
+    public push(item: { name: string, argSizeList: number[], retSize: number }): number {
+        if (this.cache.has(item.name)) {
+            throw `重复的native函数${item.name}`;
+        } else {
+            this.cache.add(item.name);
+        }
+        let ret = this.items.length;
+        this.items.push(item);
+        return ret;
+    }
+    public toString() {
+        return JSON.stringify(this.items);
+    }
+    public toBinary(): ArrayBuffer {
+        let buffer = new Buffer();
+        for (let item of this.items) {
+            buffer.appendInt64(BigInt(stringPool.register(item.name)));
+            buffer.appendInt64(BigInt(item.retSize));
+            buffer.appendInt64(BigInt(item.argSizeList.length));
+            for (let argSize of item.argSizeList) {
+                buffer.appendInt64(BigInt(argSize));
+            }
+        }
+        return buffer.toBinary();
+    }
+}
+export let nativeTable = new NativeTalbe();
 function assertion(obj: any, name: string) {
     if (obj == undefined || obj == null) {
         throw `link失败,找不到符号:${name}`;
