@@ -1,5 +1,5 @@
 function main():void{
-    VMLoadNativeLib("d:\Users\john\Desktop\dll\Dll\x64\Debug\Dll".buffer,{["add1".buffer,"add2".buffer]});
+    VMLoadNativeLib("d:\Users\john\Desktop\dll\Dll\x64\Debug\Dll".buffer,{["add1".buffer,"nativePrintBytesString".buffer]});
     var arr={[1,2,3,4]};
     var v=5;
     var ret=add1(arr,v);
