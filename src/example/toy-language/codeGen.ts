@@ -2578,7 +2578,7 @@ function functionObjGen(blockScope: BlockScope, fun: FunctionType, option?: { na
         if (fun.retType?.PlainType?.name != 'void') {
             retSize = propSize(fun.retType!)
         }
-        let index = nativeTable.push({ name: option?.nativeName!, argSizeList, retSize });
+        let index = nativeTable.push({ name: option?.nativeName!, argSizeList, retSize, resultIsValueType: !isPointType(fun.retType!) });
         new IR('native_call', index);//调用native函数
         new IR('ret');
     }
