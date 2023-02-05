@@ -4,7 +4,7 @@ let userTypeDictionary = new Set<string>();
 let lexer = new Lexer();
 lexer.addRule(['( |\t|\r|\n)( |\t|\r|\n)*', undefined]);//忽略空格、制表、回车、换行
 lexer.addRule(['//( |\t|a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z|A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z|1|2|3|4|5|6|7|8|9|0)*\r\n', undefined]);//忽略注释
-lexer.addRule([`"(a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z|A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z|1|2|3|4|5|6|7|8|9|0)*"`, (arg) => { arg.value = arg.yytext.slice(1, arg.yytext.length - 1); return "string"; }]);
+lexer.addRule([`"(\\\\| |:|/|a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z|A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z|1|2|3|4|5|6|7|8|9|0)*"`, (arg) => { arg.value = arg.yytext.slice(1, arg.yytext.length - 1); return "string"; }]);
 lexer.addRule(['(1|2|3|4|5|6|7|8|9|0)(1|2|3|4|5|6|7|8|9|0)*', (arg) => { arg.value = arg.yytext; return "immediate_val"; }]);
 lexer.addRule(['(1|2|3|4|5|6|7|8|9|0)(1|2|3|4|5|6|7|8|9|0)*b', (arg) => { arg.value = arg.yytext; return "immediate_val"; }]);
 lexer.addRule(['(1|2|3|4|5|6|7|8|9|0)(1|2|3|4|5|6|7|8|9|0)*s', (arg) => { arg.value = arg.yytext; return "immediate_val"; }]);

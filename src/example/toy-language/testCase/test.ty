@@ -1,15 +1,24 @@
 function main():void{
+    VMLoadNativeLib("d:\Users\john\Desktop\dll\Dll\x64\Debug\Dll".buffer,{["add1".buffer,"add2".buffer]});
     var arr={[1,2,3,4]};
     var v=5;
-    var ret=add(arr,v);
+    var ret=add1(arr,v);
+    printString("hello world");
+};
+
+function printString(s:string){
+    nativePrintBytesString(s.buffer);
 };
 
 
-function add(arr:int[],num:int):int{
+function add1(arr:int[],num:int):int{
     native
 };
 
 
+function nativePrintBytesString(arg:byte[]):void{
+    native
+};
 
 
 extension function toString(this int v):string{
@@ -19,7 +28,9 @@ extension function toString(this int v):string{
 
 
 
-
+function VMLoadNativeLib(fileName:byte[],functionNames:byte[][]):void{
+    native
+};
 
 
 

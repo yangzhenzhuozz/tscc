@@ -182,9 +182,9 @@ class TypeTable {
     }
 }
 class NativeTalbe {
-    private items: { name: string, argSizeList: number[], retSize: number, resultIsValueType: boolean }[] = [];//argSizeList每一项是参数大小,retSize是返回值大小,resultIsValueType表示返回的值是否交给vm管理
+    private items: { name: string, argList: { size: number, isValueType: boolean }[], retSize: number, resultIsValueType: boolean }[] = [];//argSizeList每一项是参数大小,retSize是返回值大小,resultIsValueType表示返回的值是否交给vm管理
     private cache: Set<string> = new Set();
-    public push(item: { name: string, argSizeList: number[], retSize: number, resultIsValueType: boolean }): number {
+    public push(item: { name: string, argList: { size: number, isValueType: boolean }[], retSize: number, resultIsValueType: boolean }): number {
         if (this.cache.has(item.name)) {
             throw `重复的native函数${item.name}`;
         } else {
@@ -203,9 +203,10 @@ class NativeTalbe {
             buffer.appendInt64(BigInt(stringPool.register(item.name)));
             buffer.appendInt64(BigInt(item.retSize));
             buffer.appendInt64(BigInt(item.resultIsValueType));
-            buffer.appendInt64(BigInt(item.argSizeList.length));
-            for (let argSize of item.argSizeList) {
-                buffer.appendInt64(BigInt(argSize));
+            buffer.appendInt64(BigInt(item.argList.length));
+            for (let arg of item.argList) {
+                buffer.appendInt64(BigInt(arg.size));
+                buffer.appendInt64(BigInt(arg.isValueType));
             }
         }
         return buffer.toBinary();

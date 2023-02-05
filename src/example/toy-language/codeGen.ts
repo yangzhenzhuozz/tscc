@@ -2569,16 +2569,18 @@ function functionObjGen(blockScope: BlockScope, fun: FunctionType, option?: { na
              */
             throw `暂时只支持定义在program空间的native函数`;
         }
-        let argSizeList: number[] = [];
+        let argList: { size: number, isValueType: boolean }[] = [];
         let argNames = Object.keys(fun._arguments);
         for (let arg of argNames) {
-            argSizeList.push(propSize(fun._arguments[arg].type!))
+            argList.push({ size: propSize(fun._arguments[arg].type!), isValueType: !isPointType(fun._arguments[arg].type!) })
         }
+        let resultIsValueType = true;//默认为true,void对应的也是true，不需要VM托管
         let retSize = 0;
         if (fun.retType?.PlainType?.name != 'void') {
-            retSize = propSize(fun.retType!)
+            retSize = propSize(fun.retType!);
+            resultIsValueType = !isPointType(fun.retType!);
         }
-        let index = nativeTable.push({ name: option?.nativeName!, argSizeList, retSize, resultIsValueType: !isPointType(fun.retType!) });
+        let index = nativeTable.push({ name: option?.nativeName!, argList, retSize, resultIsValueType });
         new IR('native_call', index);//调用native函数
         new IR('ret');
     }
