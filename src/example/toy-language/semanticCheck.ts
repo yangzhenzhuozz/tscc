@@ -1313,29 +1313,8 @@ function extensionMethodReplace(exm: ExtensionMethod) {
         }
     };
 }
-export default function semanticCheck() {
-    programScope = new ProgramScope(program, {});
 
-    program.setDefinedType('@point', {
-        modifier: 'valuetype',
-        property: {},
-        operatorOverload: {},
-        _constructor: {}
-    });
-    programScope.registerClass('@point');//注册point类型
-    registerType({ PlainType: { name: '@point' } });//在类型表中注册类型
-
-    program.setDefinedType('@null', {
-        modifier: 'valuetype',
-        property: {},
-        operatorOverload: {},
-        _constructor: {}
-    });
-    programScope.registerClass('@null');//注册null类型
-    registerType({ PlainType: { name: '@null' } });//在类型表中注册类型
-
-
-
+function necessaryClassCheck() {
     if (program.getDefinedType('NullPointerException') == undefined) {
         throw `VM运行必备类型NullPointerException未定义`;
     } else {
@@ -1383,6 +1362,46 @@ export default function semanticCheck() {
             }
         }
     }
+
+    if (program.getDefinedType('string') == undefined) {
+        throw `VM运行必备类型string未定义`;
+    } else {
+        if (!isPointType({ PlainType: { name: "string" } })) {
+            throw `string必须是引用类型`;
+        } else {
+            if (program.getDefinedType('string')._constructor[`args:(@Array<byte>) retType:void`] == undefined) {
+                throw `string必须有一个接受byte[]的构造函数`;
+            }
+            //此时program.getDefinedType('string').property['buffer'].type已经经过类型推导，type不可能为undefined
+            let bufferType = program.getDefinedType('string').property['buffer'].type;
+            assert(bufferType != undefined);
+            if (program.getDefinedType('string').property['buffer'] == undefined || TypeUsedSign(bufferType) != '@Array<byte>') {
+                throw `string必须有一个类型为byte[]的buffer成员变量`;
+            }
+        }
+    }
+}
+
+export default function semanticCheck() {
+    programScope = new ProgramScope(program, {});
+
+    program.setDefinedType('@point', {
+        modifier: 'valuetype',
+        property: {},
+        operatorOverload: {},
+        _constructor: {}
+    });
+    programScope.registerClass('@point');//注册point类型
+    registerType({ PlainType: { name: '@point' } });//在类型表中注册类型
+
+    program.setDefinedType('@null', {
+        modifier: 'valuetype',
+        property: {},
+        operatorOverload: {},
+        _constructor: {}
+    });
+    programScope.registerClass('@null');//注册null类型
+    registerType({ PlainType: { name: '@null' } });//在类型表中注册类型
 
 
     // 把所有的扩展函数挪到extensionMethodsImpl
@@ -1480,4 +1499,5 @@ export default function semanticCheck() {
         }
     }
     program.size = programSize;
+    necessaryClassCheck();
 }

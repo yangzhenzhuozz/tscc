@@ -1,7 +1,7 @@
 import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
 let grammar: Grammar = {
-    tokens: ['extension', 'native', 'var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'throw', 'super', 'basic_type', 'instanceof', 'autounwinding'],
+    tokens: ['extension','string', 'native', 'var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'throw', 'super', 'basic_type', 'instanceof', 'autounwinding'],
     association: [
         { 'right': ['='] },
         { 'right': ['?'] },
@@ -301,6 +301,7 @@ let grammar: Grammar = {
         { "object:object ? object : object": { priority: "?" } },//三目运算
         { "object:id": {} },//id是一个对象
         { "object:immediate_val": {} },//立即数是一个object
+        { "object:string": {} },//立即数是一个string
         { "object:immediate_array": {} },//立即数是一个immediate_array
         { "object:super": {} },//super是一个对象
         { "object:this": {} },//this是一个object

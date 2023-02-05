@@ -10,7 +10,7 @@ import { userTypeDictionary } from './lexrule.js';
 import { FunctionSign, FunctionSignWithoutRetType, TypeUsedSign } from "./lib.js"
 import { Program } from "./program.js";
     `,
-    tokens: ['extension', 'native', 'var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'throw', 'super', 'basic_type', 'instanceof', 'autounwinding'],
+    tokens: ['extension', 'string', 'native', 'var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'throw', 'super', 'basic_type', 'instanceof', 'autounwinding'],
     association: [
         { 'right': ['='] },
         { 'right': ['?'] },
@@ -1976,6 +1976,24 @@ import { Program } from "./program.js";
                 }
             }
         },//立即数是一个object
+        {
+            "object:string": {
+                action: function ($, s): ASTNode {
+                    let ASTNodes: ASTNode[] = [];
+                    for (let ch of $[0] as string) {
+                        ASTNodes.push({ desc: "ASTNode", immediate: { primiviteValue: ch.charCodeAt(0) + 'b' } });//变成单个byte类型
+                    }
+                    let newString: ASTNode = {
+                        desc: 'ASTNode',
+                        _new: {
+                            type: { PlainType: { name: 'string' } },
+                            _arguments: [{ desc: "ASTNode", immediateArray: ASTNodes }]
+                        }
+                    };
+                    return newString;
+                }
+            }
+        },//立即数是一个string
         {
             "object:immediate_array": {
                 action: function ($, s): ASTNode {

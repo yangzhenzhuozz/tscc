@@ -1,24 +1,8 @@
-var a=0.0;
-class MyClass{
-    MyClass(){
-        printI32(56);
-        a++;
-        if(a==3.0){
-            throw a+0.5;
-        }
-    }
-    var unwinded=()=>{
-        printDouble(1.1);
-    };
-}
 function main():void{
-    try{
-        autounwinding(var a=new MyClass();var b=new MyClass();var c=new MyClass()){
-
-        }
-    }catch(v:double){
-        printDouble(v);
-    }
+    printString("abc");
+};
+function printString(v:string){
+    printStringBuffer(v.buffer);
 };
 
 
@@ -49,6 +33,11 @@ extension function toString(this int v):void{
     printI32(v);
 }
 
+function printStringBuffer(v:byte[]):void{
+    native
+};
+
+
 
 
 
@@ -66,6 +55,12 @@ class CastException{
 }
 class ArrayIndexOutOfBoundsException{
     ArrayIndexOutOfBoundsException(){}
+}
+class string{
+    var buffer:byte[];
+    string(arg:byte[]){
+        this.buffer=arg;
+    }
 }
 
 
