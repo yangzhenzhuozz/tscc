@@ -2886,8 +2886,8 @@ export default function programScan() {
             });
             putfield(prop.type!, offset, nr.truelist, nr.falselist);
         } else if (prop.type?.FunctionType && (prop.type?.FunctionType.body || prop.type?.FunctionType.isNative)) {//如果是函数定义则生成函数
-            let blockScope = new BlockScope(programScope, prop.type?.FunctionType, prop.type?.FunctionType.body!, { program });
-            let fun = functionObjGen(blockScope, prop.type?.FunctionType, { nativeName: variableName });
+            let blockScope = new BlockScope(programScope, prop.type.FunctionType, prop.type?.FunctionType.body!, { program });
+            let fun = functionObjGen(blockScope, prop.type.FunctionType, { nativeName: variableName });
             new IR('program_load');
             let newIR = new IR('newFunc', undefined, undefined, undefined);
             irAbsoluteAddressRelocationTable.push({ sym: fun.text, ir: newIR });

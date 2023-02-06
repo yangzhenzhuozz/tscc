@@ -1,3 +1,4 @@
+import { assert } from './codeGen.js';
 import { globalVariable } from './ir.js';
 import { Program } from './program.js';
 
@@ -133,7 +134,7 @@ class BlockScope extends Scope {
     public classScope: ClassScope | undefined;
     public baseOffset: number;//基础偏移
     public allocatedSize: number;//已经分配的空间(子scope会用到)
-    
+
     /**
      * 
      * @param scope 
@@ -158,15 +159,17 @@ class BlockScope extends Scope {
         } else {
             throw `scope只能是上面三种情况`;
         }
-        if (this.parent == undefined) {
-            if(option.isEXM){
-                this.allocatedSize = 0;//是最外层的functionScope,不需要预留函数包裹类或者this指针位置
+        if (fun != undefined) {//函数scope要切断和父函数的baseOffset联系,置0即可
+            if (option.isEXM) {
+                this.allocatedSize = 0;//扩展函数不需要预留函数包裹类或者this指针位置
                 this.baseOffset = 0;
-            }else{
-                this.allocatedSize = globalVariable.pointSize;//是最外层的functionScope,预留函数包裹类或者this指针位置
+            } else {
+                this.allocatedSize = globalVariable.pointSize;//其他函数需要预留函数包裹类或者this指针位置
                 this.baseOffset = 0;
             }
         } else {
+            //如果一个block不是函数空间，则一定有parent，否则就是代码出bug了
+            assert(this.parent != undefined);
             this.allocatedSize = this.parent.allocatedSize;
             this.baseOffset = this.parent.allocatedSize;
         }
