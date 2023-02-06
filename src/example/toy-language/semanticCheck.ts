@@ -1316,8 +1316,8 @@ function extensionMethodReplace(exm: ExtensionMethod) {
 
 function necessaryClassCheck() {
     let hasVMLoadNativeLib = false;
-    if (program.property['VMLoadNativeLib'].type?.FunctionType != undefined) {
-        let VMLoadNativeLibFun = program.property['VMLoadNativeLib'].type.FunctionType;
+    if (program.property['_VMLoadNativeLib'].type?.FunctionType != undefined) {
+        let VMLoadNativeLibFun = program.property['_VMLoadNativeLib'].type.FunctionType;
         let argNames = Object.keys(VMLoadNativeLibFun._arguments);
         if (argNames.length == 2) {
             let arg0Sign = TypeUsedSign(VMLoadNativeLibFun._arguments[argNames[0]].type!);

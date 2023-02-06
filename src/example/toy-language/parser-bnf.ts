@@ -1979,8 +1979,29 @@ import { Program } from "./program.js";
         {
             "object:string": {
                 action: function ($, s): ASTNode {
+                    let str = $[0] as string;
                     let ASTNodes: ASTNode[] = [];
-                    for (let ch of $[0] as string) {
+                    for (let i = 0; i < str.length; i++) {
+                        let ch = str[i];
+                        if (ch == '\\') {
+                            if (i == str.length - 1) {
+                                throw `字符串末尾的转义符无法处理`;
+                            } else {
+                                i++;
+                                ch = str[i];
+                                switch (ch) {
+                                    case 'a': ch = '\a'; break;
+                                    case 'b': ch = '\b'; break;
+                                    case 'f': ch = '\f'; break;
+                                    case 'n': ch = '\n'; break;
+                                    case 'r': ch = '\r'; break;
+                                    case 't': ch = '\t'; break;
+                                    case 'v': ch = '\v'; break;
+                                    case '\\': ch = '\\'; break;
+                                    default: break;
+                                }
+                            }
+                        }
                         ASTNodes.push({ desc: "ASTNode", immediate: { primiviteValue: ch.charCodeAt(0) + 'b' } });//变成单个byte类型
                     }
                     let newString: ASTNode = {
