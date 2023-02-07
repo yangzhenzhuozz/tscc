@@ -2584,6 +2584,16 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
         return { startIR: arrayLength, endIR, truelist: [], falselist: [], jmpToFunctionEnd: [] };
     }
     else if (node['negative'] != undefined) {
+        nodeRecursion(scope, node['negative'], {
+            label: undefined,
+            frameLevel: undefined,
+            isGetAddress: undefined,
+            boolForward: undefined,
+            isAssignment: undefined,
+            singleLevelThis: option.singleLevelThis,
+            inContructorRet: undefined,
+            functionWrapName: option.functionWrapName
+        });
         let typeName = TypeUsedSign(node.type!);
         let ir: IR;
         switch (typeName) {
@@ -2604,11 +2614,31 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
                 break;
             default: throw `无法取负号的类型${typeName}`;
         }
-        return { startIR: ir, endIR: ir, truelist: [], falselist: [], jmpToFunctionEnd: [] };
+        return { startIR: ir, endIR: ir, truelist: [], falselist: [], jmpToFunctionEnd: [], isRightVariable: true };
     }
     else if (node['positive'] != undefined) {
-        //取正号不需要生成代码
-        return { startIR: nowIRContainer.irs[nowIRContainer.irs.length - 1], endIR: nowIRContainer.irs[nowIRContainer.irs.length - 1], truelist: [], falselist: [], jmpToFunctionEnd: [] };
+        nodeRecursion(scope, node['positive'], {
+            label: undefined,
+            frameLevel: undefined,
+            isGetAddress: undefined,
+            boolForward: undefined,
+            isAssignment: undefined,
+            singleLevelThis: option.singleLevelThis,
+            inContructorRet: undefined,
+            functionWrapName: option.functionWrapName
+        });
+        let typeName = TypeUsedSign(node.type!);
+        if (
+            typeName != 'byte' &&
+            typeName != 'short' &&
+            typeName != 'int' &&
+            typeName != 'long' &&
+            typeName != 'double'
+        ) {
+            throw `只有 byte、short、int、long、double才能取负号`;
+        }
+        //positive不需要生成指令，计算栈中的数据原样保留即可
+        return { startIR: nowIRContainer.irs[nowIRContainer.irs.length - 1], endIR: nowIRContainer.irs[nowIRContainer.irs.length - 1], truelist: [], falselist: [], jmpToFunctionEnd: [], isRightVariable: true };
     }
     else { throw `未支持的AST类型` };
 }

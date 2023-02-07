@@ -1,7 +1,9 @@
 function main():void{
     _VMLoadNativeLib("d:\\Users\\john\\Desktop\\ty\\dll\\x64\\Debug\\dll".buffer,{["_NativePrintBytesString".buffer]});
     printString((-10).toString());
-    printString((12).toString());
+    printString((+12).toString());
+    var t=66;
+    printString((+t).toString());
 };
 
 function printString(s:string){//comment a
@@ -14,24 +16,29 @@ function _NativePrintBytesString(arg:byte[]):void{
 
 
 extension function toString(this int value):string{
-    var v=value;
+    var tmp=value;
     var baseCode="0".buffer[0];
-    var signed=value;
-    if(v<0){
-        v=-v;
+    if(tmp<0){
+        tmp=-tmp;
     }
     var len=1;
     for(;;){
-        v=v/10;
-        if(v==0){
+        tmp=tmp/10;
+        if(tmp==0){
             break;
         }
         len++;
     }
-    var buffer=new byte[signed<0?len+1:len];
+    tmp=value;
+    var buffer=new byte[tmp<0?len+1:len];
+    if(tmp<0){
+        buffer[0]="-".buffer[0];
+        tmp=-tmp;
+    }
+    var sign=value;
     for(var i=0;i<len;i++){
-        buffer[signed<0?len-i:len-i-1]=(byte)(value%10)+baseCode;
-        value=value/10;
+        buffer[sign<0?len-i:len-i-1]=(byte)(tmp%10)+baseCode;
+        tmp=tmp/10;
     }
     return new string(buffer);
 }
