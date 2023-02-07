@@ -2294,6 +2294,20 @@ import { Program } from "./program.js";
                 }
             }
         },
+        {
+            "object:- object": {
+                action: function ($, s): ASTNode {
+                    return { desc: "ASTNode", "negative": $[1] as ASTNode };
+                }
+            }
+        },
+        {
+            "object:+ object": {
+                action: function ($, s): ASTNode {
+                    return { desc: "ASTNode", "positive": $[1] as ASTNode };
+                }
+            }
+        },
         /**
          * instanceof会导致如下冲突:
          * 情况1: ! a instanceof int

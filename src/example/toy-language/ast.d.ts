@@ -106,6 +106,8 @@ interface ASTNode {
     not?: ASTNode;
     '++'?: ASTNode;
     '--'?: ASTNode;
+    'negative'?: ASTNode;//取反
+    'positive'?: ASTNode;//取正
     '!'?: ASTNode;
     '~'?: ASTNode;
     ternary?: { condition: ASTNode, obj1: ASTNode, obj2: ASTNode };

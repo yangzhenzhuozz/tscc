@@ -2583,6 +2583,33 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
         }
         return { startIR: arrayLength, endIR, truelist: [], falselist: [], jmpToFunctionEnd: [] };
     }
+    else if (node['negative'] != undefined) {
+        let typeName = TypeUsedSign(node.type!);
+        let ir: IR;
+        switch (typeName) {
+            case 'byte':
+                ir = new IR('i8_negative');
+                break;
+            case 'short':
+                ir = new IR('i16_negative');
+                break;
+            case 'int':
+                ir = new IR('i32_negative');
+                break;
+            case 'long':
+                ir = new IR('i64_negative');
+                break;
+            case 'double':
+                ir = new IR('double_negative');
+                break;
+            default: throw `无法取负号的类型${typeName}`;
+        }
+        return { startIR: ir, endIR: ir, truelist: [], falselist: [], jmpToFunctionEnd: [] };
+    }
+    else if (node['positive'] != undefined) {
+        //取正号不需要生成代码
+        return { startIR: nowIRContainer.irs[nowIRContainer.irs.length - 1], endIR: nowIRContainer.irs[nowIRContainer.irs.length - 1], truelist: [], falselist: [], jmpToFunctionEnd: [] };
+    }
     else { throw `未支持的AST类型` };
 }
 function putfield(type: TypeUsed, offset: number, truelist: IR[], falselist: IR[]): IR {

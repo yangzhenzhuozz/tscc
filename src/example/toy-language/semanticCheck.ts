@@ -882,6 +882,34 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
             }
         }
     }
+    else if (node['negative'] != undefined) {
+        let type = nodeRecursion(scope, node["negative"], label, declareRetType).type;
+        let typeName = TypeUsedSign(type);
+        if (
+            typeName != 'byte' &&
+            typeName != 'short' &&
+            typeName != 'int' &&
+            typeName != 'long' &&
+            typeName != 'double'
+        ) {
+            throw `只有 byte、short、int、long、double才能取负号`;
+        }
+        result = { hasRet: false, retType: undefined, type };
+    }
+    else if (node['positive'] != undefined) {
+        let type = nodeRecursion(scope, node["positive"], label, declareRetType).type;
+        let typeName = TypeUsedSign(type);
+        if (
+            typeName != 'byte' &&
+            typeName != 'short' &&
+            typeName != 'int' &&
+            typeName != 'long' &&
+            typeName != 'double'
+        ) {
+            throw `只有 byte、short、int、long、double才能取正号`;
+        }
+        result = { hasRet: false, retType: undefined, type };
+    }
     else {
         throw new Error(`未知节点`);
     }

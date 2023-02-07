@@ -291,6 +291,8 @@ let grammar: Grammar = {
         { "object:object << object": {} },
         { "object:object ^ object": {} },
         { "object:~ object": {} },
+        { "object:- object": {} },
+        { "object:+ object": {} },
         /**
          * instanceof会导致如下冲突:
          * 情况1: ! a instanceof int
