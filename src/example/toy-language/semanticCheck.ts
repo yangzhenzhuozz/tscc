@@ -29,16 +29,22 @@ function OperatorOverLoad(scope: Scope, leftObj: ASTNode, rightObj: ASTNode | un
                 }
                 else {
                     let sign = FunctionSignWithArgument([rightType]);
-                    let opFunction = program.getDefinedType(leftType.PlainType!.name).operatorOverload[op as opType]?.[sign];
-                    if (opFunction == undefined) {
+                    let funName = `@operatorOverload@${op}@${sign}`;
+                    let opFunctionField = program.getDefinedType(leftType.PlainType!.name).property[funName];
+                    if (opFunctionField == undefined) {
                         throw `类型${TypeUsedSign(leftType)}没有 ${op} (${TypeUsedSign(rightType)})的重载函数`;
-                    } else if (opFunction.isNative == undefined || !opFunction.isNative) {
+                    }
+                    //如果不是undefined就可以下断言了
+                    assert(opFunctionField.type != undefined);
+                    assert(opFunctionField.type.FunctionType != undefined);
+                    assert(opFunctionField.type.FunctionType.retType != undefined);
+                    if (opFunctionField.type.FunctionType.isNative == undefined || !opFunctionField.type.FunctionType.isNative) {
                         delete originNode[op];//删除原来的操作符
-                        originNode.call = { functionObj: { desc: 'ASTNode', loadOperatorOverload: [op, sign] }, _arguments: [rightObj] };//改为函数调用
+                        originNode.call = { functionObj: { desc: 'ASTNode', accessField: { obj: leftObj, field: `@operatorOverload@${op}@${sign}` } }, _arguments: [rightObj] };//改为函数调用
                     } else {
                         //由vm实现，不生成操作符重载代码
                     }
-                    return { type: opFunction.retType! };
+                    return { type: opFunctionField.type!.FunctionType!.retType! };//文法规定了操作符重载必须声明返回值类型，这里是安全的
                 }
             } else {
                 //是函数类型和数组类型
@@ -50,11 +56,15 @@ function OperatorOverLoad(scope: Scope, leftObj: ASTNode, rightObj: ASTNode | un
     else {
         if (leftType.PlainType) {
             let sign = FunctionSignWithArgument([]);
-            let opFunction = program.getDefinedType(leftType.PlainType!.name).operatorOverload[op as opType]?.[sign];
-            if (opFunction != undefined) {
-                if (opFunction.isNative == undefined || !opFunction.isNative) {
+            let funName = `@operatorOverload@${op}@${sign}`;
+            let opFunctionField = program.getDefinedType(leftType.PlainType!.name).property[funName];
+            if (opFunctionField != undefined) {
+                assert(opFunctionField.type != undefined);
+                assert(opFunctionField.type.FunctionType != undefined);
+                assert(opFunctionField.type.FunctionType.retType != undefined);
+                if (opFunctionField.type.FunctionType.isNative == undefined || !opFunctionField.type.FunctionType.isNative) {
                     delete originNode[op];//删除原来的操作符
-                    originNode.call = { functionObj: { desc: 'ASTNode', loadOperatorOverload: [op, sign] }, _arguments: [] };
+                    originNode.call = { functionObj: { desc: 'ASTNode', accessField: { obj: leftObj, field: `@operatorOverload@${op}@${sign}` } }, _arguments: [] };
                 } else {
                     //由vm实现
                 }
@@ -62,7 +72,7 @@ function OperatorOverLoad(scope: Scope, leftObj: ASTNode, rightObj: ASTNode | un
             else {
                 throw `类型${TypeUsedSign(leftType)}没有操作符${op}`;
             }
-            return { type: opFunction.retType! };
+            return { type: opFunctionField.type.FunctionType.retType! };//文法规定了操作符重载必须声明返回值类型，这里是安全的
         }
         else {
             throw `类型${TypeUsedSign(leftType)}没有操作符${op}`;
@@ -923,7 +933,6 @@ function BlockScan(blockScope: BlockScope, label: string[], declareRetType: { re
             let wrapTypeUsed: { PlainType: PlainType; } = { PlainType: { name: wrapClassName } };
             let wrapTypeDef: TypeDef = {
                 _constructor: {},
-                operatorOverload: {},
                 property: {
                     "value": {
                         variable: variable,
@@ -1161,13 +1170,6 @@ function ClassScan(classScope: ClassScope) {
             throw `void无法计算大小,任何成员都不能是void类型`;
         }
         registerType(prop.type!);//经过推导，类型已经确定了
-    }
-    let operatorOverloads = program.getDefinedType(classScope.className).operatorOverload;
-    for (let op in operatorOverloads) {//扫描重载操作符
-        for (let sign in operatorOverloads[op as opType | opType2]) {
-            let blockScope = new BlockScope(classScope, operatorOverloads[op as opType | opType2]![sign], operatorOverloads[op as opType | opType2]![sign].body!, {});
-            functionScan(blockScope, operatorOverloads[op as opType | opType2]![sign]);
-        }
     }
     //扫描构造函数
     for (let constructorName in program.getDefinedType(classScope.className)._constructor) {
@@ -1443,7 +1445,6 @@ export default function semanticCheck() {
     program.setDefinedType('@point', {
         modifier: 'valuetype',
         property: {},
-        operatorOverload: {},
         _constructor: {}
     });
     programScope.registerClass('@point');//注册point类型
@@ -1452,7 +1453,6 @@ export default function semanticCheck() {
     program.setDefinedType('@null', {
         modifier: 'valuetype',
         property: {},
-        operatorOverload: {},
         _constructor: {}
     });
     programScope.registerClass('@null');//注册null类型

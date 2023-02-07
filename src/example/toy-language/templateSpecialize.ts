@@ -276,12 +276,6 @@ export function ClassSpecialize(typedef: TypeDef, map: { [key: string]: TypeUsed
             throw `void无法计算大小,任何成员都不能是void类型`;
         }
     }
-    let operatorOverloads = typedef.operatorOverload;
-    for (let op in operatorOverloads) {//扫描重载操作符
-        for (let sign in operatorOverloads[op as opType | opType2]) {
-            FunctionSpecialize(operatorOverloads[op as opType | opType2]![sign], map);
-        }
-    }
     //扫描构造函数
     for (let constructorName in typedef._constructor) {
         let _constructor = typedef._constructor[constructorName];

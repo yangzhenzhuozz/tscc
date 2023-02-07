@@ -1,23 +1,11 @@
 function main():void{
-    _VMLoadNativeLib("d:\\Users\\john\\Desktop\\ty\\dll\\x64\\Debug\\dll".buffer,{["add".buffer,"_NativePrintBytesString".buffer]});
-    printString((5%2).toString());
-    printString((5^2).toString());
-    printString((5&2).toString());
-    printString((5|2).toString());
-    printString((5<<2).toString());
-    printString((5>>2).toString());
-    printString((~5).toString());
+    _VMLoadNativeLib("d:\\Users\\john\\Desktop\\ty\\dll\\x64\\Debug\\dll".buffer,{["_NativePrintBytesString".buffer]});
+    printString("a"+"b");
 };
 
 function printString(s:string){//comment a
     _NativePrintBytesString(s.buffer);
 };
-
-
-function add(arr:int[],num:int):int{
-    native
-};
-
 
 function _NativePrintBytesString(arg:byte[]):void{
     native
@@ -40,7 +28,22 @@ function _VMLoadNativeLib(fileName:byte[],functionNames:byte[][]):void{
     native
 };
 
-
+class string{
+    var buffer:byte[];
+    string(arg:byte[]){
+        this.buffer=arg;
+    }
+    operator + ( b : string ) : string { 
+        var newBuffer=new byte[this.buffer.length+b.buffer.length];
+        for(var i=0;i<this.buffer.length;i++){
+            newBuffer[i]=this.buffer[i];
+        }
+        for(var i=0;i<b.buffer.length;i++){
+            newBuffer[this.buffer.length+i]=b.buffer[i];
+        }
+        return new string(newBuffer);
+    };
+}
 
 class NullPointerException{
     NullPointerException(){}
@@ -53,12 +56,6 @@ class CastException{
 }
 class ArrayIndexOutOfBoundsException{
     ArrayIndexOutOfBoundsException(){}
-}
-class string{
-    var buffer:byte[];
-    string(arg:byte[]){
-        this.buffer=arg;
-    }
 }
 
 

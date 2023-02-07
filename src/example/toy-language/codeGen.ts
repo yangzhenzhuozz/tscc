@@ -2583,10 +2583,6 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
         }
         return { startIR: arrayLength, endIR, truelist: [], falselist: [], jmpToFunctionEnd: [] };
     }
-    else if (node['loadOperatorOverload'] != undefined) {
-        //函数调用是右值，要记得
-        throw `unimplement`;
-    }
     else { throw `未支持的AST类型` };
 }
 function putfield(type: TypeUsed, offset: number, truelist: IR[], falselist: IR[]): IR {
@@ -2786,7 +2782,6 @@ function functionObjGen(blockScope: BlockScope, fun: FunctionType, option?: { na
     blockScope.parent = undefined;//查询完捕获变量之后切断和外层函数的联系
     //注册函数容器
     program.setDefinedType(functionWrapName, {
-        operatorOverload: {},
         _constructor: {},
         property: property,
         size: globalVariable.pointSize + Object.keys(fun.capture).length * globalVariable.pointSize
@@ -2989,17 +2984,21 @@ function classScan(classScope: ClassScope) {
                 functionWrapName: '@unknow'
             });
             putfield(prop.type!, offset, nr.truelist, nr.falselist);
-        } else if (prop.type?.FunctionType && (prop.type?.FunctionType.body || prop.type?.FunctionType.isNative)) {
-            let blockScope = new BlockScope(classScope, prop.type?.FunctionType, prop.type?.FunctionType.body!, { program });
-            let fun = functionObjGen(blockScope, prop.type?.FunctionType);
-            new IR('p_load', 0);
-            let newIR = new IR('newFunc', undefined, undefined, undefined);
-            irAbsoluteAddressRelocationTable.push({ sym: fun.text, ir: newIR });
-            typeRelocationTable.push({ t2: fun.realTypeName, t3: fun.wrapClassName, ir: newIR });
-            new IR('p_dup');//复制一份functionWrap，用来设置this
-            new IR('p_load', 0);//读取this
-            new IR('p_putfield', 0);//设置this
-            new IR('p_putfield', offset);//设置函数对象
+        } else if (prop.type?.FunctionType && (prop.type?.FunctionType.body || prop.type?.FunctionType.isNative)) {//后面两个条件表示函数定义
+            if (prop.type?.FunctionType.isNative && propName.startsWith('@operatorOverload')) {
+                //native运算符重载不生成代码，表示虚拟机自带指令可以实现，比如int的+操作
+            } else {
+                let blockScope = new BlockScope(classScope, prop.type?.FunctionType, prop.type?.FunctionType.body!, { program });
+                let fun = functionObjGen(blockScope, prop.type?.FunctionType);
+                new IR('p_load', 0);
+                let newIR = new IR('newFunc', undefined, undefined, undefined);
+                irAbsoluteAddressRelocationTable.push({ sym: fun.text, ir: newIR });
+                typeRelocationTable.push({ t2: fun.realTypeName, t3: fun.wrapClassName, ir: newIR });
+                new IR('p_dup');//复制一份functionWrap，用来设置this
+                new IR('p_load', 0);//读取this
+                new IR('p_putfield', 0);//设置this
+                new IR('p_putfield', offset);//设置函数对象
+            }
         } else {
             if (!isPointType(prop.type!)) {
                 new IR('p_load', 0);

@@ -28,11 +28,6 @@ interface TypeDef {//定义的类型
     recursiveFlag?: boolean;//递归检查标记
     templates?: string[];//模板列表
     extends?: TypeUsed;//基类,已经不允许继承了，这个字段先留着吧
-    operatorOverload: {//重载列表
-        [key in opType | opType2]?: {//key为操作符
-            [key: string]: FunctionType;//key为函数签名(不包含返回值的签名),magic表示该操作由vm实现，翻译的时候原样保留
-        }
-    };
     property: VariableDescriptor;//属性列表
     _constructor: { [key: string]: FunctionType };//key为函数签名
 }
@@ -85,7 +80,6 @@ interface ASTNode {
     pushUnwindHandler?: ASTNode;//压入unwindHandler
     callEXM?: { obj: ASTNode, extendFuntionRealname: string };//调用扩展函数
     getFunctionWrapName?: '',//获取函数包裹类名称
-    loadOperatorOverload?: [string, string];//读取重载操作符函数
     loadException?: TypeUsed;//读取异常
     loadArgument?: { index: number },//从栈中读取参数
     specializationObj?: { obj: ASTNode, types: TypeUsed[] },//特化模板对象

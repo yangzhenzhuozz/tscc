@@ -215,13 +215,24 @@ import { Program } from "./program.js";
                         property: VariableDescriptor,
                         _constructor: { [key: string]: FunctionType };
                     };
+                    let property = class_units.property;
+                    for (let op in class_units.operatorOverload) {
+                        for (let funSign in class_units.operatorOverload[op as opType | opType2]) {
+                            property[`@operatorOverload@${op}@${funSign}`] = {
+                                variable: 'val',
+                                type: {
+                                    FunctionType: class_units.operatorOverload[op as opType | opType2][funSign]
+                                }
+                            };
+                        }
+                    }
                     for (let k in class_units._constructor) {
                         if (class_units._constructor[k]._construct_for_type != basic_type.PlainType!.name) {
                             throw new Error(`类型${basic_type.PlainType!.name}内部不能定义非${basic_type.PlainType!.name}的构造函数${class_units._constructor[k]._construct_for_type}`);
                         }
                     }
                     let ret: { [key: string]: TypeDef } = JSON.parse("{}");//为了生成的解析器不报红
-                    ret[basic_type.PlainType!.name] = { modifier: modifier, templates: template_declare, property: class_units.property, operatorOverload: class_units.operatorOverload, extends: extends_declare, _constructor: class_units._constructor };
+                    ret[basic_type.PlainType!.name] = { modifier: modifier, templates: template_declare, property: property, extends: extends_declare, _constructor: class_units._constructor };
                     return ret;
                 }
             }
