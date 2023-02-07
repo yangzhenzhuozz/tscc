@@ -50,12 +50,17 @@ function OperatorOverLoad(scope: Scope, leftObj: ASTNode, rightObj: ASTNode | un
     else {
         if (leftType.PlainType) {
             let sign = FunctionSignWithArgument([]);
-            let opFunction = program.getDefinedType(leftType.PlainType!.name).operatorOverload[op as opType]![sign];
-            if (opFunction.isNative == undefined || !opFunction.isNative) {
-                delete originNode[op];//删除原来的操作符
-                originNode.call = { functionObj: { desc: 'ASTNode', loadOperatorOverload: [op, sign] }, _arguments: [] };
-            } else {
-                //由vm实现
+            let opFunction = program.getDefinedType(leftType.PlainType!.name).operatorOverload[op as opType]?.[sign];
+            if (opFunction != undefined) {
+                if (opFunction.isNative == undefined || !opFunction.isNative) {
+                    delete originNode[op];//删除原来的操作符
+                    originNode.call = { functionObj: { desc: 'ASTNode', loadOperatorOverload: [op, sign] }, _arguments: [] };
+                } else {
+                    //由vm实现
+                }
+            }
+            else {
+                throw `类型${TypeUsedSign(leftType)}没有操作符${op}`;
             }
             return { type: opFunction.retType! };
         }
@@ -407,6 +412,40 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
         }
         result = { type: { PlainType: { name: 'void' } }, hasRet: false };
     }
+    else if (node["%"] != undefined) {
+        let op = '%' as opType;
+        let opRet = OperatorOverLoad(scope, node[op]!.leftChild, node[op]!.rightChild, node, op);
+        result = { type: opRet.type, location: opRet.location, hasRet: false };
+    }
+    else if (node["~"] != undefined) {
+        let opRet = OperatorOverLoad(scope, node['~'], undefined, node, '~');
+        result = { type: opRet.type, location: opRet.location, hasRet: false };
+    }
+    else if (node["^"] != undefined) {
+        let op = '^' as opType;
+        let opRet = OperatorOverLoad(scope, node[op]!.leftChild, node[op]!.rightChild, node, op);
+        result = { type: opRet.type, location: opRet.location, hasRet: false };
+    }
+    else if (node["&"] != undefined) {
+        let op = '&' as opType;
+        let opRet = OperatorOverLoad(scope, node[op]!.leftChild, node[op]!.rightChild, node, op);
+        result = { type: opRet.type, location: opRet.location, hasRet: false };
+    }
+    else if (node["|"] != undefined) {
+        let op = '|' as opType;
+        let opRet = OperatorOverLoad(scope, node[op]!.leftChild, node[op]!.rightChild, node, op);
+        result = { type: opRet.type, location: opRet.location, hasRet: false };
+    }
+    else if (node[">>"] != undefined) {
+        let op = '>>' as opType;
+        let opRet = OperatorOverLoad(scope, node[op]!.leftChild, node[op]!.rightChild, node, op);
+        result = { type: opRet.type, location: opRet.location, hasRet: false };
+    }
+    else if (node["<<"] != undefined) {
+        let op = '<<' as opType;
+        let opRet = OperatorOverLoad(scope, node[op]!.leftChild, node[op]!.rightChild, node, op);
+        result = { type: opRet.type, location: opRet.location, hasRet: false };
+    }
     else if (node["+"] != undefined) {
         let op = '+' as opType;
         let opRet = OperatorOverLoad(scope, node[op]!.leftChild, node[op]!.rightChild, node, op);
@@ -593,9 +632,8 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
         result = { hasRet: false, type: { PlainType: { name: 'bool' } } };
     }
     else if (node["not"] != undefined) {
-        let not_obj_type = nodeRecursion(scope, node["not"], label, declareRetType).type;
-        typeCheck(not_obj_type, { PlainType: { name: 'bool' } }, `not运算必须是一个bool值`);
-        result = { hasRet: false, type: { PlainType: { name: 'bool' } } };
+        let opRet = OperatorOverLoad(scope, node['not'], undefined, node, '!');
+        result = { type: opRet.type, location: opRet.location, hasRet: false };
     }
     else if (node["++"] != undefined) {
         let opRet = OperatorOverLoad(scope, node['++'], undefined, node, '++');
@@ -1323,13 +1361,12 @@ function necessaryClassCheck() {
             let arg0Sign = TypeUsedSign(VMLoadNativeLibFun._arguments[argNames[0]].type!);
             let arg1Sign = TypeUsedSign(VMLoadNativeLibFun._arguments[argNames[1]].type!);
             let retTypeSign = TypeUsedSign(VMLoadNativeLibFun.retType!);
-            if (arg0Sign=='@Array<byte>'&&arg1Sign=='@Array<@Array<byte>>'&&retTypeSign=='void') {
-                hasVMLoadNativeLib=true;
+            if (arg0Sign == '@Array<byte>' && arg1Sign == '@Array<@Array<byte>>' && retTypeSign == 'void') {
+                hasVMLoadNativeLib = true;
             }
         }
     }
-    if(!hasVMLoadNativeLib)
-    {
+    if (!hasVMLoadNativeLib) {
         throw `VM运行必须定义一个名为VMLoadNativeLib的native函数,类型如下  参数1:byte[],参数2:byte[][] 返回值类型:void`;
     }
 

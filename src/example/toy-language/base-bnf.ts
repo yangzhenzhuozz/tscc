@@ -1,29 +1,34 @@
 import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
 let grammar: Grammar = {
-    tokens: ['extension','string', 'native', 'var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'throw', 'super', 'basic_type', 'instanceof', 'autounwinding'],
+    tokens: ['%', '<<', '>>', '^', '~', '&', '|', 'extension', 'string', 'native', 'var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'throw', 'super', 'basic_type', 'instanceof', 'autounwinding'],
     association: [
         { 'right': ['='] },
-        { 'right': ['?'] },
-        { 'nonassoc': ['instanceof'] },
-        { 'left': ['!'] },
-        { 'left': ['==', '!='] },
+        { 'right': ['?'] },//三目运算
         { 'left': ['||'] },
         { 'left': ['&&'] },
+        { 'left': ['|'] },
+        { 'left': ['^'] },
+        { 'left': ['&'] },
+        { 'left': ['==', '!='] },
         { 'nonassoc': ['priority_for_plainType'] },//见"object:object instanceof type"注释的情况三，小于符号<即可
         { 'left': ['>', '<', '<=', '>='] },
+        { 'left': ['>>', '<<'] },
         { 'left': ['+', '-'] },
-        { 'left': ['*', '/'] },
+        { 'left': ['*', '/', '%'] },
         { 'left': ['++', '--'] },
+        { 'left': ['~'] },
+        { 'left': ['!'] },
         { 'right': ['=>'] },
-        { 'nonassoc': ['low_priority_for_array_placeholder'] },//见array_placeholder注释
-        { 'nonassoc': ['low_priority_for_['] },//见type注释
         { 'nonassoc': ['cast_priority'] },//强制转型比"("、"["、"."优先级低,比+ - * /优先级高,如(int)f()表示先执行函数调用再转型 (int) a+b表示先把a转型成int，然后+b
+        { 'nonassoc': ['low_priority_for_array_placeholder'] },//见array_placeholder注释,优先级低于'['
+        { 'nonassoc': ['low_priority_for_['] },//见type注释,优先级低于'['
+        { 'nonassoc': ['instanceof'] },
+        { 'nonassoc': ['low_priority_for_if_stmt'] },//这个符号的优先级小于else
+        { 'nonassoc': ['else'] },
         { 'nonassoc': ['['] },
         { 'nonassoc': ['('] },
         { 'nonassoc': ['.'] },
-        { 'nonassoc': ['low_priority_for_if_stmt'] },//这个符号的优先级小于else
-        { 'nonassoc': ['else'] },
     ],
     BNF: [
         { "program:import_stmts program_units": {} },//整个程序由导入语句组和程序单元组构成
@@ -126,8 +131,16 @@ let grammar: Grammar = {
         { "operator_overload:operator || ( id : type ) : type { statements } ;": {} },
         { "operator_overload:operator && ( id : type ) : type { statements } ;": {} },
         { "operator_overload:operator [ ] ( id : type ) : type { statements } ;": {} },
+        { "operator_overload:operator % ( id : type ) : type { statements } ;": {} },
+        { "operator_overload:operator | ( id : type ) : type { statements } ;": {} },
+        { "operator_overload:operator & ( id : type ) : type { statements } ;": {} },
+        { "operator_overload:operator >> ( id : type ) : type { statements } ;": {} },
+        { "operator_overload:operator << ( id : type ) : type { statements } ;": {} },
+        { "operator_overload:operator ^ ( id : type ) : type { statements } ;": {} },
         { "operator_overload:operator ++ ( ) : type { statements } ;": {} },
         { "operator_overload:operator -- ( ) : type { statements } ;": {} },
+        { "operator_overload:operator ! ( ) : type { statements } ;": {} },
+        { "operator_overload:operator ~ ( ) : type { statements } ;": {} },
         { "operator_overload:operator + ( id : type ) : type { native } ;": {} },
         { "operator_overload:operator - ( id : type ) : type { native } ;": {} },
         { "operator_overload:operator * ( id : type ) : type { native } ;": {} },
@@ -140,8 +153,16 @@ let grammar: Grammar = {
         { "operator_overload:operator || ( id : type ) : type { native } ;": {} },
         { "operator_overload:operator && ( id : type ) : type { native } ;": {} },
         { "operator_overload:operator [ ] ( id : type ) : type { native } ;": {} },
+        { "operator_overload:operator % ( id : type ) : type { native } ;": {} },
+        { "operator_overload:operator | ( id : type ) : type { native } ;": {} },
+        { "operator_overload:operator & ( id : type ) : type { native } ;": {} },
+        { "operator_overload:operator >> ( id : type ) : type { native } ;": {} },
+        { "operator_overload:operator << ( id : type ) : type { native } ;": {} },
+        { "operator_overload:operator ^ ( id : type ) : type { native } ;": {} },
         { "operator_overload:operator ++ ( ) : type { native } ;": {} },
         { "operator_overload:operator -- ( ) : type { native } ;": {} },
+        { "operator_overload:operator ! ( ) : type { native } ;": {} },
+        { "operator_overload:operator ~ ( ) : type { native } ;": {} },
         { "statements:statements statement": {} },//statements可以由多个statement组成
         { "statements:": {} },//statements可以为空
         { "statement:declare ;": {} },//statement可以是一条声明语句
@@ -261,8 +282,15 @@ let grammar: Grammar = {
         { "object:object > object": {} },
         { "object:object >= object": {} },
         { "object:object == object": {} },
+        { "object:object % object": {} },
         { "object:object || object": {} },
         { "object:object && object": {} },
+        { "object:object | object": {} },
+        { "object:object & object": {} },
+        { "object:object >> object": {} },
+        { "object:object << object": {} },
+        { "object:object ^ object": {} },
+        { "object:~ object": {} },
         /**
          * instanceof会导致如下冲突:
          * 情况1: ! a instanceof int
@@ -322,7 +350,7 @@ let grammar: Grammar = {
          * 为其指定优先级为cast_priority
          */
         { "object:( type ) object": { priority: "cast_priority" } },//强制转型
-        
+
         /**
          * 之所以不用 [1]声明数组，改用 { [1] }来声明一个数组原因如下：
          * immediate_array:[ immediate_array_elements ] 导致的二义性

@@ -13,8 +13,8 @@ Reflect.ownKeys({
 })
 > ['4', '18', 'star', 'kirby', Symbol(07akioni)]
 */
-type opType = '+' | '-' | '*' | '/' | '<' | '<=' | '>' | '>=' | '==' | '||' | '&&' | '[]';//双目运算符
-type opType2 = '++' | '--';//单目运算符
+type opType = '+' | '-' | '*' | '/' | '<' | '<=' | '>' | '>=' | '==' | '||' | '&&' | '[]' | '%' | '^' | '&' | '|' | '>>' | '<<';//双目运算符
+type opType2 = '++' | '--' | '!' | '~';//单目运算符
 interface ExtensionMethod {
     extensionType: TypeUsed;//扩展的类型
     thisName: string;//this指针指向的名字
@@ -112,6 +112,8 @@ interface ASTNode {
     not?: ASTNode;
     '++'?: ASTNode;
     '--'?: ASTNode;
+    '!'?: ASTNode;
+    '~'?: ASTNode;
     ternary?: { condition: ASTNode, obj1: ASTNode, obj2: ASTNode };
     _new?: { type: { PlainType: PlainType; }, _arguments: ASTNode[] };
     _newArray?: { type: { PlainType?: PlainType; FunctionType?: FunctionType; }, initList: ASTNode[], placeholder: number };
@@ -128,6 +130,12 @@ interface ASTNode {
     "=="?: { rightChild: ASTNode; leftChild: ASTNode; };
     "||"?: { rightChild: ASTNode; leftChild: ASTNode; };
     "&&"?: { rightChild: ASTNode; leftChild: ASTNode; };
+    "%"?: { rightChild: ASTNode; leftChild: ASTNode; };
+    "^"?: { rightChild: ASTNode; leftChild: ASTNode; };
+    "&"?: { rightChild: ASTNode; leftChild: ASTNode; };
+    "|"?: { rightChild: ASTNode; leftChild: ASTNode; };
+    "<<"?: { rightChild: ASTNode; leftChild: ASTNode; };
+    ">>"?: { rightChild: ASTNode; leftChild: ASTNode; };
     //在源码扫描阶段，会生成matchObj,代码检查阶段会生成condition，并删除matchObj
     _switch?: { pattern: ASTNode, defalutStmt?: Block, matchList: { matchObj?: ASTNode, condition?: ASTNode, stmt: Block }[] };//default没有matchObj,其他的一定有
 

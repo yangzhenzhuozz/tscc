@@ -280,6 +280,34 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
             return { startIR: ir, endIR: ir, truelist: [], falselist: [], isRightVariable: true };
         }
     }
+    else if (node['~'] != undefined) {
+        let left = nodeRecursion(scope, node['~'], {
+            label: undefined,
+            frameLevel: undefined,
+            isGetAddress: undefined,
+            boolForward: undefined,
+            isAssignment: undefined,
+            singleLevelThis: option.singleLevelThis,
+            inContructorRet: undefined,
+            functionWrapName: option.functionWrapName
+        });
+        let opIR: IR;
+        if (node['~'].type?.PlainType?.name == 'byte') {
+            opIR = new IR('i8_not');
+        }
+        else if (node['~'].type?.PlainType?.name == 'short') {
+            opIR = new IR('i16_not');
+        }
+        else if (node['~'].type?.PlainType?.name == 'int') {
+            opIR = new IR('i32_not');
+        }
+        else if (node['~'].type?.PlainType?.name == 'long') {
+            opIR = new IR('i64_not');
+        } else {
+            throw `vm 暂未支持${TypeUsedSign(node['~'].type!)}的~操作`;
+        }
+        return { startIR: left.startIR, endIR: opIR, truelist: [], falselist: [], isRightVariable: true };
+    }
     else if (node['+'] != undefined) {
         let left = nodeRecursion(scope, node['+'].leftChild, {
             label: undefined,
@@ -318,6 +346,201 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
             opIR = new IR('double_add');
         } else {
             throw `vm 暂未支持${TypeUsedSign(node['+'].leftChild.type!)}的+操作`;
+        }
+        return { startIR: left.startIR, endIR: opIR, truelist: [], falselist: [], isRightVariable: true };
+    }
+    else if (node['^'] != undefined) {
+        let left = nodeRecursion(scope, node['^'].leftChild, {
+            label: undefined,
+            frameLevel: undefined,
+            isGetAddress: undefined,
+            boolForward: undefined,
+            isAssignment: undefined,
+            singleLevelThis: option.singleLevelThis,
+            inContructorRet: undefined,
+            functionWrapName: option.functionWrapName
+        });
+        let right = nodeRecursion(scope, node['^'].rightChild, {
+            label: undefined,
+            frameLevel: undefined,
+            isGetAddress: undefined,
+            boolForward: undefined,
+            isAssignment: undefined,
+            singleLevelThis: option.singleLevelThis,
+            inContructorRet: undefined,
+            functionWrapName: option.functionWrapName
+        });
+        let opIR: IR;
+        if (node['^'].leftChild.type?.PlainType?.name == 'byte' && node['^'].rightChild.type?.PlainType?.name == 'byte') {
+            opIR = new IR('i8_xor');
+        }
+        else if (node['^'].leftChild.type?.PlainType?.name == 'short' && node['^'].rightChild.type?.PlainType?.name == 'short') {
+            opIR = new IR('i16_xor');
+        }
+        else if (node['^'].leftChild.type?.PlainType?.name == 'int' && node['^'].rightChild.type?.PlainType?.name == 'int') {
+            opIR = new IR('i32_xor');
+        }
+        else if (node['^'].leftChild.type?.PlainType?.name == 'long' && node['^'].rightChild.type?.PlainType?.name == 'long') {
+            opIR = new IR('i64_xor');
+        }
+        else {
+            throw `vm 暂未支持${TypeUsedSign(node['^'].leftChild.type!)}的^操作`;
+        }
+        return { startIR: left.startIR, endIR: opIR, truelist: [], falselist: [], isRightVariable: true };
+    }
+    else if (node['&'] != undefined) {
+        let left = nodeRecursion(scope, node['&'].leftChild, {
+            label: undefined,
+            frameLevel: undefined,
+            isGetAddress: undefined,
+            boolForward: undefined,
+            isAssignment: undefined,
+            singleLevelThis: option.singleLevelThis,
+            inContructorRet: undefined,
+            functionWrapName: option.functionWrapName
+        });
+        let right = nodeRecursion(scope, node['&'].rightChild, {
+            label: undefined,
+            frameLevel: undefined,
+            isGetAddress: undefined,
+            boolForward: undefined,
+            isAssignment: undefined,
+            singleLevelThis: option.singleLevelThis,
+            inContructorRet: undefined,
+            functionWrapName: option.functionWrapName
+        });
+        let opIR: IR;
+        if (node['&'].leftChild.type?.PlainType?.name == 'byte' && node['&'].rightChild.type?.PlainType?.name == 'byte') {
+            opIR = new IR('i8_and');
+        }
+        else if (node['&'].leftChild.type?.PlainType?.name == 'short' && node['&'].rightChild.type?.PlainType?.name == 'short') {
+            opIR = new IR('i16_and');
+        }
+        else if (node['&'].leftChild.type?.PlainType?.name == 'int' && node['&'].rightChild.type?.PlainType?.name == 'int') {
+            opIR = new IR('i32_and');
+        }
+        else if (node['&'].leftChild.type?.PlainType?.name == 'long' && node['&'].rightChild.type?.PlainType?.name == 'long') {
+            opIR = new IR('i64_and');
+        }
+        else {
+            throw `vm 暂未支持${TypeUsedSign(node['&'].leftChild.type!)}的&操作`;
+        }
+        return { startIR: left.startIR, endIR: opIR, truelist: [], falselist: [], isRightVariable: true };
+    }
+    else if (node['|'] != undefined) {
+        let left = nodeRecursion(scope, node['|'].leftChild, {
+            label: undefined,
+            frameLevel: undefined,
+            isGetAddress: undefined,
+            boolForward: undefined,
+            isAssignment: undefined,
+            singleLevelThis: option.singleLevelThis,
+            inContructorRet: undefined,
+            functionWrapName: option.functionWrapName
+        });
+        let right = nodeRecursion(scope, node['|'].rightChild, {
+            label: undefined,
+            frameLevel: undefined,
+            isGetAddress: undefined,
+            boolForward: undefined,
+            isAssignment: undefined,
+            singleLevelThis: option.singleLevelThis,
+            inContructorRet: undefined,
+            functionWrapName: option.functionWrapName
+        });
+        let opIR: IR;
+        if (node['|'].leftChild.type?.PlainType?.name == 'byte' && node['|'].rightChild.type?.PlainType?.name == 'byte') {
+            opIR = new IR('i8_or');
+        }
+        else if (node['|'].leftChild.type?.PlainType?.name == 'short' && node['|'].rightChild.type?.PlainType?.name == 'short') {
+            opIR = new IR('i16_or');
+        }
+        else if (node['|'].leftChild.type?.PlainType?.name == 'int' && node['|'].rightChild.type?.PlainType?.name == 'int') {
+            opIR = new IR('i32_or');
+        }
+        else if (node['|'].leftChild.type?.PlainType?.name == 'long' && node['|'].rightChild.type?.PlainType?.name == 'long') {
+            opIR = new IR('i64_or');
+        }
+        else {
+            throw `vm 暂未支持${TypeUsedSign(node['|'].leftChild.type!)}的|操作`;
+        }
+        return { startIR: left.startIR, endIR: opIR, truelist: [], falselist: [], isRightVariable: true };
+    }
+    else if (node['<<'] != undefined) {
+        let left = nodeRecursion(scope, node['<<'].leftChild, {
+            label: undefined,
+            frameLevel: undefined,
+            isGetAddress: undefined,
+            boolForward: undefined,
+            isAssignment: undefined,
+            singleLevelThis: option.singleLevelThis,
+            inContructorRet: undefined,
+            functionWrapName: option.functionWrapName
+        });
+        let right = nodeRecursion(scope, node['<<'].rightChild, {
+            label: undefined,
+            frameLevel: undefined,
+            isGetAddress: undefined,
+            boolForward: undefined,
+            isAssignment: undefined,
+            singleLevelThis: option.singleLevelThis,
+            inContructorRet: undefined,
+            functionWrapName: option.functionWrapName
+        });
+        let opIR: IR;
+        if (node['<<'].leftChild.type?.PlainType?.name == 'byte' && node['<<'].rightChild.type?.PlainType?.name == 'int') {
+            opIR = new IR('i8_shl');
+        }
+        else if (node['<<'].leftChild.type?.PlainType?.name == 'short' && node['<<'].rightChild.type?.PlainType?.name == 'int') {
+            opIR = new IR('i16_shl');
+        }
+        else if (node['<<'].leftChild.type?.PlainType?.name == 'int' && node['<<'].rightChild.type?.PlainType?.name == 'int') {
+            opIR = new IR('i32_shl');
+        }
+        else if (node['<<'].leftChild.type?.PlainType?.name == 'long' && node['<<'].rightChild.type?.PlainType?.name == 'int') {
+            opIR = new IR('i64_shl');
+        }
+        else {
+            throw `vm 暂未支持${TypeUsedSign(node['<<'].leftChild.type!)}的<<操作`;
+        }
+        return { startIR: left.startIR, endIR: opIR, truelist: [], falselist: [], isRightVariable: true };
+    }
+    else if (node['>>'] != undefined) {
+        let left = nodeRecursion(scope, node['>>'].leftChild, {
+            label: undefined,
+            frameLevel: undefined,
+            isGetAddress: undefined,
+            boolForward: undefined,
+            isAssignment: undefined,
+            singleLevelThis: option.singleLevelThis,
+            inContructorRet: undefined,
+            functionWrapName: option.functionWrapName
+        });
+        let right = nodeRecursion(scope, node['>>'].rightChild, {
+            label: undefined,
+            frameLevel: undefined,
+            isGetAddress: undefined,
+            boolForward: undefined,
+            isAssignment: undefined,
+            singleLevelThis: option.singleLevelThis,
+            inContructorRet: undefined,
+            functionWrapName: option.functionWrapName
+        });
+        let opIR: IR;
+        if (node['>>'].leftChild.type?.PlainType?.name == 'byte' && node['>>'].rightChild.type?.PlainType?.name == 'int') {
+            opIR = new IR('i8_shr');
+        }
+        else if (node['>>'].leftChild.type?.PlainType?.name == 'short' && node['>>'].rightChild.type?.PlainType?.name == 'int') {
+            opIR = new IR('i16_shr');
+        }
+        else if (node['>>'].leftChild.type?.PlainType?.name == 'int' && node['>>'].rightChild.type?.PlainType?.name == 'int') {
+            opIR = new IR('i32_shr');
+        }
+        else if (node['>>'].leftChild.type?.PlainType?.name == 'long' && node['>>'].rightChild.type?.PlainType?.name == 'int') {
+            opIR = new IR('i64_shr');
+        }
+        else {
+            throw `vm 暂未支持${TypeUsedSign(node['>>'].leftChild.type!)}的>>操作`;
         }
         return { startIR: left.startIR, endIR: opIR, truelist: [], falselist: [], isRightVariable: true };
     }
@@ -1278,6 +1501,47 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
             opIR = new IR('double_sub');
         } else {
             throw `vm 暂未支持${TypeUsedSign(node['-'].leftChild.type!)}的-操作`;
+        }
+
+        return { startIR: left.startIR, endIR: opIR, truelist: [], falselist: [], isRightVariable: true };
+    }
+    else if (node['%'] != undefined) {
+        let left = nodeRecursion(scope, node['%'].leftChild, {
+            label: undefined,
+            frameLevel: undefined,
+            isGetAddress: undefined,
+            boolForward: undefined,
+            isAssignment: undefined,
+            singleLevelThis: option.singleLevelThis,
+            inContructorRet: undefined,
+            functionWrapName: option.functionWrapName
+        });
+        let right = nodeRecursion(scope, node['%'].rightChild, {
+            label: undefined,
+            frameLevel: undefined,
+            isGetAddress: undefined,
+            boolForward: undefined,
+            isAssignment: undefined,
+            singleLevelThis: option.singleLevelThis,
+            inContructorRet: undefined,
+            functionWrapName: option.functionWrapName
+        });
+        let opIR: IR;
+
+        if (node['%'].leftChild.type?.PlainType?.name == 'byte' && node['%'].rightChild.type?.PlainType?.name == 'byte') {
+            opIR = new IR('i8_mod');
+        }
+        else if (node['%'].leftChild.type?.PlainType?.name == 'short' && node['%'].rightChild.type?.PlainType?.name == 'short') {
+            opIR = new IR('i16_mod');
+        }
+        else if (node['%'].leftChild.type?.PlainType?.name == 'int' && node['%'].rightChild.type?.PlainType?.name == 'int') {
+            opIR = new IR('i32_mod');
+        }
+        else if (node['%'].leftChild.type?.PlainType?.name == 'long' && node['%'].rightChild.type?.PlainType?.name == 'long') {
+            opIR = new IR('i64_mod');
+        }
+        else {
+            throw `vm 暂未支持${TypeUsedSign(node['%'].leftChild.type!)}的%操作`;
         }
 
         return { startIR: left.startIR, endIR: opIR, truelist: [], falselist: [], isRightVariable: true };

@@ -103,6 +103,13 @@ export enum OPCODE {
     i8_div,//....
     i8_inc,//从计算栈顶弹出一个数，自增后压入
     i8_dec,//从计算栈顶弹出一个数，自减后压入
+    i8_mod,
+    i8_not,
+    i8_xor,
+    i8_and,
+    i8_or,
+    i8_shl,
+    i8_shr,
 
     i16_add,//从计算栈中弹出两个数，结果相加之后压入计算栈
     i16_sub,//....
@@ -110,6 +117,13 @@ export enum OPCODE {
     i16_div,//....
     i16_inc,//从计算栈顶弹出一个数，自增后压入
     i16_dec,//从计算栈顶弹出一个数，自减后压入
+    i16_mod,
+    i16_not,
+    i16_xor,
+    i16_and,
+    i16_or,
+    i16_shl,
+    i16_shr,
 
     i32_add,//从计算栈中弹出两个数，结果相加之后压入计算栈
     i32_sub,//....
@@ -117,6 +131,13 @@ export enum OPCODE {
     i32_div,//....
     i32_inc,//从计算栈顶弹出一个数，自增后压入
     i32_dec,//从计算栈顶弹出一个数，自减后压入
+    i32_mod,
+    i32_not,
+    i32_xor,
+    i32_and,
+    i32_or,
+    i32_shl,
+    i32_shr,
 
     i64_add,//从计算栈中弹出两个数，结果相加之后压入计算栈
     i64_sub,//....
@@ -124,6 +145,13 @@ export enum OPCODE {
     i64_div,//....
     i64_inc,//从计算栈顶弹出一个数，自增后压入
     i64_dec,//从计算栈顶弹出一个数，自减后压入
+    i64_mod,
+    i64_not,
+    i64_xor,
+    i64_and,
+    i64_or,
+    i64_shl,
+    i64_shr,
 
     double_add,//从计算栈中弹出两个数，结果相加之后压入计算栈
     double_sub,//....
