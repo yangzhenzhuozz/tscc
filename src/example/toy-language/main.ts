@@ -26,13 +26,13 @@ function main() {
         setProgram(program);
         console.timeEnd("解析源码耗时");
         fs.writeFileSync(`./src/example/toy-language/output/stage-1.json`, JSON.stringify(program, null, 4));
-        console.time(`阶段二耗时`);
+        console.time(`类型推导耗时`);
         semanticCheck();
-        console.timeEnd(`阶段二耗时`);
+        console.timeEnd(`类型推导耗时`);
         fs.writeFileSync(`./src/example/toy-language/output/stage-2.json`, JSON.stringify(program, null, 4));
-        console.time(`阶段三耗时`);
+        console.time(`IR生成耗时`);
         codeGen();
-        console.timeEnd(`阶段三耗时`);
+        console.timeEnd(`IR生成耗时`);
     } catch (e: unknown) {
         if (e instanceof Error) {
             console.error(e.stack);
