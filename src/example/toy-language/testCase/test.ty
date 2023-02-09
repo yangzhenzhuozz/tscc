@@ -1,9 +1,14 @@
+class MyClass{
+    MyClass(){}
+    get i ( ) : int { return 1; } ;
+    set i ( v:double )  { 
+        printString(((int)v).toString());
+    };
+}
 function main():void{
     _VMLoadNativeLib("d:\\Users\\john\\Desktop\\ty\\dll\\x64\\Debug\\dll".buffer,{["_NativePrintBytesString".buffer]});
-    printString((-10).toString());
-    printString((+12).toString());
-    var t=66;
-    printString((+t).toString());
+    var obj=(object)1;
+    printString(((int)obj).toString());
 };
 
 function printString(s:string){//comment a

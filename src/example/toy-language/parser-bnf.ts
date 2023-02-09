@@ -636,24 +636,11 @@ import { Program } from "./program.js";
                                     class_units.operatorOverload[k][sign] = (class_unit as { [key: string]: FunctionType })[k];
                                 }
                             } else {//是普通成员
-                                if (!class_units.property.hasOwnProperty(k)) {//之前没有定义过这个成员
-                                    class_units.property[k] = (class_unit as VariableDescriptor)[k];
-                                } else {//可能是定义了同名的getter或者setter，检查是否为重复定义
-                                    if ((class_unit as VariableDescriptor)[k].getter != undefined) {//class_unit是一个getter
-                                        if (class_units.property[k].getter != undefined) {
-                                            throw new Error(`${k}:getter重复定义`);
-                                        } else {
-                                            class_units.property[k].getter = (class_unit as VariableDescriptor)[k].getter;
-                                        }
-                                    } else if ((class_unit as VariableDescriptor)[k].setter != undefined) {//class_unit是一个setter
-                                        if (class_units.property[k].setter != undefined) {
-                                            throw new Error(`${k}:setter重复定义`);
-                                        } else {
-                                            class_units.property[k].setter = (class_unit as VariableDescriptor)[k].setter;
-                                        }
-                                    } else {
-                                        throw new Error(`重复定义成员${k}`);
-                                    }
+                                if (!class_units.property.hasOwnProperty(k)&&!class_units.property.hasOwnProperty(`@get_${k}`)&&!class_units.property.hasOwnProperty(`@set_${k}`)) {//之前没有定义过这个成员
+                                    let prop = (class_unit as VariableDescriptor)[k];
+                                    class_units.property[k] = prop;
+                                } else {
+                                    throw new Error(`重复定义成员${k}`);
                                 }
 
                             }
@@ -691,13 +678,15 @@ import { Program } from "./program.js";
                     let retType = $[5] as TypeUsed;
                     let statements = $[7] as Block;
                     let ret: VariableDescriptor = JSON.parse("{}");//为了生成的解析器不报红
-                    ret[id] = {
+                    ret[`@get_${id}`] = {
                         variable: 'var',
-                        getter: {
-                            capture: {},
-                            _arguments: {},
-                            body: statements,
-                            retType: retType
+                        type: {
+                            FunctionType: {
+                                capture: {},
+                                _arguments: {},
+                                body: statements,
+                                retType: retType
+                            }
                         }
                     };
                     return ret;
@@ -717,15 +706,17 @@ import { Program } from "./program.js";
                         variable: 'var',
                         type: argumentIdType
                     };
-                    ret[id] = {
+                    ret[`@set_${id}`] = {
                         variable: 'var',
-                        setter: {
-                            capture: {},
-                            _arguments: argument,
-                            body: statements,
-                            retType: {
-                                PlainType: {
-                                    name: 'void'
+                        type: {
+                            FunctionType: {
+                                capture: {},
+                                _arguments: argument,
+                                body: statements,
+                                retType: {
+                                    PlainType: {
+                                        name: 'void'
+                                    }
                                 }
                             }
                         }

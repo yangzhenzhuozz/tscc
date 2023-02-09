@@ -254,23 +254,14 @@ export function FunctionSpecialize(func: FunctionType, map: { [key: string]: Typ
 export function ClassSpecialize(typedef: TypeDef, map: { [key: string]: TypeUsed }) {
     for (let propName in typedef.property) {//扫描所有成员
         let prop = typedef.property[propName];
-        if (prop.getter == undefined && prop.setter == undefined) {//扫描field
-            if (prop.type != undefined) {
-                typeTypeUsedReplace(prop.type, map);
-            }
+        if (prop.type != undefined) {
+            typeTypeUsedReplace(prop.type, map);
+        }
 
-            if (prop.initAST != undefined) {
-                AstTypeReplace(prop.initAST, map);
-            } else if (prop.type?.FunctionType?.body) {//如果是函数定义才扫描，否则不处理了，在prop.type处已经被扫描过了
-                FunctionSpecialize(prop.type.FunctionType, map);
-            }
-        } else {//扫描prop
-            if (prop.getter != undefined) {
-                FunctionSpecialize(prop.getter, map);
-            }
-            if (prop.setter != undefined) {
-                FunctionSpecialize(prop.setter, map);
-            }
+        if (prop.initAST != undefined) {
+            AstTypeReplace(prop.initAST, map);
+        } else if (prop.type?.FunctionType?.body) {//如果是函数定义才扫描，否则不处理了，在prop.type处已经被扫描过了
+            FunctionSpecialize(prop.type.FunctionType, map);
         }
         if (prop.type?.PlainType?.name == 'void') {
             throw `void无法计算大小,任何成员都不能是void类型`;

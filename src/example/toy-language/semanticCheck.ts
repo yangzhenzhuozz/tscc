@@ -114,7 +114,7 @@ function typeCheck(a: TypeUsed, b: TypeUsed, msg: string): void {
  * retType表示返回值类型
  * 
  */
-function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetType: { retType?: TypeUsed }, assignmentObj?: ASTNode): { type: TypeUsed, retType?: TypeUsed, hasRet: boolean, location?: 'prop' | 'field' | 'stack' | 'array_element' } {
+function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetType: { retType?: TypeUsed }, assignmentAST?: ASTNode): { type: TypeUsed, retType?: TypeUsed, hasRet: boolean, location?: 'prop' | 'field' | 'stack' | 'array_element' } {
     let result: { type: TypeUsed, retType?: TypeUsed, hasRet: boolean, location?: 'prop' | 'field' | 'stack' | 'array_element' };
     //因为有的指令在本阶段不出现，所以下面的分支没有列出全部的AST操作码
     if (node["def"] != undefined) {
@@ -168,13 +168,13 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
         if (propDesc.scope instanceof ClassScope) {
             delete node.load;//把load改为access
             node.accessField = { obj: { desc: 'ASTNode', _this: '' }, field: name };//load阶段还不知道是不是property,由access节点处理进行判断
-            return nodeRecursion(scope, node, label, declareRetType, assignmentObj);//处理access节点需要附带这个参数
+            return nodeRecursion(scope, node, label, declareRetType, assignmentAST);//处理access节点需要附带这个参数
         } else if (propDesc.scope instanceof ProgramScope) {
             delete node.load;//把load改为access
             node.accessField = { obj: { desc: 'ASTNode', _program: '' }, field: name };//load阶段还不知道是不是property,由access节点处理进行判断
-            return nodeRecursion(scope, node, label, declareRetType, assignmentObj);//处理access节点需要附带这个参数
+            return nodeRecursion(scope, node, label, declareRetType, assignmentAST);//处理access节点需要附带这个参数
         } else if (propDesc.scope instanceof BlockScope) {//blockScope
-            if (assignmentObj != undefined) {
+            if (assignmentAST != undefined) {
                 if (propDesc.prop.variable == 'val') {//load不可能变成access
                     throw `变量${name}声明为val,禁止赋值`;
                 }
@@ -242,7 +242,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
                 type = nodeRecursion(programScope, initAST, label, declareRetType).type;
                 delete (initAST).hasTypeInferRecursion;//删除标记,回溯常用手法
             }
-            if (assignmentObj != undefined) {
+            if (assignmentAST != undefined) {
                 if (prop.variable == 'val') {
                     throw `program.${accessName}声明为val,禁止赋值`;
                 }
@@ -302,31 +302,39 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
             }
             else {
                 let prop = program.getDefinedType(className).property[accessName];
-                if (prop == undefined) {
-                    throw `访问了类型${className}中不存在的属性${accessName}`;
-                }
                 let classScope = programScope.getClassScope(className);//切换scope
-                if (prop.getter != undefined || prop.setter != undefined) {
-                    if (assignmentObj) {
-                        if (prop.setter == undefined) {
-                            throw `${className}.${accessName}没有setter`;
-                        } else {
+                if (prop == undefined) {
+                    //尝试进行get或者set判断
+                    let hasGetterOrSetter = true;
+                    if (assignmentAST) {//
+                        if (program.getDefinedType(className).property[`@set_${accessName}`] != undefined) {
                             //改成set调用
-                            functionScan(new BlockScope(classScope, prop.setter, prop.setter.body!, {}), prop.setter);
-                            type = prop.setter._arguments[0].type!;//argument已经定义了类型
-                            node.call = { functionObj: { desc: 'ASTNode', accessField: { obj: node["accessField"].obj, field: `@set_${node["accessField"].field}` } }, _arguments: [assignmentObj] };
+                            let fun = program.getDefinedType(className).property[`@set_${accessName}`].type!.FunctionType!;
+                            functionScan(new BlockScope(classScope, fun, fun.body!, {}), fun);
+                            let argName = Object.keys(fun._arguments)[0];
+                            type = fun._arguments[argName].type!;//argument已经定义了类型
+                            assignmentAST.call = { functionObj: { desc: 'ASTNode', accessField: { obj: node["accessField"].obj, field: `@set_${node["accessField"].field}` } }, _arguments: [assignmentAST['=']!.rightChild] };
+                            delete assignmentAST['='];//删除赋值节点
+                        } else {
+                            hasGetterOrSetter = false;
                         }
                     } else {
-                        if (prop.getter == undefined) {
-                            throw `${className}.${accessName}没有getter`;
-                        } else {
+                        if (program.getDefinedType(className).property[`@get_${accessName}`] != undefined) {
                             //改成get调用
-                            type = functionScan(new BlockScope(classScope, prop.getter, prop.getter.body!, {}), prop.getter);
+                            let fun = program.getDefinedType(className).property[`@get_${accessName}`].type!.FunctionType!;
+                            type = functionScan(new BlockScope(classScope, fun, fun.body!, {}), fun);
                             node.call = { functionObj: { desc: 'ASTNode', accessField: { obj: node["accessField"].obj, field: `@get_${node["accessField"].field}` } }, _arguments: [] };//改为get
+                            delete node.accessField;//删除accessField节点
+                        } else {
+                            hasGetterOrSetter = false;
                         }
                     }
-                    delete node.accessField;//删除accessField节点
-                    result = { type: type, location: 'prop', hasRet: false };
+                    if (!hasGetterOrSetter) {
+                        throw `访问了类型${className}中不存在的属性${accessName}`;
+                    } else {
+                        assert(type != undefined);
+                        result = { type: type, location: 'prop', hasRet: false };
+                    }
                 } else {
                     type = prop.type;
                     if (type == undefined) {
@@ -338,7 +346,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
                         type = nodeRecursion(classScope, initAST, label, declareRetType).type;
                         delete (initAST).hasTypeInferRecursion;//删除标记,回溯常用手法
                     }
-                    if (assignmentObj != undefined) {
+                    if (assignmentAST != undefined) {
                         if (prop.variable == 'val') {
                             throw `${className}.${accessName}声明为val,禁止赋值`;
                         }
@@ -412,7 +420,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
     }
     else if (node["="] != undefined) {
         let right = nodeRecursion(scope, node['='].rightChild, label, declareRetType);//计算右节点
-        let left = nodeRecursion(scope, node['='].leftChild, label, declareRetType, node['='].rightChild);
+        let left = nodeRecursion(scope, node['='].leftChild, label, declareRetType, node);
         if (left.location != undefined && left.location == 'prop') {
             //已经在access节点的处理阶段被更改为call prop_set了,类型检查也做了,无需做任何处理
         } else if (left.location != undefined && (left.location == 'stack' || left.location == 'field' || left.location == 'array_element')) {//数组元素、field以及stack都是左值
@@ -820,7 +828,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
         }
         delete node.specializationObj;//把specializationObj改为program
         node.accessField = { obj: { desc: 'ASTNode', _program: '' }, field: realObjName };//load阶段还不知道是不是property,由access节点处理进行判断
-        result = nodeRecursion(scope, node, label, declareRetType, assignmentObj);//处理access节点需要附带这个参数
+        result = nodeRecursion(scope, node, label, declareRetType, assignmentAST);//处理access节点需要附带这个参数
     }
     else if (node["autounwinding"] != undefined) {
         //检查这些类型是否都实现了unwinded接口
@@ -1158,41 +1166,30 @@ function functionScan(blockScope: BlockScope, fun: FunctionType): TypeUsed {
 function ClassScan(classScope: ClassScope) {
     for (let propName of classScope.getPropNames()) {//扫描所有成员
         let prop = classScope.getProp(propName).prop;
-        if (prop.getter == undefined && prop.setter == undefined) {//扫描field
-            if (prop.initAST != undefined) {
+        if (prop.initAST != undefined) {
 
-                //使用了零长数组，则把已经声明类型向下传递
-                if (prop.initAST.immediateArray != undefined && prop.initAST.immediateArray.length == 0) {
-                    prop.initAST.type = prop.type;
-                }
+            //使用了零长数组，则把已经声明类型向下传递
+            if (prop.initAST.immediateArray != undefined && prop.initAST.immediateArray.length == 0) {
+                prop.initAST.type = prop.type;
+            }
 
-                let initType = nodeRecursion(classScope, prop.initAST, [], {}).type;
-                if (prop.type != undefined) {
-                    typeCheck(initType, prop.type, `属性${propName}声明类型和初始化类型不一致`);
-                } else {
-                    if (TypeUsedSign(initType) == '@null') {
-                        /**
-                         * 如下代码会命中条件
-                         * var a=null;
-                         * 此时无法推导a的类型
-                         */
-                        throw `无法推导类型`;
-                    }
-                    prop.type = initType;//如果是需要推导的类型，进行填充
+            let initType = nodeRecursion(classScope, prop.initAST, [], {}).type;
+            if (prop.type != undefined) {
+                typeCheck(initType, prop.type, `属性${propName}声明类型和初始化类型不一致`);
+            } else {
+                if (TypeUsedSign(initType) == '@null') {
+                    /**
+                     * 如下代码会命中条件
+                     * var a=null;
+                     * 此时无法推导a的类型
+                     */
+                    throw `无法推导类型`;
                 }
-            } else if (prop.type?.FunctionType) {
-                let blockScope = new BlockScope(classScope, prop.type?.FunctionType, prop.type?.FunctionType.body!, {});
-                functionScan(blockScope, prop.type?.FunctionType);
+                prop.type = initType;//如果是需要推导的类型，进行填充
             }
-        } else {//扫描prop
-            if (prop.getter != undefined) {
-                let blockScope = new BlockScope(classScope, prop.getter, prop.getter.body!, {});
-                functionScan(blockScope, prop.getter);
-            }
-            if (prop.setter != undefined) {
-                let blockScope = new BlockScope(classScope, prop.getter, prop.setter.body!, {});
-                functionScan(blockScope, prop.setter);
-            }
+        } else if (prop.type?.FunctionType) {
+            let blockScope = new BlockScope(classScope, prop.type?.FunctionType, prop.type?.FunctionType.body!, {});
+            functionScan(blockScope, prop.type?.FunctionType);
         }
         if (prop.type?.PlainType?.name == 'void') {
             throw `void无法计算大小,任何成员都不能是void类型`;

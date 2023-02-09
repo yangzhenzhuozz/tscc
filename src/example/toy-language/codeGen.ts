@@ -93,7 +93,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
     functionWrapName: string,//函数包裹类的名字，给loadFunctionWrap节点提取函数包裹类名字，从functionObjGen向下传递,只有immediate在创建函数的时候可能需要读取本scope的内容，所以也要传递
 }): {
     startIR: IR, endIR: IR, truelist: IR[], falselist: IR[], jmpToFunctionEnd?: IR[],
-    isRightVariable?: boolean,
+    isRightValueTypeVariable?: boolean,//是否为右值值类型,在某些地方使用右值值类型的时候需要装箱(accessField或者callEXM)
     virtualIR?: {
         opCode: keyof typeof OPCODE,
         operand1?: number,
@@ -117,7 +117,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
             functionWrapName: option.functionWrapName
         });
         //访问一个值类型右值的成员时
-        if (!isPointType(node['accessField'].obj.type!) && irs.isRightVariable) {
+        if (!isPointType(node['accessField'].obj.type!) && irs.isRightValueTypeVariable) {
             /**
              * 为什么要装箱？
              * valueType class MyClass{
@@ -248,7 +248,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
                 new IR('p_load', capturedOffset);//读取被捕获变量
                 endIR = putfield(capturedType, targetOffset, [], []);//把被捕获对象设置给函数对象的包裹类中
             }
-            return { startIR: startIR, endIR: endIR ?? startIR, truelist: [], falselist: [], isRightVariable: true };
+            return { startIR: startIR, endIR: endIR ?? startIR, truelist: [], falselist: [], isRightValueTypeVariable: true };
         } else {
             assert(node["immediate"].primiviteValue != undefined);
             let immediate_val = node["immediate"].primiviteValue;
@@ -277,7 +277,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
             } else {
                 throw `还未支持的immediate类型${node["immediate"].primiviteValue}`
             }
-            return { startIR: ir, endIR: ir, truelist: [], falselist: [], isRightVariable: true };
+            return { startIR: ir, endIR: ir, truelist: [], falselist: [], isRightValueTypeVariable: true };
         }
     }
     else if (node['~'] != undefined) {
@@ -306,7 +306,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
         } else {
             throw `vm 暂未支持${TypeUsedSign(node['~'].type!)}的~操作`;
         }
-        return { startIR: left.startIR, endIR: opIR, truelist: [], falselist: [], isRightVariable: true };
+        return { startIR: left.startIR, endIR: opIR, truelist: [], falselist: [], isRightValueTypeVariable: true };
     }
     else if (node['+'] != undefined) {
         let left = nodeRecursion(scope, node['+'].leftChild, {
@@ -347,7 +347,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
         } else {
             throw `vm 暂未支持${TypeUsedSign(node['+'].leftChild.type!)}的+操作`;
         }
-        return { startIR: left.startIR, endIR: opIR, truelist: [], falselist: [], isRightVariable: true };
+        return { startIR: left.startIR, endIR: opIR, truelist: [], falselist: [], isRightValueTypeVariable: true };
     }
     else if (node['^'] != undefined) {
         let left = nodeRecursion(scope, node['^'].leftChild, {
@@ -386,7 +386,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
         else {
             throw `vm 暂未支持${TypeUsedSign(node['^'].leftChild.type!)}的^操作`;
         }
-        return { startIR: left.startIR, endIR: opIR, truelist: [], falselist: [], isRightVariable: true };
+        return { startIR: left.startIR, endIR: opIR, truelist: [], falselist: [], isRightValueTypeVariable: true };
     }
     else if (node['&'] != undefined) {
         let left = nodeRecursion(scope, node['&'].leftChild, {
@@ -425,7 +425,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
         else {
             throw `vm 暂未支持${TypeUsedSign(node['&'].leftChild.type!)}的&操作`;
         }
-        return { startIR: left.startIR, endIR: opIR, truelist: [], falselist: [], isRightVariable: true };
+        return { startIR: left.startIR, endIR: opIR, truelist: [], falselist: [], isRightValueTypeVariable: true };
     }
     else if (node['|'] != undefined) {
         let left = nodeRecursion(scope, node['|'].leftChild, {
@@ -464,7 +464,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
         else {
             throw `vm 暂未支持${TypeUsedSign(node['|'].leftChild.type!)}的|操作`;
         }
-        return { startIR: left.startIR, endIR: opIR, truelist: [], falselist: [], isRightVariable: true };
+        return { startIR: left.startIR, endIR: opIR, truelist: [], falselist: [], isRightValueTypeVariable: true };
     }
     else if (node['<<'] != undefined) {
         let left = nodeRecursion(scope, node['<<'].leftChild, {
@@ -503,7 +503,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
         else {
             throw `vm 暂未支持${TypeUsedSign(node['<<'].leftChild.type!)}的<<操作`;
         }
-        return { startIR: left.startIR, endIR: opIR, truelist: [], falselist: [], isRightVariable: true };
+        return { startIR: left.startIR, endIR: opIR, truelist: [], falselist: [], isRightValueTypeVariable: true };
     }
     else if (node['>>'] != undefined) {
         let left = nodeRecursion(scope, node['>>'].leftChild, {
@@ -542,7 +542,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
         else {
             throw `vm 暂未支持${TypeUsedSign(node['>>'].leftChild.type!)}的>>操作`;
         }
-        return { startIR: left.startIR, endIR: opIR, truelist: [], falselist: [], isRightVariable: true };
+        return { startIR: left.startIR, endIR: opIR, truelist: [], falselist: [], isRightValueTypeVariable: true };
     }
     else if (node['ternary'] != undefined) {
         let condition = node['ternary']!.condition;
@@ -585,7 +585,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
         ir.operand1 = c.endIR.index - ir.index + c.endIR.length;
         backPatch(a.truelist, b.startIR.index);//回填trueList
         backPatch(a.falselist, c.startIR.index);//回填falseList
-        return { startIR: a.startIR, endIR: c.endIR, truelist: [], falselist: [], isRightVariable: true };
+        return { startIR: a.startIR, endIR: c.endIR, truelist: [], falselist: [], isRightValueTypeVariable: true };
     } else if (node['_this'] != undefined) {
         let loadFunctionBase = new IR('p_load', 0);
         if (option.singleLevelThis) {
@@ -822,7 +822,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
 
         backPatch(left.falselist, right.startIR.index);
         let truelist = merge(left.truelist, right.truelist);
-        return { startIR: left.startIR, endIR: endIR, truelist: truelist, falselist: right.falselist, isRightVariable: true };
+        return { startIR: left.startIR, endIR: endIR, truelist: truelist, falselist: right.falselist, isRightValueTypeVariable: true };
     }
     else if (node['&&'] != undefined) {
         let left = nodeRecursion(scope, node['&&'].leftChild, {
@@ -866,7 +866,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
 
         backPatch(left.truelist, right.startIR.index);
         let falselist = merge(left.falselist, right.falselist);
-        return { startIR: left.startIR, endIR: endIR, truelist: right.truelist, falselist: falselist, isRightVariable: true };
+        return { startIR: left.startIR, endIR: endIR, truelist: right.truelist, falselist: falselist, isRightValueTypeVariable: true };
     }
     else if (node['ifElseStmt'] != undefined) {
         let condition = nodeRecursion(scope, node['ifElseStmt'].condition, {
@@ -1033,7 +1033,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
             startIR = nodeRet.startIR;
         }
         let call = new IR('call');
-        return { startIR: startIR, endIR: call, truelist: [], falselist: [], jmpToFunctionEnd: [], isRightVariable: true };
+        return { startIR: startIR, endIR: call, truelist: [], falselist: [], jmpToFunctionEnd: [], isRightValueTypeVariable: true };
     }
     /**
      * 这里什么指令都不需要生成 
@@ -1114,7 +1114,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
         }
         let virtualIR = leftObj.virtualIR!;
         let endIR = new IR(virtualIR.opCode, virtualIR.operand1, virtualIR.operand2, virtualIR.operand3);
-        return { startIR: rightObj.startIR, endIR: endIR, truelist: [], falselist: [], jmpToFunctionEnd: [], isRightVariable: true };
+        return { startIR: rightObj.startIR, endIR: endIR, truelist: [], falselist: [], jmpToFunctionEnd: [], isRightValueTypeVariable: true };
     }
     else if (node['++'] != undefined) {
         let left = nodeRecursion(scope, node['++'], {
@@ -1156,7 +1156,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
         }
 
         endIR = new IR(virtualIR.opCode, virtualIR.operand1, virtualIR.operand2, virtualIR.operand3);
-        return { startIR: left.startIR, endIR: endIR, truelist: [], falselist: [], jmpToFunctionEnd: [], isRightVariable: true };
+        return { startIR: left.startIR, endIR: endIR, truelist: [], falselist: [], jmpToFunctionEnd: [], isRightValueTypeVariable: true };
     }
     else if (node['--'] != undefined) {
         let left = nodeRecursion(scope, node['--'], {
@@ -1199,7 +1199,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
         }
 
         endIR = new IR(virtualIR.opCode, virtualIR.operand1, virtualIR.operand2, virtualIR.operand3);
-        return { startIR: left.startIR, endIR: endIR, truelist: [], falselist: [], jmpToFunctionEnd: [], isRightVariable: true };
+        return { startIR: left.startIR, endIR: endIR, truelist: [], falselist: [], jmpToFunctionEnd: [], isRightValueTypeVariable: true };
     }
     else if (node['_for'] != undefined) {
         let startIR: IR | undefined;
@@ -1430,7 +1430,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
             ir = right.endIR;
         }
         //数组的元素不是右值,和局部变量一样，是有存访位置的，局部变量的容器是block，数组元素的容器就是这个数组
-        return { startIR: left.startIR, endIR: ir, truelist: [], falselist: [], jmpToFunctionEnd: [], virtualIR, isRightVariable: false };
+        return { startIR: left.startIR, endIR: ir, truelist: [], falselist: [], jmpToFunctionEnd: [], virtualIR, isRightValueTypeVariable: false };
     }
     else if (node['getFunctionWrapName'] != undefined) {
         assert(typeof option.functionWrapName == 'string');
@@ -1453,14 +1453,14 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
          * 见accessField节点对装箱的解释
          */
         //访问一个值类型右值的扩展函数时
-        if (!isPointType(node['callEXM'].obj.type!) && nrRet.isRightVariable) {
+        if (!isPointType(node['callEXM'].obj.type!) && nrRet.isRightValueTypeVariable) {
             let box = new IR('box');
             typeRelocationTable.push({ t1: node['callEXM'].obj.type!.PlainType!.name, ir: box });
         }
 
         let endIR = new IR('abs_call');
         irAbsoluteAddressRelocationTable.push({ sym: `${node['callEXM'].extendFuntionRealname}`, ir: endIR });
-        return { startIR: nrRet.startIR, endIR: endIR, truelist: [], falselist: [], jmpToFunctionEnd: [], isRightVariable: true };
+        return { startIR: nrRet.startIR, endIR: endIR, truelist: [], falselist: [], jmpToFunctionEnd: [], isRightValueTypeVariable: true };
     }
     else if (node['-'] != undefined) {
         let left = nodeRecursion(scope, node['-'].leftChild, {
@@ -1503,7 +1503,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
             throw `vm 暂未支持${TypeUsedSign(node['-'].leftChild.type!)}的-操作`;
         }
 
-        return { startIR: left.startIR, endIR: opIR, truelist: [], falselist: [], isRightVariable: true };
+        return { startIR: left.startIR, endIR: opIR, truelist: [], falselist: [], isRightValueTypeVariable: true };
     }
     else if (node['%'] != undefined) {
         let left = nodeRecursion(scope, node['%'].leftChild, {
@@ -1544,7 +1544,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
             throw `vm 暂未支持${TypeUsedSign(node['%'].leftChild.type!)}的%操作`;
         }
 
-        return { startIR: left.startIR, endIR: opIR, truelist: [], falselist: [], isRightVariable: true };
+        return { startIR: left.startIR, endIR: opIR, truelist: [], falselist: [], isRightValueTypeVariable: true };
     }
     else if (node['*'] != undefined) {
         let left = nodeRecursion(scope, node['*'].leftChild, {
@@ -1589,7 +1589,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
         }
 
 
-        return { startIR: left.startIR, endIR: opIR, truelist: [], falselist: [], isRightVariable: true };
+        return { startIR: left.startIR, endIR: opIR, truelist: [], falselist: [], isRightValueTypeVariable: true };
     }
     else if (node['/'] != undefined) {
         let left = nodeRecursion(scope, node['/'].leftChild, {
@@ -1632,7 +1632,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
             throw `vm 暂未支持${TypeUsedSign(node['/'].leftChild.type!)}的/操作`;
         }
 
-        return { startIR: left.startIR, endIR: opIR, truelist: [], falselist: [], isRightVariable: true };
+        return { startIR: left.startIR, endIR: opIR, truelist: [], falselist: [], isRightValueTypeVariable: true };
     }
     else if (node['<'] != undefined) {
         let left = nodeRecursion(scope, node['<'].leftChild, {
@@ -1702,7 +1702,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
         } else {
             throw `vm 暂未支持${TypeUsedSign(node['<'].leftChild.type!)}的<操作`;
         }
-        return { startIR: left.startIR, endIR: opIR, truelist: tureList, falselist: falseList, isRightVariable: true };
+        return { startIR: left.startIR, endIR: opIR, truelist: tureList, falselist: falseList, isRightValueTypeVariable: true };
     }
     else if (node['<='] != undefined) {
         let left = nodeRecursion(scope, node['<='].leftChild, {
@@ -1773,7 +1773,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
         } else {
             throw `vm 暂未支持${TypeUsedSign(node['<='].leftChild.type!)}的<=操作`;
         }
-        return { startIR: left.startIR, endIR: opIR, truelist: tureList, falselist: falseList, isRightVariable: true };
+        return { startIR: left.startIR, endIR: opIR, truelist: tureList, falselist: falseList, isRightValueTypeVariable: true };
     }
     else if (node['>'] != undefined) {
         let left = nodeRecursion(scope, node['>'].leftChild, {
@@ -1842,7 +1842,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
         } else {
             throw `vm 暂未支持${TypeUsedSign(node['>'].leftChild.type!)}的>操作`;
         }
-        return { startIR: left.startIR, endIR: opIR, truelist: tureList, falselist: falseList, isRightVariable: true };
+        return { startIR: left.startIR, endIR: opIR, truelist: tureList, falselist: falseList, isRightValueTypeVariable: true };
     }
     else if (node['>='] != undefined) {
         let left = nodeRecursion(scope, node['>='].leftChild, {
@@ -1911,7 +1911,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
         } else {
             throw `vm 暂未支持${TypeUsedSign(node['>='].leftChild.type!)}的>=操作`;
         }
-        return { startIR: left.startIR, endIR: opIR, truelist: tureList, falselist: falseList, isRightVariable: true };
+        return { startIR: left.startIR, endIR: opIR, truelist: tureList, falselist: falseList, isRightValueTypeVariable: true };
     }
     else if (node['=='] != undefined) {
         let left = nodeRecursion(scope, node['=='].leftChild, {
@@ -2019,7 +2019,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
         else {
             throw `vm 暂未支持${TypeUsedSign(node['=='].leftChild.type!)}的==操作`;
         }
-        return { startIR: left.startIR, endIR: opIR, truelist: tureList, falselist: falseList, isRightVariable: true };
+        return { startIR: left.startIR, endIR: opIR, truelist: tureList, falselist: falseList, isRightValueTypeVariable: true };
     }
     else if (node['_while'] != undefined) {
         let startIR: IR | undefined;
@@ -2286,7 +2286,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
                     }
                     break;
             }
-            return { startIR: nrRet.startIR, endIR: castIR!, truelist: [], falselist: [], jmpToFunctionEnd: [] };
+            return { startIR: nrRet.startIR, endIR: castIR!, truelist: [], falselist: [], jmpToFunctionEnd: [], isRightValueTypeVariable: true };
         } else {
             throw `非法的类型转换${srcType}-->${targetType}`;
         }
@@ -2319,7 +2319,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
         });
         let unbox = new IR('unbox');
         typeRelocationTable.push({ t1: node['unbox'].type.PlainType!.name, ir: unbox });
-        return { startIR: nrRet.startIR, endIR: unbox, truelist: [], falselist: [], jmpToFunctionEnd: [] };
+        return { startIR: nrRet.startIR, endIR: unbox, truelist: [], falselist: [], jmpToFunctionEnd: [], isRightValueTypeVariable: true };
     }
     else if (node['_switch'] != undefined) {
         if (node['_switch'].defalutStmt == undefined && node['_switch'].matchList.length == 0) {
@@ -2614,7 +2614,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
                 break;
             default: throw `无法取负号的类型${typeName}`;
         }
-        return { startIR: ir, endIR: ir, truelist: [], falselist: [], jmpToFunctionEnd: [], isRightVariable: true };
+        return { startIR: ir, endIR: ir, truelist: [], falselist: [], jmpToFunctionEnd: [], isRightValueTypeVariable: true };
     }
     else if (node['positive'] != undefined) {
         nodeRecursion(scope, node['positive'], {
@@ -2638,7 +2638,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, option: {
             throw `只有 byte、short、int、long、double才能取负号`;
         }
         //positive不需要生成指令，计算栈中的数据原样保留即可
-        return { startIR: nowIRContainer.irs[nowIRContainer.irs.length - 1], endIR: nowIRContainer.irs[nowIRContainer.irs.length - 1], truelist: [], falselist: [], jmpToFunctionEnd: [], isRightVariable: true };
+        return { startIR: nowIRContainer.irs[nowIRContainer.irs.length - 1], endIR: nowIRContainer.irs[nowIRContainer.irs.length - 1], truelist: [], falselist: [], jmpToFunctionEnd: [], isRightValueTypeVariable: true };
     }
     else { throw `未支持的AST类型` };
 }
