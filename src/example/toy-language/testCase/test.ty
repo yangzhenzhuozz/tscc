@@ -1,5 +1,6 @@
 class MyClass{
     MyClass(){}
+    var i=6;
     get i ( ) : int { return 1; } ;
     set i ( v:double )  { 
         printString(((int)v).toString());

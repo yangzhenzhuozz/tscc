@@ -637,6 +637,12 @@ import { Program } from "./program.js";
                                 }
                             } else {//是普通成员
                                 if (!class_units.property.hasOwnProperty(k)&&!class_units.property.hasOwnProperty(`@get_${k}`)&&!class_units.property.hasOwnProperty(`@set_${k}`)) {//之前没有定义过这个成员
+                                    if(k.startsWith(`@get_`)||k.startsWith(`@set_`)){//如果当前是定义一个get或者set
+                                        let realName=k.substring(5);
+                                        if(class_units.property.hasOwnProperty(realName)){
+                                            throw new Error(`重复定义成员${k}`);        
+                                        }
+                                    }
                                     let prop = (class_unit as VariableDescriptor)[k];
                                     class_units.property[k] = prop;
                                 } else {
