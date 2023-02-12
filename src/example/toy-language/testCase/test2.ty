@@ -1,7 +1,7 @@
 var tmpClass=new test.MyClass<int>();
 var id:system.int=5;
 function main():void{
-    system._VMLoadNativeLib("d:\\Users\\john\\Desktop\\ty\\dll\\x64\\Debug\\dll".buffer,{["_NativePrintBytesString".buffer]});
+    system._VMLoadNativeLib("d:\\Users\\john\\Desktop\\ty\\dll\\x64\\Debug\\dll".buffer,{["test2_NativePrintBytesString".buffer]});
     var obj=(object)id;
     var s=tmp<int>(1);
     printString(s);
@@ -13,10 +13,10 @@ function tmp<T>(v:T){
 };
 
 function printString(s:string){//comment a
-    _NativePrintBytesString(s.buffer);
+    NativePrintBytesString(s.buffer);
 };
 
-function _NativePrintBytesString(arg:byte[]):void{
+function NativePrintBytesString(arg:byte[]):void{
     native
 };
 
