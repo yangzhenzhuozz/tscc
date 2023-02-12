@@ -3147,29 +3147,29 @@ function finallyOutput() {
     for (let k of program.getDefinedTypeNames()) {
         ClassTableItemGen(program.getDefinedType(k).property, program.getDefinedType(k).size!, k, program.getDefinedType(k).modifier == 'valuetype');
     }
-    fs.writeFileSync(`./src/example/toy-language/output/classTable.bin`, Buffer.from(classTable.toBinary()));
-    fs.writeFileSync(`./src/example/toy-language/output/classTable.json`, JSON.stringify(classTable.items, null, 4));
+    fs.writeFileSync(`output/classTable.bin`, Buffer.from(classTable.toBinary()));
+    fs.writeFileSync(`output/classTable.json`, JSON.stringify(classTable.items, null, 4));
 
     TypeTableGen();
-    fs.writeFileSync(`./src/example/toy-language/output/typeTable.bin`, Buffer.from(binTypeTable.toBinary()));
-    fs.writeFileSync(`./src/example/toy-language/output/typeTable.json`, JSON.stringify(binTypeTable.items, null, 4));
-    fs.writeFileSync(`./src/example/toy-language/output/typeTableForDebug.json`, JSON.stringify(typeTable, null, 4));
+    fs.writeFileSync(`output/typeTable.bin`, Buffer.from(binTypeTable.toBinary()));
+    fs.writeFileSync(`output/typeTable.json`, JSON.stringify(binTypeTable.items, null, 4));
+    fs.writeFileSync(`output/typeTableForDebug.json`, JSON.stringify(typeTable, null, 4));
 
     stackFrameTableGen();
-    fs.writeFileSync(`./src/example/toy-language/output/stackFrameTable.bin`, Buffer.from(binStackFrameTable.toBinary()));
-    fs.writeFileSync(`./src/example/toy-language/output/stackFrameTable.json`, JSON.stringify(binStackFrameTable.getItems(), null, 4));
+    fs.writeFileSync(`output/stackFrameTable.bin`, Buffer.from(binStackFrameTable.toBinary()));
+    fs.writeFileSync(`output/stackFrameTable.json`, JSON.stringify(binStackFrameTable.getItems(), null, 4));
 
     let linkRet = link(programScope);
-    fs.writeFileSync(`./src/example/toy-language/output/text.bin`, Buffer.from(linkRet.text));
-    fs.writeFileSync(`./src/example/toy-language/output/text.json`, JSON.stringify(linkRet.debugIRS));
-    fs.writeFileSync(`./src/example/toy-language/output/irTable.bin`, Buffer.from(linkRet.irTableBuffer));
-    fs.writeFileSync(`./src/example/toy-language/output/irTable.json`, JSON.stringify([...linkRet.irTable]));
+    fs.writeFileSync(`output/text.bin`, Buffer.from(linkRet.text));
+    fs.writeFileSync(`output/text.json`, JSON.stringify(linkRet.debugIRS));
+    fs.writeFileSync(`output/irTable.bin`, Buffer.from(linkRet.irTableBuffer));
+    fs.writeFileSync(`output/irTable.json`, JSON.stringify([...linkRet.irTable]));
 
-    fs.writeFileSync(`./src/example/toy-language/output/nativeTable.bin`, Buffer.from(nativeTable.toBinary()));
-    fs.writeFileSync(`./src/example/toy-language/output/nativeTable.json`, nativeTable.toString());
+    fs.writeFileSync(`output/nativeTable.bin`, Buffer.from(nativeTable.toBinary()));
+    fs.writeFileSync(`output/nativeTable.json`, nativeTable.toString());
 
-    fs.writeFileSync(`./src/example/toy-language/output/stringPool.bin`, Buffer.from(stringPool.toBinary()));//字符串池最后输出
-    fs.writeFileSync(`./src/example/toy-language/output/stringPool.json`, JSON.stringify(stringPool.items, null, 4));
+    fs.writeFileSync(`output/stringPool.bin`, Buffer.from(stringPool.toBinary()));//字符串池最后输出
+    fs.writeFileSync(`output/stringPool.json`, JSON.stringify(stringPool.items, null, 4));
 }
 export default function programScan() {
     programScope = new ProgramScope(program, { program: program });

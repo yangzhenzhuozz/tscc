@@ -23,6 +23,11 @@
             "program": "${workspaceFolder}\\src\\example\\toy-language\\main.ts",
             "outFiles": [
                 "${workspaceFolder}/**/*.js"
+            ],
+            "args": [
+                "src\\example\\toy-language\\testCase\\system.ty",
+                "src\\example\\toy-language\\testCase\\test.ty",
+                "src\\example\\toy-language\\testCase\\test2.ty"
             ]
         }
     ]
