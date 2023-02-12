@@ -4,11 +4,19 @@ import { Grammar } from "../../tscc/tscc.js";
 import { userTypeDictionary } from './lexrule.js';
 import { FunctionSign, FunctionSignWithoutRetType, TypeUsedSign } from "./lib.js"
 import { Program } from "./program.js";
+export let namespaceforParser = '';
+export function setParserNameSpace(name: string) {
+    namespaceforParser = name;
+}
 let grammar: Grammar = {
     userCode: `
 import { userTypeDictionary } from './lexrule.js';
 import { FunctionSign, FunctionSignWithoutRetType, TypeUsedSign } from "./lib.js"
 import { Program } from "./program.js";
+export let namespaceforParser = '';
+export function setParserNameSpace(name: string) {
+    namespaceforParser = name;
+}
     `,
     tokens: ['%', '<<', '>>', '^', '~', '&', '|', 'extension', 'string', 'native', 'var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'throw', 'super', 'basic_type', 'instanceof', 'autounwinding'],
     association: [
@@ -48,6 +56,7 @@ import { Program } from "./program.js";
                 action: function ($, s): Program {
                     let program_units = $[1] as VariableDescriptor | { [key: string]: TypeDef } | { [key: string]: ExtensionMethod };
                     let program: Program = new Program();//为了生成的解析器不报红
+                    program.propertySpace[namespaceforParser] = {};
                     for (let k in program_units) {
                         if (program_units[k].hasOwnProperty('thisName')) {//是扩展方法定义
                             let extensionMethod = (program_units[k] as ExtensionMethod);
@@ -70,7 +79,7 @@ import { Program } from "./program.js";
                             program.setDefinedType(k, program_units[k] as TypeDef);
                         }
                         else {//是变量定义
-                            program.property[k] = program_units[k] as VariableProperties;
+                            program.propertySpace[namespaceforParser][k] = program_units[k] as VariableProperties;
                         }
                     }
                     return program;
@@ -636,11 +645,11 @@ import { Program } from "./program.js";
                                     class_units.operatorOverload[k][sign] = (class_unit as { [key: string]: FunctionType })[k];
                                 }
                             } else {//是普通成员
-                                if (!class_units.property.hasOwnProperty(k)&&!class_units.property.hasOwnProperty(`@get_${k}`)&&!class_units.property.hasOwnProperty(`@set_${k}`)) {//之前没有定义过这个成员
-                                    if(k.startsWith(`@get_`)||k.startsWith(`@set_`)){//如果当前是定义一个get或者set
-                                        let realName=k.substring(5);
-                                        if(class_units.property.hasOwnProperty(realName)){
-                                            throw new Error(`重复定义成员${k}`);        
+                                if (!class_units.property.hasOwnProperty(k) && !class_units.property.hasOwnProperty(`@get_${k}`) && !class_units.property.hasOwnProperty(`@set_${k}`)) {//之前没有定义过这个成员
+                                    if (k.startsWith(`@get_`) || k.startsWith(`@set_`)) {//如果当前是定义一个get或者set
+                                        let realName = k.substring(5);
+                                        if (class_units.property.hasOwnProperty(realName)) {
+                                            throw new Error(`重复定义成员${k}`);
                                         }
                                     }
                                     let prop = (class_unit as VariableDescriptor)[k];
@@ -2411,7 +2420,7 @@ import { Program } from "./program.js";
                     let newString: ASTNode = {
                         desc: 'ASTNode',
                         _new: {
-                            type: { PlainType: { name: 'string' } },
+                            type: { PlainType: { name: 'system.string' } },
                             _arguments: [{ desc: "ASTNode", immediateArray: ASTNodes }]
                         }
                     };

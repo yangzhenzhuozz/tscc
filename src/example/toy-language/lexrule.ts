@@ -1,5 +1,5 @@
 import Lexer from "../lexer/lexer.js";
-let userTypeDictionary = new Set<string>();
+export let userTypeDictionary = new Set<string>();
 //词法规则
 let lexer = new Lexer();
 lexer.addRule(['( |\t|\r|\n)( |\t|\r|\n)*', undefined]);//忽略空格、制表、回车、换行
@@ -13,6 +13,7 @@ lexer.addRule(['(1|2|3|4|5|6|7|8|9|0)(1|2|3|4|5|6|7|8|9|0)*d', (arg) => { arg.va
 lexer.addRule(['(1|2|3|4|5|6|7|8|9|0)(1|2|3|4|5|6|7|8|9|0)*.(1|2|3|4|5|6|7|8|9|0)(1|2|3|4|5|6|7|8|9|0)*', (arg) => { arg.value = arg.yytext; return "immediate_val"; }]);
 lexer.addRule(['(_|a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z|A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z)(a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z|A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z|1|2|3|4|5|6|7|8|9|0)*',
     (arg) => {
+        //在解析模板的时候会用到
         if (userTypeDictionary.has(arg.yytext)) {
             (arg.value as TypeUsed) = { PlainType: { name: arg.yytext } };
             return "basic_type";
@@ -91,5 +92,13 @@ lexer.addRule(['instanceof', (arg) => { arg.value = arg.yytext; return `instance
 lexer.addRule(['autounwinding', (arg) => { arg.value = arg.yytext; return `autounwinding`; }]);
 lexer.addRule(['(true)|(false)', (arg) => { arg.value = 'true'; return "immediate_val"; }]);
 lexer.addRule(['null', (arg) => { arg.value = 'null'; return "immediate_val"; }]);
-export { userTypeDictionary };
+lexer.addRule(['void', (arg) => { arg.value = (arg.value as TypeUsed) = { PlainType: { name: arg.yytext } }; return "basic_type"; }]);
+lexer.addRule(['byte', (arg) => { arg.value = (arg.value as TypeUsed) = { PlainType: { name: `system.${arg.yytext}` } }; return "basic_type"; }]);
+lexer.addRule(['short', (arg) => { arg.value = (arg.value as TypeUsed) = { PlainType: { name: `system.${arg.yytext}` } }; return "basic_type"; }]);
+lexer.addRule(['int', (arg) => { arg.value = (arg.value as TypeUsed) = { PlainType: { name: `system.${arg.yytext}` } }; return "basic_type"; }]);
+lexer.addRule(['long', (arg) => { arg.value = (arg.value as TypeUsed) = { PlainType: { name: `system.${arg.yytext}` } }; return "basic_type"; }]);
+lexer.addRule(['double', (arg) => { arg.value = (arg.value as TypeUsed) = { PlainType: { name: `system.${arg.yytext}` } }; return "basic_type"; }]);
+lexer.addRule(['bool', (arg) => { arg.value = (arg.value as TypeUsed) = { PlainType: { name: `system.${arg.yytext}` } }; return "basic_type"; }]);
+lexer.addRule(['string', (arg) => { arg.value = (arg.value as TypeUsed) = { PlainType: { name: `system.${arg.yytext}` } }; return "basic_type"; }]);
+lexer.addRule(['object', (arg) => { arg.value = (arg.value as TypeUsed) = { PlainType: { name: `system.${arg.yytext}` } }; return "basic_type"; }]);
 export default lexer;

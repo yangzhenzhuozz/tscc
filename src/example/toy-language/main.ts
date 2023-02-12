@@ -1,28 +1,68 @@
-import Parser from "./parser.js";
+import Parser, { setParserNameSpace } from "./parser.js";
 import lexer from './lexrule.js';
 import fs from 'fs';
-import { userTypeDictionary } from './lexrule.js';
 import semanticCheck from './semanticCheck.js'
 import codeGen from './codeGen.js'
 import { setProgram } from "./ir.js";
-function basic_typeScan(source: string) {
-    //把所有用户定义的class设置为basic_type
-    let regularExpression: RegExp = /class[\s\r\n]+([a-zA-Z_][a-zA-Z_0-9]*)/g;
-    for (let group: RegExpExecArray | null; (group = regularExpression.exec(source)) != null;) {
-        let str = group[1]!;
-        userTypeDictionary.add(str);
-    }
-}
+import { Program } from "./program.js";
+import path from "path";
 function main() {
-    userTypeDictionary.add('void');
-    //注册系统类型
-    let source = fs.readFileSync("./src/example/toy-language/testCase/test.ty", 'utf-8').toString();
-    lexer.setSource(source);
     try {
-        lexer.compile();
         console.time("解析源码耗时");
-        basic_typeScan(source);
-        let program = Parser(lexer);
+        let inputFiles = ['./src/example/toy-language/testCase/system.ty', './src/example/toy-language/testCase/test.ty', './src/example/toy-language/testCase/test2.ty'];
+        let sources: { namespace: string, source: string }[] = [];
+        let className: string[] = [];//所有用户自定义的类型
+        for (let input of inputFiles) {
+            sources.push({ namespace: path.basename(input, '.ty'), source: fs.readFileSync(input, 'utf-8').toString() });
+        }
+        //添加id解析规则,假设有个命名空间叫做system，则把system.int 解析成id，下一个循环会添加规则把system.int解析成base_type，后添加的优先级较高，所以不影响结果
+        for (let sourceItem of sources) {
+            lexer.addRule([`${sourceItem.namespace}.(_|a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z|A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z)(a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z|A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z|1|2|3|4|5|6|7|8|9|0)*`,
+            (arg) => {
+                arg.value = arg.yytext;
+                return 'id';
+            }]);
+        }
+        //源码替换阶段
+        for (let sourceItem of sources) {
+            let reg = /class[\s\r\n]+([a-zA-Z_][a-zA-Z_0-9]*)/g;
+            let classNameInFile: string[] = [];
+            for (let group: RegExpExecArray | null; (group = reg.exec(sourceItem.source)) != null;) {
+                classNameInFile.push(group[1]!);
+                className.push(`${sourceItem.namespace}.${group[1]!}`);
+                lexer.addRule([`${sourceItem.namespace}.${group[1]!}`, (arg) => { arg.value = (arg.value as TypeUsed) = { PlainType: { name: `${arg.yytext}` } }; return "basic_type"; }]);//给词法分析器新增basic_type的解析规则
+            }
+            if (classNameInFile.length > 0) {
+                //在本文件内部替换
+                let classRepalceReg = new RegExp(`(?<![a-zA-Z_\.])(${classNameInFile.map(v => `(${v})`).reduce((p, c) => `${p}|${c}`)})(?![a-zA-Z_0-9])`, 'g');//替换类型,如果有一个类型是myClass，则所有的myClass都替换成namespace.myClass
+                sourceItem.source = sourceItem.source.replace(classRepalceReg, `${sourceItem.namespace}.$1`);
+            }
+        }
+        lexer.compile();
+
+        let program: Program = new Program();
+        //开始解析
+        for (let sourceItem of sources) {
+            lexer.setSource(sourceItem.source);
+            setParserNameSpace(sourceItem.namespace);
+            let programPartial = Parser(lexer) as Program;
+            /**
+             * 把解析到的内容合并到program中
+             */
+            //合并class定义
+            for (let classInThisFile of programPartial.getDefinedTypeNames()) {
+                program.setDefinedType(classInThisFile, programPartial.getDefinedType(classInThisFile));
+            }
+            //合并prop
+            for (let propName in programPartial.propertySpace[sourceItem.namespace]) {
+                program.setProp(propName, sourceItem.namespace, programPartial.propertySpace[sourceItem.namespace][propName]);
+            }
+            //合并扩展方法
+            for (let propName in programPartial.extensionMethodsDef) {
+                program.extensionMethodsDef[propName] = programPartial.extensionMethodsDef[propName];
+            }
+        }
+
         setProgram(program);
         console.timeEnd("解析源码耗时");
         fs.writeFileSync(`./src/example/toy-language/output/stage-1.json`, JSON.stringify(program, null, 4));

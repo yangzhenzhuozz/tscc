@@ -1,7 +1,10 @@
 import { assert } from './codeGen.js';
 import { globalVariable } from './ir.js';
 import { Program } from './program.js';
-
+let spaceNameForScope = "";//和命名空间相关的全局变量
+export function setScopeSpaceName(name: string) {
+    spaceNameForScope = name;
+}
 let debugID = 0;
 abstract class Scope {
     public ID;//用于调试的ID
@@ -45,8 +48,16 @@ abstract class Scope {
 class ProgramScope extends Scope {
     public program: Program;
     private classMap: { [key: string]: ClassScope } = {};
+    public realProp: VariableDescriptor;
     constructor(program: Program, option: { program?: Program }) {
-        super(program.property, option);
+        let prop: VariableDescriptor = {};
+        for (let spaceName in program.propertySpace) {
+            for (let propName in program.propertySpace[spaceName]) {
+                prop[`${spaceName}.${propName}`] = program.propertySpace[spaceName][propName];
+            }
+        }
+        super(prop, option);
+        this.realProp = prop;
         this.program = program;
         //创建所有的classScope
         for (let typeName of program.getDefinedTypeNames()) {
@@ -73,6 +84,9 @@ class ProgramScope extends Scope {
         }
     }
     public getProp(name: string): { prop: VariableProperties, scope: Scope, crossFunction: boolean } {
+        if (this.property[name] == undefined) {
+            name = `${spaceNameForScope}.${name}`;//如果默认名字搜索不到，则加上当前命名空间前缀
+        }
         if (this.property[name] != undefined) {
             return { prop: this.property[name], scope: this, crossFunction: false };
         } else {
@@ -81,15 +95,30 @@ class ProgramScope extends Scope {
     }
     public getPropOffset(name: string): number {
         if (this.fieldOffsetMap![name] == undefined) {
+            name = `${spaceNameForScope}.${name}`;//如果默认名字搜索不到，则加上当前命名空间前缀
+        }
+        if (this.fieldOffsetMap![name] == undefined) {
             throw `试图获取未知的属性:${name}`;
         }
         return this.fieldOffsetMap![name].offset;
     }
     public getPropSize(name: string): number {
         if (this.fieldOffsetMap![name] == undefined) {
+            name = `${spaceNameForScope}.${name}`;//如果默认名字搜索不到，则加上当前命名空间前缀
+        }
+        if (this.fieldOffsetMap![name] == undefined) {
             throw `试图获取未知的属性:${name}`;
         }
         return this.fieldOffsetMap![name].size;
+    }
+    /**
+     * 给模板实例化使用的，其他地方不会给scope新增prop了，只有在实例化的时候才会新增
+     * 所以只添加prop，不管size和offset，类型检查阶段不需要使用
+     * 反正现在各个阶段就是混乱，已经无法维护了
+     * @param name 
+     */
+    public setPropForTemplateSpecialize(name: string, space: string) {
+        this.property[name] = this.program.getProgramProp(name, space);
     }
 }
 class ClassScope extends Scope {

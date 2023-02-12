@@ -1,0 +1,50 @@
+var tmpClass=new test.MyClass<int>();
+var id:system.int=5;
+function main():void{
+    system._VMLoadNativeLib("d:\\Users\\john\\Desktop\\ty\\dll\\x64\\Debug\\dll".buffer,{["_NativePrintBytesString".buffer]});
+    var obj=(object)id;
+    var s=tmp<int>(1);
+    printString(s);
+    printString((new test.MyClass<int>()).f(12));
+};
+
+function tmp<T>(v:T){
+    return v.toString();
+};
+
+function printString(s:string){//comment a
+    _NativePrintBytesString(s.buffer);
+};
+
+function _NativePrintBytesString(arg:byte[]):void{
+    native
+};
+
+
+extension function toString(this int value):string{
+    var tmp=value;
+    var baseCode="0".buffer[0];
+    if(tmp<0){
+        tmp=-tmp;
+    }
+    var len=1;
+    for(;;){
+        tmp=tmp/10;
+        if(tmp==0){
+            break;
+        }
+        len++;
+    }
+    tmp=value;
+    var buffer=new byte[tmp<0?len+1:len];
+    if(tmp<0){
+        buffer[0]="-".buffer[0];
+        tmp=-tmp;
+    }
+    var sign=value;
+    for(var i=0;i<len;i++){
+        buffer[sign<0?len-i:len-i-1]=(byte)(tmp%10)+baseCode;
+        tmp=tmp/10;
+    }
+    return new string(buffer);
+}

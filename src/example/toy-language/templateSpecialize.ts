@@ -273,6 +273,8 @@ export function ClassSpecialize(typedef: TypeDef, map: { [key: string]: TypeUsed
         FunctionSpecialize(_constructor, map);
         let newSign = FunctionSign(_constructor);
         typedef._constructor[newSign] = typedef._constructor[constructorName];
-        delete typedef._constructor[constructorName];
+        if (constructorName != newSign) {//当构造函数的参数没有使用模板类型，签名会保持一致
+            delete typedef._constructor[constructorName];//移除之前的构造函数，改用新构造函数
+        }
     }
 }
