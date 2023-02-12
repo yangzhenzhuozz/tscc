@@ -6,10 +6,10 @@ import codeGen from './codeGen.js'
 import { setProgram } from "./ir.js";
 import { Program } from "./program.js";
 import path from "path";
-function main(argc: string[]) {
+function main(argv: string[]) {
     try {
         console.time("解析源码耗时");
-        let inputFiles = argc;
+        let inputFiles = argv;
         let sources: { namespace: string, source: string }[] = [];
         let className: string[] = [];//所有用户自定义的类型
         for (let input of inputFiles) {
