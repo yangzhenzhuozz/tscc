@@ -6,13 +6,20 @@ import codeGen from './codeGen.js'
 import { setProgram } from "./ir.js";
 import { Program } from "./program.js";
 import path from "path";
-function main(argv: string[]) {
+function main(inputFiles: string[]) {
     try {
-        console.time("解析源码耗时");
-        let inputFiles = argv;
         let sources: { namespace: string, source: string }[] = [];
         let className: string[] = [];//所有用户自定义的类型
+        let fileNamesSet = new Set<string>();
         for (let input of inputFiles) {
+            if (!input.endsWith('.ty')) {
+                throw `输入文件的后缀必须是以.ty结尾,文件${input}不满足要求`
+            }
+            if (!fileNamesSet.has(path.basename(input, '.ty'))) {
+                fileNamesSet.add(path.basename(input, '.ty'));
+            } else {
+                throw `文件名${path.basename(input, '.ty')}重复`
+            }
             sources.push({ namespace: path.basename(input, '.ty'), source: fs.readFileSync(input, 'utf-8').toString() });
         }
         //添加id解析规则,假设有个命名空间叫做system，则把system.int 解析成id，下一个循环会添加规则把system.int解析成base_type，后添加的优先级较高，所以不影响结果
@@ -40,6 +47,7 @@ function main(argv: string[]) {
         }
         lexer.compile();
 
+        console.time("解析源码耗时");
         let program: Program = new Program();
         //开始解析
         for (let sourceItem of sources) {
