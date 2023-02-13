@@ -5,7 +5,8 @@ import semanticCheck from './semanticCheck.js'
 import codeGen from './codeGen.js'
 import { setProgram } from "./ir.js";
 import { Program } from "./program.js";
-import path from "path";
+import path, { dirname } from "path";
+import { fileURLToPath } from 'node:url'
 function main(inputFiles: string[]) {
     try {
         let sources: { namespace: string, source: string }[] = [];
@@ -91,4 +92,4 @@ function main(inputFiles: string[]) {
         console.error(`${e}`);
     }
 }
-main(process.argv.slice(2));
+main([path.join(dirname(fileURLToPath(import.meta.url)),'lib','system.ty'),...process.argv.slice(2)]);//将lib/system.ty和其他用户的输入放进待编译文件列表中

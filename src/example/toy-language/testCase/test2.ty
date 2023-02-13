@@ -1,11 +1,19 @@
 var tmpClass=new test.MyClass<int>();
 var id:system.int=5;
+class MyClass1{
+    MyClass1(){
+        if(id==6){
+            throw "abc";
+        }
+        id++;
+    }
+    function unwinded():void{
+        printString("there is unwinded");
+    };
+}
 function main():void{
     system._VMLoadNativeLib("d:\\Users\\john\\Desktop\\ty\\dll\\x64\\Debug\\dll".buffer,{["test2_NativePrintBytesString".buffer]});
-    var obj=(object)id;
-    var s=tmp<int>(1);
-    printString(s);
-    printString((new test.MyClass<int>()).f(12));
+    autounwinding(var a:MyClass1=new MyClass1();var b:MyClass1=new MyClass1()){}
 };
 
 function tmp<T>(v:T){
