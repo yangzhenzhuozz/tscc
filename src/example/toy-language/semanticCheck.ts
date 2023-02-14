@@ -245,7 +245,7 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
             }
             if (assignmentAST != undefined) {
                 if (prop.variable == 'val') {
-                    throw `program.${accessName}声明为val,禁止赋值`;
+                    throw `${namespaceForTypeCheck}.${accessName}声明为val,禁止赋值`;
                 }
             }
             result = { type: type, hasRet: false, location: 'field' };
@@ -337,6 +337,19 @@ function nodeRecursion(scope: Scope, node: ASTNode, label: string[], declareRetT
                         result = { type: type, location: 'prop', hasRet: false };
                     }
                 } else {
+                    //文法规定get set 扩展函数不受private限制,所以只需要在这里检测就行
+                    if (prop.accessModifier == 'private') {
+                        let nowClassCope: ClassScope | undefined;//寻找当前作用域对应的classCope
+                        if (scope instanceof BlockScope) {
+                            nowClassCope = scope.classScope;
+                        } else if (scope instanceof ClassScope) {
+                            nowClassCope = scope;
+                        }
+                        if (nowClassCope?.className != classScope.className) {
+                            throw `禁止外部访问private属性:${className}.${accessName}`;
+                        }
+                    }
+
                     type = prop.type;
                     if (type == undefined) {
                         let initAST = prop.initAST!;

@@ -1,0 +1,13 @@
+class myClass{
+    myClass(){}
+    private var v1:int=1;
+    var v2:int=v1;
+    function f1(){
+        var v3=v1;
+    };
+}
+function main():void{
+    var obj=new myClass();
+    obj.v1=2;
+    obj.v2=2;
+};

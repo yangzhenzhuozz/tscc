@@ -36,6 +36,7 @@ type VariableDescriptor = { [key: string]: VariableProperties };
 //变量属性
 interface VariableProperties {
     variable: 'var' | 'val';
+    accessModifier?:'private';//标记private的则为private,否则默认public
     type?: TypeUsed;//需要类型推导的变量可以先不设置Type
     initAST?: ASTNode;//当type为undefined的时候,initAST必须存在,否则无法确定类型
     loadedNodes?: ASTNode[];//记录load本属性的node，在确定本属性为闭包捕获属性后，把这些load节点全部换成load闭包里面的属性

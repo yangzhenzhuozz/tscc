@@ -18,7 +18,7 @@ export function setParserNameSpace(name: string) {
     namespaceforParser = name;
 }
     `,
-    tokens: ['%', '<<', '>>', '^', '~', '&', '|', 'extension', 'string', 'native', 'var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'throw', 'super', 'basic_type', 'instanceof', 'autounwinding'],
+    tokens: ['private', '%', '<<', '>>', '^', '~', '&', '|', 'extension', 'string', 'native', 'var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'throw', 'super', 'basic_type', 'instanceof', 'autounwinding'],
     association: [
         { 'right': ['='] },
         { 'right': ['?'] },//三目运算
@@ -192,10 +192,9 @@ export function setParserNameSpace(name: string) {
             "initDeclare:val id = object": {
                 action: function ($, s): VariableDescriptor {
                     let id = $[1] as string;
-                    let type = $[3] as TypeUsed;
-                    let obj = $[5] as ASTNode;
+                    let obj = $[3] as ASTNode;
                     let ret = JSON.parse("{}") as VariableDescriptor;//为了生成的解析器不报红
-                    ret[id] = { variable: 'val', type: type, initAST: obj };
+                    ret[id] = { variable: 'val', initAST: obj };
                     return ret;
                 }
             }
@@ -673,9 +672,15 @@ export function setParserNameSpace(name: string) {
             }
         },//class_units可以为空
         {
-            "class_unit:declare ;": {
+            "class_unit:access_modifier declare ;": {
                 action: function ($, s): VariableDescriptor {
-                    return $[0] as VariableDescriptor;
+                    let accessModifier = $[0] as 'private' | 'public';
+                    let variable = $[1] as VariableDescriptor;
+                    let name = Object.keys(variable)[0];
+                    if (accessModifier == 'private') {
+                        variable[name].accessModifier = 'private'
+                    }
+                    return variable;
                 }
             }
         },//class_unit可以是一个声明语句
@@ -754,6 +759,20 @@ export function setParserNameSpace(name: string) {
                 }
             }
         },//构造函数
+        {
+            "access_modifier:": {
+                action: function ($, s): string {
+                    return 'public';
+                }
+            }
+        },//访问修饰符可以为空
+        {
+            "access_modifier:private": {
+                action: function ($, s): string {
+                    return 'private';
+                }
+            }
+        },//访问修饰符可以为private
         {
             "operator_overload:operator + ( id : type ) : type { statements } ;": {
                 action: function ($, s): { [key: string]: FunctionType } {

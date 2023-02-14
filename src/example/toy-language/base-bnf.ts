@@ -1,7 +1,7 @@
 import TSCC from "../../tscc/tscc.js";
 import { Grammar } from "../../tscc/tscc.js";
 let grammar: Grammar = {
-    tokens: ['%', '<<', '>>', '^', '~', '&', '|', 'extension', 'string', 'native', 'var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'throw', 'super', 'basic_type', 'instanceof', 'autounwinding'],
+    tokens: ['private', '%', '<<', '>>', '^', '~', '&', '|', 'extension', 'string', 'native', 'var', 'val', '...', ';', 'id', 'immediate_val', '+', '-', '++', '--', '(', ')', '?', '{', '}', '[', ']', ',', ':', 'function', 'class', '=>', 'operator', 'new', '.', 'extends', 'if', 'else', 'do', 'while', 'for', 'switch', 'case', 'default', 'valuetype', 'import', 'as', 'break', 'continue', 'this', 'return', 'get', 'set', 'sealed', 'try', 'catch', 'throw', 'super', 'basic_type', 'instanceof', 'autounwinding'],
     association: [
         { 'right': ['='] },
         { 'right': ['?'] },//三目运算
@@ -106,11 +106,13 @@ let grammar: Grammar = {
         { "parameter_list:parameter_list , id : type": {} },//parameter_list可以是一个parameter_list接上 , id : type
         { "class_units:class_units class_unit": {} },//class_units可以由多个class_unit组成
         { "class_units:": {} },//class_units可以为空
-        { "class_unit:declare ;": {} },//class_unit可以是一个声明语句
+        { "class_unit:access_modifier declare ;": {} },//class_unit可以是一个声明语句
         { "class_unit:operator_overload": {} },//class_unit可以是一个运算符重载
         { "class_unit:get id ( ) : type { statements } ;": {} },//get
         { "class_unit:set id ( id : type ) { statements } ;": {} },//set
         { "class_unit:basic_type ( parameter_declare )  { statements }": {} },//构造函数
+        { "access_modifier:": {} },//访问修饰符可以为空
+        { "access_modifier:private": {} },//访问修饰符可以为private
         /**
          * 运算符重载,运算符重载实在是懒得做泛型了,以后要是有需求再讲
          * 不重载赋值运算符，因为get set实现起来略微麻烦(不知道c#是不是也是这种考虑)
