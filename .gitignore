@@ -8,3 +8,4 @@ src/example/calculate/parser.ts
 src/example/lexer/parser.ts
 log.txt
 err.txt
+dist/

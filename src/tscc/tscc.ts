@@ -118,7 +118,7 @@ interface Grammar {
         };
     }[];
 }
-interface JSCCParameter {
+interface TSCCParameter {
     debug: boolean;//是否显示状态信息用于调试
     language: "zh-cn" | "en-us";//多语言支持
 }
@@ -168,16 +168,16 @@ class Syntax extends Array<string>{
  * 会自动加上S'->startSymbol以生成增广文法
  * BNF解析规则目前不能使用@和#作为符号,这两个已经被用于将项和项集转换成字符串了
  */
-class JSCC {
+class TSCC {
     private TerminalSymbols: Map<string, PriorityAndAssociationDescription | undefined>;//终结符记录集合
     private syntaxs: Syntax[];//产生式,A->B C会被转换成 ["A","B","C"]
     private syntaxSource: string[];//产生式原始字符串,报错时使用
     private NTSSyntax: Map<string, number[]>;//非终结符可以推导出来的产生式下标NTS non terminal symbol
-    private argument: JSCCParameter;//调用的一些参数
+    private argument: TSCCParameter;//调用的一些参数
     private localTips: Tips;
     private actionTable: {}[] | undefined;//动作表
     private userCode?: string;//用户自定义代码
-    constructor(grammar: Grammar, argument: JSCCParameter) {
+    constructor(grammar: Grammar, argument: TSCCParameter) {
         this.localTips = MultipleLanguage[argument.language];
         this.argument = argument;
         this.TerminalSymbols = new Map();
@@ -1185,5 +1185,5 @@ export default Parse;`;
         return result;
     }
 }
-export { Grammar, JSCCParameter };
-export default JSCC;
+export { Grammar, TSCCParameter };
+export default TSCC;
