@@ -8,6 +8,5 @@ class myClass{
 }
 function main():void{
     var obj=new myClass();
-    obj.v1=2;
     obj.v2=2;
 };
