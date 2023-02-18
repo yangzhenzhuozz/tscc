@@ -1,3 +1,6 @@
+这是早期代码，现在编译器的代码已经移动到ty-compiler中了
+
+
 不支持参数重载，否则会遇到下面的问题
 function add(a:int,b:int){
     return a+b;
