@@ -1,5 +1,5 @@
-import TSCC from "../../../tscc/tscc.js";
-import { Grammar } from "../../../tscc/tscc.js";
+import TSCC from "tscc";
+import { Grammar } from "tscc";
 /**
  * 在tscc读取完产生式之后手动新增两行代码测试结果
  * let n = this.nullalbe(['b']);//分别测试b c d ε S B

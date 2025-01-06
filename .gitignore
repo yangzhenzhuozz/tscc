@@ -1,11 +1,4 @@
-output/
-node_modules/
+node_modules
+dist
 package-lock.json
-compiler.ts
-src/example/toy-language/parser.ts
-src/example/toy-language/output/*
-src/example/calculate/parser.ts
-src/example/lexer/parser.ts
-log.txt
-err.txt
-dist/
+*.tgz

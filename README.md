@@ -1,3 +1,8 @@
+# 使用教程
+1. 在tscc项目目录执行"npm i"安装typescript
+1. 在tscc项目目录执行"npm run pack"打包
+1. 在你的项目目录执行"npm install path/to/tscc-xxx.tgz"安装
+
 一个LR(1)分析器，把BNF变成可用的编译器代码,example中有用TSCC实现的正则引擎，一个toy-language(这个项目已经放到ty里面了，不再是一个简单的example)
 # 产生式优先级和结合性:
 > 默认由该产生式的最右侧终结符决定,如果定义了priority,则使用priority对应符号所对应的优先级和结合性  
@@ -255,22 +260,7 @@ B:b a s
 # parser的使用
 > 如上面所说,使用tscc生成parser之后,调用这个类的parse方法即可,该方法的返回值为accept定义的返回值,如果在分析过程中遇到错误，将会调用yyerror函数提示并抛出ParseException异常,其他自定义异常用户可自行处理
 # demo
-> 参考四则运算demo(这个demo我改过，运行步骤已经变了)  
-> /src/example/calculate/calculate.ts  
-> ./tsconfig.json配置了输入输出目录,可以自行查看并修改
-> 1. 使用tsc编译typescript代码
-> 2. 执行"node .\output\src\example\calculate\calculate.js"生成compiler.ts
-> 3. 使用tsc编译compiler.ts
-> 4. 执行"node ./output/compiler.js"  
-> 输出:
-> ```
-> 语句运算结果:0.6000000000000001
-> 语法错误:此处不能接受;
-> yytext is ;
-> 错误恢复:读取下一个stmt
-> 语句运算结果:5.8
-> AST处理完成
-> ```
+> 参考四则运算demo"/src/example/calculate/readme.md"  
 # 一些常见错误原因分析
 > 1. 存在无法计算first集合的符号串
 >> 串中的某个非终结符不能推导出first集合,如下面的文法
