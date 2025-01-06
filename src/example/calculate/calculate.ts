@@ -21,7 +21,7 @@ let grammar: Grammar = {
             "insert:": {
                 action: function ($, stack) {
                     let s = stack.slice(-2);
-                    console.log(`产生式内插动作: ${s[0]} +`);
+                    console.log(`内联动作,加号的左侧计算结果为: ${s[0]} +`);
                     
                 }
             }
