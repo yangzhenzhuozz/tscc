@@ -21,9 +21,6 @@
     "url": "https://github.com/yangzhenzhuozz/tscc/issues"
   },
   "homepage": "https://github.com/yangzhenzhuozz/tscc#readme",
-  "dependencies": {
-    "typescript": "^5.7.2"
-  },
   "files": [
     "dist",
     "src/tscc"
