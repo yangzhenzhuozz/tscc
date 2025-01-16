@@ -613,7 +613,7 @@ export class ParseException extends Error{
         super.name='ParseException';
     }
 }
-export default function Parse(lexer: Lex):any {
+export default function Parse(lexer: Lex,Context?:any):any {
     let state: { [key: string]: string | undefined }[] = ${JSON.stringify(
       gotoTable
     )};
