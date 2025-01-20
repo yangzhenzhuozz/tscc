@@ -43,75 +43,72 @@ interface MultiLanguage {
   [key: string]: Tips;
 }
 let MultipleLanguage: MultiLanguage = {
-  "en-us": {
-    tips1: "redefinition association of symbol:%s",
-    tips2: "head of syntax can not be terminal-symbol:%s",
-    tips3:
-      'symbol error,the name must match the regular expression "[^\\s`"$@#]+":%s',
-    tips4: "grammar is empty",
-    tips5: "──────────state %d──────────\n",
-    tips6: "\nsignature:%s\n",
-    tips7: "─────────detail of state:%d──────────",
-    tips8: "the non-terminal-symbol can not derivation:%s",
-    tips9: "a symbol of string does not derive any sentence:[%s]",
-    tips10: "the item is repeated of items:%s",
-    tips11: "the non-terminal-symbol can not speculate a syntax:%s",
-    tips12: "can not identify symbol:%s:%s",
-    tips13: "syntax error:%s is not expectation",
-    tips14:
-      'a object has key that is named "left" or "right" or "nonassoc" only one to descript terminal-symbol',
-    tips15: "a object has key to descript syntax only one",
-    tips16: "reduce-reduce conflict",
-    tips17:
-      "fatal: the conflictive syntaxs can not resolve,because both of the syntax and terminal-symbol have not priority and association",
-    tips18: "the syntax have not priority",
-    tips19: "the tips have been used",
-    tips20: "the terminal-symbol have not priority",
-    tips21: "list of syntax:",
-    tips22: "goto table:",
-    tips23: "rules useless in grammar:",
-    tips24: "start symbol %s does not derive any sentence",
-    tips25: "the source is not match grammar",
-    conflict: "conflict:",
-    symbol: "symbol",
-    ShiftRedueceError: "────────shift-reduce conflict────────",
-    ReduceRedueceError: "────────reduce-reduce confilct────────",
+  'en-us': {
+    tips1: 'redefinition association of symbol:%s',
+    tips2: 'head of syntax can not be terminal-symbol:%s',
+    tips3: 'symbol error,the name must match the regular expression "[^\\s`"$@#]+":%s',
+    tips4: 'grammar is empty',
+    tips5: '──────────state %d──────────\n',
+    tips6: '\nsignature:%s\n',
+    tips7: '─────────detail of state:%d──────────',
+    tips8: 'the non-terminal-symbol can not derivation:%s',
+    tips9: 'a symbol of string does not derive any sentence:[%s]',
+    tips10: 'the item is repeated of items:%s',
+    tips11: 'the non-terminal-symbol can not speculate a syntax:%s',
+    tips12: 'can not identify symbol:%s:%s',
+    tips13: 'syntax error:%s is not expectation',
+    tips14: 'a object has key that is named "left" or "right" or "nonassoc" only one to descript terminal-symbol',
+    tips15: 'a object has key to descript syntax only one',
+    tips16: 'reduce-reduce conflict',
+    tips17: 'fatal: the conflictive syntaxs can not resolve,because both of the syntax and terminal-symbol have not priority and association',
+    tips18: 'the syntax have not priority',
+    tips19: 'the tips have been used',
+    tips20: 'the terminal-symbol have not priority',
+    tips21: 'list of syntax:',
+    tips22: 'goto table:',
+    tips23: 'rules useless in grammar:',
+    tips24: 'start symbol %s does not derive any sentence',
+    tips25: 'the source is not match grammar',
+    conflict: 'conflict:',
+    symbol: 'symbol',
+    ShiftRedueceError: '────────shift-reduce conflict────────',
+    ReduceRedueceError: '────────reduce-reduce confilct────────',
   },
-  "zh-cn": {
-    tips1: "th:%s",
-    tips2: "不能使用终结符作为产生式头:%s",
+  'zh-cn': {
+    tips1: 'th:%s',
+    tips2: '不能使用终结符作为产生式头:%s',
     tips3: '产生式%s符号错误,所有符名必须匹配正则"[^\\s`"$@#]+"',
-    tips4: "文法中没有任何产生式",
-    tips5: "──────────状态%d──────────\n",
-    tips6: "\n签名:%s\n",
-    tips7: "─────────状态详情:%d──────────",
-    tips8: "存在无法推导的非终结符:%s",
-    tips9: "存在无法计算first集合的符号串:[%s]",
-    tips10: "项集中存在重复的项:%s",
-    tips11: "非终结符:%s 没有推导出产生式",
-    tips12: "无法识别的符号:%s:%s",
-    tips13: "语法错误:此处不能接受%s",
-    tips14: "每个对象仅仅能拥有一个名为left或者right的key",
-    tips15: "每个对象仅仅能拥有一条描述产生式的key",
-    tips16: "规约-规约冲突",
-    tips17: "致命错误:无法解决的移入-规约冲突,终结符和产生式都没有优先级",
-    tips18: "产生式没有定义优先级",
-    tips19: "没有使用的提示",
-    tips20: "符号没有定义优先级",
-    tips21: "产生式列表:",
-    tips22: "跳转表:",
-    tips23: "下面这些产生式没有被使用(归约)过:",
-    tips24: "起始符号%s没有推导出任何句子",
-    tips25: "源码不符合文法",
-    conflict: "冲突:",
-    symbol: "符号",
-    ShiftRedueceError: "────────移入-规约冲突────────",
-    ReduceRedueceError: "────────规约-规约冲突────────",
+    tips4: '文法中没有任何产生式',
+    tips5: '──────────状态%d──────────\n',
+    tips6: '\n签名:%s\n',
+    tips7: '─────────状态详情:%d──────────',
+    tips8: '存在无法推导的非终结符:%s',
+    tips9: '存在无法计算first集合的符号串:[%s]',
+    tips10: '项集中存在重复的项:%s',
+    tips11: '非终结符:%s 没有推导出产生式',
+    tips12: '无法识别的符号:%s:%s',
+    tips13: '语法错误:此处不能接受%s',
+    tips14: '每个对象仅仅能拥有一个名为left或者right的key',
+    tips15: '每个对象仅仅能拥有一条描述产生式的key',
+    tips16: '规约-规约冲突',
+    tips17: '致命错误:无法解决的移入-规约冲突,终结符和产生式都没有优先级',
+    tips18: '产生式没有定义优先级',
+    tips19: '没有使用的提示',
+    tips20: '符号没有定义优先级',
+    tips21: '产生式列表:',
+    tips22: '跳转表:',
+    tips23: '下面这些产生式没有被使用(归约)过:',
+    tips24: '起始符号%s没有推导出任何句子',
+    tips25: '源码不符合文法',
+    conflict: '冲突:',
+    symbol: '符号',
+    ShiftRedueceError: '────────移入-规约冲突────────',
+    ReduceRedueceError: '────────规约-规约冲突────────',
   },
 };
 interface Grammar {
   userCode?: string; //用户自定义代码
-  association?: { [key in "left" | "right" | "nonassoc"]?: string[] }[]; //终结符优先级和结合性,优先级取的是在数组association中的下标,所以最低是0
+  association?: { [key in 'left' | 'right' | 'nonassoc']?: string[] }[]; //终结符优先级和结合性,优先级取的是在数组association中的下标,所以最低是0
   tokens?: string[]; //终结符号表
   accept?: (args: any[], symbolStack: any[]) => any; //最终规约成增广文法第一条产生式时调用的函数
   BNF: {
@@ -124,7 +121,7 @@ interface Grammar {
 }
 interface TSCCParameter {
   debug: boolean; //是否显示状态信息用于调试
-  language: "zh-cn" | "en-us"; //多语言支持
+  language: 'zh-cn' | 'en-us'; //多语言支持
 }
 enum ActionType {
   shift,
@@ -141,7 +138,7 @@ interface Action {
  * 结合性优先级符描述
  */
 interface PriorityAndAssociationDescription {
-  association: "left" | "right" | "nonassoc"; //结合性
+  association: 'left' | 'right' | 'nonassoc'; //结合性
   priority: number; //优先级
 }
 /**
@@ -175,10 +172,7 @@ class Syntax extends Array<string> {
  * BNF解析规则目前不能使用@和#作为符号,这两个已经被用于将项和项集转换成字符串了
  */
 class TSCC {
-  private TerminalSymbols: Map<
-    string,
-    PriorityAndAssociationDescription | undefined
-  >; //终结符记录集合
+  private TerminalSymbols: Map<string, PriorityAndAssociationDescription | undefined>; //终结符记录集合
   private syntaxs: Syntax[]; //产生式,A->B C会被转换成 ["A","B","C"]
   private syntaxSource: string[]; //产生式原始字符串,报错时使用
   private NTSSyntax: Map<string, number[]>; //非终结符可以推导出来的产生式下标NTS non terminal symbol
@@ -207,24 +201,24 @@ class TSCC {
         //一个对象只能有一个key名为"right"或者"left"
         throw this.localTips.tips14;
       }
-      if (v["left"] != undefined) {
-        for (let symbol of v["left"]) {
+      if (v['left'] != undefined) {
+        for (let symbol of v['left']) {
           this.TerminalSymbols.set(symbol, {
-            association: "left", //结合性
+            association: 'left', //结合性
             priority: i, //优先级
           });
         }
-      } else if (v["right"] != undefined) {
-        for (let symbol of v["right"]) {
+      } else if (v['right'] != undefined) {
+        for (let symbol of v['right']) {
           this.TerminalSymbols.set(symbol, {
-            association: "right", //结合性
+            association: 'right', //结合性
             priority: i, //优先级
           });
         }
-      } else if (v["nonassoc"] != undefined) {
-        for (let symbol of v["nonassoc"]) {
+      } else if (v['nonassoc'] != undefined) {
+        for (let symbol of v['nonassoc']) {
           this.TerminalSymbols.set(symbol, {
-            association: "nonassoc", //结合性
+            association: 'nonassoc', //结合性
             priority: i, //优先级
           });
         }
@@ -249,9 +243,7 @@ class TSCC {
             if (i == 0) {
               //如果是输入第一条产生式
               //插入增广文法第一条产生式
-              this.syntaxs.push(
-                new Syntax([`${syntax[0]}'`, syntax[0]], grammar.accept)
-              ); //如果第一个产生式头为X,插入产生式的头为X'
+              this.syntaxs.push(new Syntax([`${syntax[0]}'`, syntax[0]], grammar.accept)); //如果第一个产生式头为X,插入产生式的头为X'
               this.syntaxs[0].syntaxLength = 1;
               this.NTSSyntax.set(`${syntax[0]}'`, [0]);
             }
@@ -302,9 +294,7 @@ class TSCC {
             }
             if (grammar.BNF[i][keys[0]].priority != undefined) {
               //如果指定了priority则使用该符号指定的优先级和结合性
-              syntax.pad = this.TerminalSymbols.get(
-                grammar.BNF[i][keys[0]].priority!
-              );
+              syntax.pad = this.TerminalSymbols.get(grammar.BNF[i][keys[0]].priority!);
             } else {
               //否则使用产生式最右侧终结符的优先级和结合性
               syntax.pad = description;
@@ -336,14 +326,44 @@ class TSCC {
     }
     this.actionTable = this.itemsFamily(st);
   }
+
   /**
-   * 生成自动机代码,如果失败则返回null
-   * @returns 编译器代码
+   * 生成代码或类型定义文件。
+   *
+   * @param option - 包含是否生成类型定义文件的选项对象。
+   * @returns 如果生成类型定义文件，则返回包含 dts 和 code 的对象；
+   *          如果不生成类型定义文件，则返回生成的代码字符串；
+   *          如果 actionTable 未定义，则返回 null。
    */
-  public generate(): string | null {
+  public generate(): string | null;
+  public generate(option: { genDts: false }): string | null;
+  public generate(option: { genDts: true }): { dts: string; code: string } | null;
+  public generate(option = { genDts: false }): string | null | { dts: string; code: string } {
     if (this.actionTable != undefined) {
+      let code = this.generateStateMachine(this.actionTable); //生成自动机
       //如果构造项集族成功则生成自动机
-      return this.generateStateMachine(this.actionTable); //生成自动机
+      if (option.genDts) {
+        return {
+          dts: `export interface Token {
+    type: string;
+    value: any;
+}
+export interface YYTOKEN extends Token {
+    yytext: string;
+}
+export interface Lex {
+    yylex(): YYTOKEN;
+    yyerror(msg: string): any;
+}
+export declare class ParseException extends Error {
+    constructor(msg: string);
+}
+export default function Parse(lexer: Lex, Context?: any): any;`,
+          code: code,
+        };
+      } else {
+        return code;
+      }
     } else {
       return null;
     }
@@ -481,7 +501,7 @@ class TSCC {
     for (let i = 0; i < str.length; i++) {
       if (this.TerminalSymbols.has(str[i])) {
         //当前符号是终结符
-        if (str[i] != "ε") {
+        if (str[i] != 'ε') {
           //如果当前符号不是ε则不需要看后面的符号
           return false;
         }
@@ -497,10 +517,7 @@ class TSCC {
           for (let j = 0; j < derivations.length; j++) {
             //开始遍历
             expands.add(str[i]); //标记该非终结符已经被展开过
-            let r = this.nullable(
-              this.syntaxs[derivations[j]].slice(1),
-              expands
-            );
+            let r = this.nullable(this.syntaxs[derivations[j]].slice(1), expands);
             expands.delete(str[i]); //还原标记
             if (r) {
               /**
@@ -549,18 +566,14 @@ class TSCC {
           for (let j = 0; j < derivations.length; j++) {
             //开始遍历
             expands.add(str[i]); //标记该非终结符已经被展开过
-            this.first(
-              this.syntaxs[derivations[j]].slice(1),
-              expands,
-              first_sets
-            );
+            this.first(this.syntaxs[derivations[j]].slice(1), expands, first_sets);
             expands.delete(str[i]); //还原标记
           }
         } else {
           //什么也不用做,因为递归不会新增任何符号
         }
       }
-      first_sets.delete("ε"); //不管怎么样,先移除ε
+      first_sets.delete('ε'); //不管怎么样,先移除ε
       if (this.nullable([str[i]], new Set())) {
         //如果当前符号能推导出ε则继续计算下一个符号
         nowSymbolHasEpsilon = true;
@@ -571,7 +584,7 @@ class TSCC {
     }
     if (nowSymbolHasEpsilon) {
       //如果计算到串中最后一个符号还有ε则添加
-      first_sets.add("ε");
+      first_sets.add('ε');
     }
   }
   /**
@@ -591,7 +604,7 @@ class TSCC {
    * @param gotoTable 移入规约表
    */
   private generateStateMachine(gotoTable: {}[]): string {
-    let str = "";
+    let str = '';
     if (this.userCode != undefined || this.userCode != null) {
       str += this.userCode;
     }
@@ -614,9 +627,7 @@ export class ParseException extends Error{
     }
 }
 export default function Parse(lexer: Lex,Context?:any):any {
-    let state: { [key: string]: string | undefined }[] = ${JSON.stringify(
-      gotoTable
-    )};
+    let state: { [key: string]: string | undefined }[] = ${JSON.stringify(gotoTable)};
     let syntaxHead: string[] = [`;
     for (let i = 0; i < this.syntaxs.length; i++) {
       if (i != 0) {
@@ -800,14 +811,9 @@ export default function Parse(lexer: Lex,Context?:any):any {
           followSymbol = this.syntaxs[nowitem.syntax][nowitem.dot]; //当前项可以移入,取得点后面的符号
           //如果之前因为某个项得到了规约或者err动作
           //归类为移入-规约冲突
-          if (
-            actionItem.has(followSymbol) &&
-            (actionItem.get(followSymbol)?.actionType == ActionType.reduce ||
-              actionItem.get(followSymbol)?.actionType == ActionType.err)
-          ) {
+          if (actionItem.has(followSymbol) && (actionItem.get(followSymbol)?.actionType == ActionType.reduce || actionItem.get(followSymbol)?.actionType == ActionType.err)) {
             let syntaxPad = actionItem.get(followSymbol)?.ReducePad; //得到之前归约产生式的pad,之前在进行规约操作时存入的
-            let symbolPriority =
-              this.TerminalSymbols.get(followSymbol)?.priority; //得到符号的pad(能导致移入规约冲突的followSymbol一定是一个非终结符)
+            let symbolPriority = this.TerminalSymbols.get(followSymbol)?.priority; //得到符号的pad(能导致移入规约冲突的followSymbol一定是一个非终结符)
             if (syntaxPad != undefined && symbolPriority != undefined) {
               //产生式和符号都定义了优先级和结合性
               if (syntaxPad.priority > symbolPriority) {
@@ -816,11 +822,11 @@ export default function Parse(lexer: Lex,Context?:any):any {
                 //保留原样
               } else if (syntaxPad.priority == symbolPriority) {
                 //产生式和符号的优先级一样
-                if (syntaxPad.association == "left") {
+                if (syntaxPad.association == 'left') {
                   //产生式结合性为left
                   //选择规约
                   //动作保留原样
-                } else if (syntaxPad.association == "right") {
+                } else if (syntaxPad.association == 'right') {
                   //选择移入
                   //syntaxPad.priority和symbolPriority一样，随便选一个就行
                   actionItem.set(followSymbol, {
@@ -867,14 +873,11 @@ export default function Parse(lexer: Lex,Context?:any):any {
               SRCMessage = `${this.localTips.tips17}`;
               fatal = true; //产生式和符号都没有定义优先级,做不下去了,放弃
             }
-            if (SRCMessage != "") {
+            if (SRCMessage != '') {
               //如果当前项处理有冲突信息则记录下来
               SRErrorTips.set(followSymbol, SRCMessage);
             }
-          } else if (
-            actionItem.has(followSymbol) &&
-            actionItem.get(followSymbol)?.actionType == ActionType.shift
-          ) {
+          } else if (actionItem.has(followSymbol) && actionItem.get(followSymbol)?.actionType == ActionType.shift) {
             //之前记录的也是移入,不需要任何操作
           } else {
             //之前没有过任何操作,这是本状态第一次记录followSymbol的动作为移入
@@ -889,21 +892,13 @@ export default function Parse(lexer: Lex,Context?:any):any {
           followSymbol = nowitem.expectation; //如果当前项需要规约,则follwSymbol为产生式预期符号
           //如果之前因为某个项得到了规约或者err动作
           //归类为规约-规约冲突
-          if (
-            actionItem.has(followSymbol) &&
-            (actionItem.get(followSymbol)?.actionType == ActionType.reduce ||
-              actionItem.get(followSymbol)?.actionType == ActionType.err)
-          ) {
+          if (actionItem.has(followSymbol) && (actionItem.get(followSymbol)?.actionType == ActionType.reduce || actionItem.get(followSymbol)?.actionType == ActionType.err)) {
             //规约-规约冲突
 
             tipMessageInThisState = true;
             let index_a = actionItem.get(followSymbol)!.target;
             let index_b = nowitem.syntax;
-            RRCMessage = `${this.localTips.tips16}\n${index_a}: ${
-              this.convertSyntax(this.syntaxs[index_a]).body
-            }\n${index_b}: ${
-              this.convertSyntax(this.syntaxs[index_b]).body
-            }\n\n`;
+            RRCMessage = `${this.localTips.tips16}\n${index_a}: ${this.convertSyntax(this.syntaxs[index_a]).body}\n${index_b}: ${this.convertSyntax(this.syntaxs[index_b]).body}\n\n`;
 
             RRErrorTips.set(followSymbol, RRCMessage);
 
@@ -939,10 +934,7 @@ export default function Parse(lexer: Lex,Context?:any):any {
                 }); //指明规约产生式
               }
             }
-          } else if (
-            actionItem.has(followSymbol) &&
-            actionItem.get(followSymbol)?.actionType == ActionType.shift
-          ) {
+          } else if (actionItem.has(followSymbol) && actionItem.get(followSymbol)?.actionType == ActionType.shift) {
             //移入-规约冲突
             let syntaxPad = this.syntaxs[nowitem.syntax].pad; //得到当前产生式的pad
             let symbolPriority = actionItem.get(followSymbol)?.shiftPriory!; //得到符号的pad,因为本符号的上个操作记录是移入,所以直接使用action中记录的信息也能得到符号的pad,为什么不直接取TerminalSymbols中的值,实际上用this.TerminalSymbols.get(followSymbol)是一样的,但是这两行代码是我从上面移入-规约处理中复制下来的,所以就简单的交换了一下取产生式优先级和符号优先级的两行代码
@@ -958,7 +950,7 @@ export default function Parse(lexer: Lex,Context?:any):any {
                 }); //指明规约产生式
               } else if (syntaxPad.priority == symbolPriority) {
                 //产生式和符号的优先级一样
-                if (syntaxPad.association == "left") {
+                if (syntaxPad.association == 'left') {
                   //产生式结合性为left
                   //选择规约
                   actionItem.set(followSymbol, {
@@ -966,7 +958,7 @@ export default function Parse(lexer: Lex,Context?:any):any {
                     target: nowitem.syntax,
                     ReducePad: syntaxPad,
                   }); //指明规约产生式
-                } else if (syntaxPad.association == "right") {
+                } else if (syntaxPad.association == 'right') {
                   //选择移入
                 } else {
                   //无结合性的
@@ -1002,7 +994,7 @@ export default function Parse(lexer: Lex,Context?:any):any {
 
               fatal = true; //产生式和符号都没有定义优先级,做不下去了,放弃
             }
-            if (SRCMessage != "") {
+            if (SRCMessage != '') {
               //如果当前项处理有冲突信息则记录下来
               SRErrorTips.set(followSymbol, SRCMessage);
             }
@@ -1228,10 +1220,7 @@ export default function Parse(lexer: Lex,Context?:any):any {
           //点后面符号不是终结符则展开
           if (this.NTSSyntax.has(followSymbol)) {
             let syntaxs = this.NTSSyntax.get(followSymbol)!; //得到点后面非终结符所推导的产生式
-            let firstSet = this.first_wrapper([
-              ...this.syntaxs[item.syntax].slice(item.dot + 1),
-              item.expectation,
-            ]); //得到点后移一位之后的first集合
+            let firstSet = this.first_wrapper([...this.syntaxs[item.syntax].slice(item.dot + 1), item.expectation]); //得到点后移一位之后的first集合
             for (let j = 0; j < firstSet.length; j++) {
               for (let k = 0; k < syntaxs.length; k++) {
                 let item_new = this.generateItem(syntaxs[k], 1, firstSet[j]);
