@@ -7,7 +7,7 @@
   "types": "dist/tscc/tscc.d.ts",
   "type": "module",
   "scripts": {
-    "build": "tsc -p src/tscc/tsconfig.json",
+    "build": "tsc ./src/tscc/tscc.ts --module ESNext --target ESNext --outDir ./dist/tscc --declaration true",
     "pack": "npm run build && npm pack"
   },
   "repository": {
