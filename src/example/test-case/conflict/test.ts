@@ -1,5 +1,5 @@
-import TSCC from "tscc";
-import { Grammar } from "tscc";
+import TSCC from "../../../../dist/tscc/tscc.js";
+import { Grammar } from "../../../../dist/tscc/tscc.js";
 
 /**
  * 1.测试产生式优先级大于符号优先级的情况
