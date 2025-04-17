@@ -1,7 +1,7 @@
 {
-  "name": "tscc",
+  "name": "tscc-lr1",
   "version": "1.0.0",
-  "description": "从0开始自制编程语言",
+  "description": "typescript Compiler Compiler,a LR(1) compiler generator",
   "main": "dist/tscc/tscc.js",
   "module": "dist/tscc/tscc.js",
   "types": "dist/tscc/tscc.d.ts",
