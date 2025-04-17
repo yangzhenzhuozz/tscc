@@ -1,6 +1,6 @@
 {
   "name": "tscc-lr1",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "typescript Compiler Compiler,a LR(1) compiler generator",
   "main": "dist/tscc/tscc.js",
   "module": "dist/tscc/tscc.js",
@@ -12,15 +12,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yangzhenzhuozz/tscc.git"
+    "url": "git+https://github.com/yangzhenzhuozz/tscc-lr1.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/yangzhenzhuozz/tscc/issues"
+    "url": "https://github.com/yangzhenzhuozz/tscc-lr1/issues"
   },
-  "homepage": "https://github.com/yangzhenzhuozz/tscc#readme",
+  "homepage": "https://github.com/yangzhenzhuozz/tscc-lr1#readme",
   "files": [
     "dist",
     "src/tscc"
