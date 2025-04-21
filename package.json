@@ -1,6 +1,6 @@
 {
   "name": "tscc-lr1",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "typescript Compiler Compiler,a LR(1) compiler generator",
   "main": "dist/tscc/tscc.js",
   "module": "dist/tscc/tscc.js",
