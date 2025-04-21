@@ -627,7 +627,7 @@ export class ParseException extends Error{
     }
 }
 export default function Parse(lexer: Lex,Context?:any):any {
-    let state: { [key: string]: string | undefined }[] = ${JSON.stringify(gotoTable)};
+    let state = ${JSON.stringify(gotoTable)} as { [key: string]: string | undefined }[];
     let syntaxHead: string[] = [`;
     for (let i = 0; i < this.syntaxs.length; i++) {
       if (i != 0) {
